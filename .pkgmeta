@@ -19,3 +19,4 @@ ignore:
  - .luacheckrc
  - .todo
  - .gitignore
+ - fetch-libs.sh
