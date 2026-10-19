@@ -23,4 +23,5 @@
 
 embeds.xml
 Locales\locale.xml
+src\Events.lua
 NameplateSCT.lua
