@@ -57,5 +57,9 @@ _Avoid_: Hidden value, protected number
 ## Testing
 
 **Trace**:
-A recording of the Hits, Log Lines, casts, and swings from a real fight, kept as input for Pairing tests.
+A recording of the raw game events from a real fight (Hits, Log Lines with their text, casts, swings, nameplate changes), kept as input for Pairing tests and sent by players with bug reports.
 _Avoid_: Log, replay, recording
+
+**Label**:
+The known Pairing of one Hit in a Trace: its Log Line, or no Log Line. A person checks each Label before tests use it.
+_Avoid_: Expected result, ground truth, annotation
