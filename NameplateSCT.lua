@@ -497,7 +497,7 @@ function NameplateSCT:OnInitialize()
 	self:ConvertDB()
 
 	-- setup chat commands
-	self:RegisterChatCommand("nsctr", "OpenMenu")
+	self:RegisterChatCommand("nsctr", "ChatCommand")
 
 	-- setup menu
 	self:RegisterMenu()
@@ -2140,6 +2140,14 @@ local filters = {
 
 function NameplateSCT:OpenMenu()
 	Settings.OpenToCategory(optionsMenuName)
+end
+
+function NameplateSCT:ChatCommand(input)
+	if self:GetArgs(input) == "record" then
+		ns.Recorder.Toggle()
+	else
+		self:OpenMenu()
+	end
 end
 
 function NameplateSCT:RegisterMenu()

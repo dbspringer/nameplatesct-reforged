@@ -15,7 +15,7 @@
 ## Category-ruRU: Бой
 ## Category-zhCN: 战斗
 ## Category-zhTW: 戰鬥
-## SavedVariables: NameplateSCTReforgedDB
+## SavedVariables: NameplateSCTReforgedDB, NameplateSCTReforgedTraces
 ## OptionalDeps: Ace3, LibEasing
 ## X-Credits: Based on NameplateSCT by mpstark and Justwait
 ## X-License: MIT
@@ -23,5 +23,6 @@
 
 embeds.xml
 Locales\locale.xml
+src\Recorder.lua
 src\Events.lua
 NameplateSCT.lua

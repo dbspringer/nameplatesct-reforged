@@ -30,6 +30,9 @@ globals = {
 
 	-- misc custom
 	"CUSTOM_CLASS_COLORS",
+	"NameplateSCTReforgedTraces",
+	"Blizzard_CombatLog_Filters",
+	"C_AddOns",
 	"LibStub",
 	"AceGUIWidgetLSMlists",
 
