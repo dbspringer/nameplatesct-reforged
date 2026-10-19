@@ -29,7 +29,8 @@ local randomX = {}
 local randomY = {}
 
 local playerGUID
-local unitToGuid = {}
+-- Stays empty: a nameplate's GUID can be secret, and a secret cannot be a
+-- table key. The renderer needs a unit token in its place.
 local guidToUnit = {}
 
 local function rgbToHex(r, g, b)
@@ -512,7 +513,6 @@ end
 function NameplateSCT:OnEnable()
 	playerGUID = UnitGUID("player")
 
-	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 
 	self.db.global.enabled = true
@@ -797,19 +797,7 @@ end
 -- EVENTS --
 ------------
 
-function NameplateSCT:NAME_PLATE_UNIT_ADDED(event, unitID)
-	local guid = UnitGUID(unitID)
-
-	unitToGuid[unitID] = guid
-	guidToUnit[guid] = unitID
-end
-
 function NameplateSCT:NAME_PLATE_UNIT_REMOVED(event, unitID)
-	local guid = unitToGuid[unitID]
-
-	unitToGuid[unitID] = nil
-	guidToUnit[guid] = nil
-
 	-- recycle any fontStrings attachedk to this unit
 	for fontString, _ in pairs(animating) do
 		if fontString.unit == unitID then
