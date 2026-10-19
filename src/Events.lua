@@ -8,7 +8,30 @@ ns.Events = Events
 -- turns them off later.
 local KEEP_INTERVAL = 2
 
+-- Unit tokens WoW gives out to enemy nameplates.
+local MAX_NAMEPLATES = 40
+
+local GAME_EVENTS = {
+	"UNIT_COMBAT",
+	"COMBAT_LOG_MESSAGE",
+	"PLAYER_SWING",
+	"PLAYER_TARGET_CHANGED",
+	"NAME_PLATE_UNIT_ADDED",
+	"NAME_PLATE_UNIT_REMOVED",
+}
+
+local CAST_EVENTS = {
+	"UNIT_SPELLCAST_SENT",
+	"UNIT_SPELLCAST_START",
+	"UNIT_SPELLCAST_SUCCEEDED",
+	"UNIT_SPELLCAST_INTERRUPTED",
+}
+
 local keepTicker
+local frame = CreateFrame("Frame")
+
+-- Nameplate tokens that are shown now.
+local plates = {}
 
 local function keepFilteredEvents()
 	local enabled = C_CombatLog.AreFilteredEventsEnabled()
@@ -18,10 +41,60 @@ local function keepFilteredEvents()
 	C_CombatLog.SetFilteredEventsEnabled(true)
 end
 
+local function isTrue(value)
+	return not issecretvalue(value) and value == true
+end
+
+-- A unit's GUID can be secret, so a unit is named by the nameplate token that
+-- shows it. UnitIsUnit stays public in dungeons.
+local function plateFor(unit)
+	if plates[unit] then
+		return unit
+	end
+	for plate in pairs(plates) do
+		if isTrue(UnitIsUnit(unit, plate)) then
+			return plate
+		end
+	end
+end
+
+local function onEvent(_, event, ...)
+	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
+	if isPlateEvent then
+		local unit = ...
+		plates[unit] = event == "NAME_PLATE_UNIT_ADDED" or nil
+	end
+	if not ns.Recorder.IsRecording() then
+		return
+	end
+
+	local extra
+	if isPlateEvent then
+		local unit = ...
+		extra = { guid = UnitGUID(unit) }
+	elseif event == "UNIT_COMBAT" then
+		local unit = ...
+		extra = { plate = plateFor(unit), guid = UnitGUID(unit) }
+	end
+	ns.Recorder.Record(GetTime(), event, extra, ...)
+end
+frame:SetScript("OnEvent", onEvent)
+
 function Events.Start()
 	keepFilteredEvents()
 	if not keepTicker then
 		keepTicker = C_Timer.NewTicker(KEEP_INTERVAL, keepFilteredEvents)
+	end
+
+	for i = 1, MAX_NAMEPLATES do
+		local unit = "nameplate" .. i
+		plates[unit] = isTrue(UnitExists(unit)) or nil
+	end
+	for _, event in ipairs(GAME_EVENTS) do
+		frame:RegisterEvent(event)
+	end
+	for _, event in ipairs(CAST_EVENTS) do
+		frame:RegisterUnitEvent(event, "player", "pet")
 	end
 end
 
@@ -30,4 +103,6 @@ function Events.Stop()
 		keepTicker:Cancel()
 		keepTicker = nil
 	end
+	frame:UnregisterAllEvents()
+	wipe(plates)
 end
