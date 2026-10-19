@@ -1,8 +1,5 @@
-local L = LibStub("AceLocale-3.0"):NewLocale("NameplateSCT", "enUS", true)
+local L = LibStub("AceLocale-3.0"):NewLocale("NameplateSCT_Reforged", "enUS", true)
 
-L["Unfortunately Blizzard has not added a SCT API in Midnight, until they do this addon will not have any functionality."] = true
-L["If you want to enable or disable the blizzard SCT you can do so here"] = true
-L["Thank you for the years of support, and hopefully we'll be able to bring NameplateSCT back in the future! - Justwait"] = true
 L["%s (A: %s)"] = true -- A for Absorb
 L["%s (O: %s)"] = true -- O for Overkill
 L["Abilities"] = true
@@ -87,6 +84,7 @@ L["Missed"] = true
 L["Monochrome Outline"] = true
 L["Monochrome Thick Outline"] = true
 L["Monochrome"] = true
+L["NameplateSCT Reforged"] = true
 L["None"] = true
 L["NPC id (eg: 23682) seperated by line\n\n The example is the Headless Horseman."] = true
 L["NPCs"] = true
