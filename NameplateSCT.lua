@@ -4,10 +4,10 @@
 local AceAddon = LibStub("AceAddon-3.0")
 local LibEasing = LibStub("LibEasing-1.0")
 local SharedMedia = LibStub("LibSharedMedia-3.0")
-local L = LibStub("AceLocale-3.0"):GetLocale("NameplateSCT")
+local L = LibStub("AceLocale-3.0"):GetLocale("NameplateSCT_Reforged")
 local MSQ = LibStub("Masque", true)
 
-local NameplateSCT = AceAddon:NewAddon("NameplateSCT", "AceConsole-3.0", "AceEvent-3.0")
+local NameplateSCT = AceAddon:NewAddon("NameplateSCT_Reforged", "AceConsole-3.0", "AceEvent-3.0")
 NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 
 -------------------
@@ -15,9 +15,8 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -------------------
 
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
-local _, _, _, build = GetBuildInfo()
-local isMidnight = build >= 120000
-local blizzardCvar = isMidnight and "floatingCombatTextCombatDamage_v2" or "floatingCombatTextCombatDamage"
+-- Forever has only the _v2 names of the Blizzard Target Text CVars.
+local blizzardCvar = "floatingCombatTextCombatDamage_v2"
 
 ------------
 -- LOCALS --
@@ -103,7 +102,7 @@ local inversePositions = {
 -- DB --
 --------
 if MSQ then
-    NameplateSCT.frame.MSQGroup = MSQ:Group("NameplateSCT")
+    NameplateSCT.frame.MSQGroup = MSQ:Group("NameplateSCT Reforged")
 end
 
 local defaultFont = "Friz Quadrata TT"
@@ -489,13 +488,13 @@ end
 
 function NameplateSCT:OnInitialize()
 	-- setup db
-	self.db = LibStub("AceDB-3.0"):New("NameplateSCTDB", defaults, true)
+	self.db = LibStub("AceDB-3.0"):New("NameplateSCTReforgedDB", defaults, true)
 
 	-- Adjust anything that was edited in the db to be correct
 	self:ConvertDB()
 
 	-- setup chat commands
-	self:RegisterChatCommand("nsct", "OpenMenu")
+	self:RegisterChatCommand("nsctr", "OpenMenu")
 
 	-- setup menu
 	self:RegisterMenu()
@@ -513,11 +512,8 @@ end
 function NameplateSCT:OnEnable()
 	playerGUID = UnitGUID("player")
 
-	if not isMidnight then -- disable for midnight :(
-		self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-		self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	end
+	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 
 	self.db.global.enabled = true
 end
@@ -820,113 +816,6 @@ function NameplateSCT:NAME_PLATE_UNIT_REMOVED(event, unitID)
 			recycleFontString(fontString)
 		end
 	end
-end
-
-function NameplateSCT:CombatFilter(_, clue, _, sourceGUID, _, sourceFlags, _, destGUID, _, _, _, ...)
-    if NameplateSCT.db.global.personalOnly and NameplateSCT.db.global.personal and playerGUID ~= destGUID then return end -- Cancel out any non player targetted abilities if you have personalSCT only enabled
-	if NameplateSCT.db.global.filterEnabled then -- Filter out mobId's if needed
-		local _, _, _, _, _, destUnitId = strsplit("-", destGUID)
-		destUnitId = tostring(destUnitId) or "1"
-		if (NameplateSCT.db.global.inverseNPCFilter and not npcFiltersTable[destUnitId]) -- Inverse filter
-			or
-		(not NameplateSCT.db.global.inverseNPCFilter and npcFiltersTable[destUnitId]) -- Normal Filter
-		then return end
-	end
-	if playerGUID == sourceGUID or (NameplateSCT.db.global.personal and playerGUID == destGUID) then -- Player events
-		local destUnit = guidToUnit[destGUID]
-		if (destUnit) or (destGUID == playerGUID and NameplateSCT.db.global.personal) then
-			if string.find(clue, "_MISSED") then
-				local spellName, missType, spellId, amount, school
-
-				if (string.find(clue, "SWING")) then
-					missType, _, amount, critical = ...
-				else
-					spellId, spellName, school, missType, _, amount, critical = ...
-				end
-				if spellId and spellId == 0 then
-					spellId = nil -- Don't pass spellId 0
-				end
-				if NameplateSCT.db.global.filterEnabled then
-					local spellInFilter = filtersTable[tostring(spellId)] or filtersTable[spellName] or filtersTable["missed"]
-					if (NameplateSCT.db.global.inverseSpellFilter and not spellInFilter) or (not NameplateSCT.db.global.inverseSpellFilter and spellInFilter) then
-						return
-					end
-				end
-				if missType == "ABSORB" then --Show absorbed as damage
-					self:DamageEvent(destGUID, spellName, 0, -1, school, critical, spellId, amount)
-				else
-					self:MissEvent(destGUID, spellName, missType, spellId)
-				end
-			elseif string.find(clue, "_DAMAGE") or string.find(clue, "DAMAGE_SHIELD") then -- After _MISSED to not catch SPELL_DAMAGE_SHIELD_MISSED
-				local spellName, amount, overkill, school, critical, spellId, absorbed
-				if (string.find(clue, "SWING")) then
-					spellName, amount, overkill, _, _, _, absorbed, critical = "melee", ...
-				elseif (string.find(clue, "ENVIRONMENTAL")) then
-					spellName, amount, overkill, school, _, _, absorbed, critical = ...
-				else
-					spellId, spellName, _, amount, overkill, school, _, _, absorbed, critical = ...
-				end
-				if spellId and spellId == 0 then
-					spellId = nil -- Don't pass spellId 0
-				end
-				if NameplateSCT.db.global.filterEnabled then
-					local spellInFilter = filtersTable[tostring(spellId)] or filtersTable[spellName]
-					if (NameplateSCT.db.global.inverseSpellFilter and not spellInFilter) or (not NameplateSCT.db.global.inverseSpellFilter and spellInFilter) then
-						return
-					end
-				end
-				self:DamageEvent(destGUID, spellName, amount, overkill, school, critical, spellId, absorbed)
-			end
-		end
-	elseif (bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_GUARDIAN) > 0 or bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PET) > 0)	and bit.band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) > 0 then -- Pet/Guardian events
-		local destUnit = guidToUnit[destGUID]
-		if (destUnit) or (destGUID == playerGUID and NameplateSCT.db.global.personal) then
-			if string.find(clue, "_MISSED") then
-				local spellName, missType, spellId, amount
-
-				if (string.find(clue, "SWING")) then
-					missType, _, amount, critical = ...
-				else
-					spellId, spellName, _, missType, _, amount, critical = ...
-				end
-				if spellId and spellId == 0 then
-					spellId = nil -- Don't pass spellId 0
-				end
-				if NameplateSCT.db.global.filterEnabled then
-					local spellInFilter = filtersTable[tostring(spellId)] or filtersTable[spellName] or filtersTable["missed"]
-					if (NameplateSCT.db.global.inverseSpellFilter and not spellInFilter) or (not NameplateSCT.db.global.inverseSpellFilter and spellInFilter) then
-						return
-					end
-				end
-				if missType == "ABSORB" then
-					self:DamageEvent(destGUID, spellName, 0, -1, "pet", critical, spellId, amount)
-				end
-			elseif string.find(clue, "_DAMAGE") or string.find(clue, "DAMAGE_SHIELD") then -- After _MISSED to not catch SPELL_DAMAGE_SHIELD_MISSED
-				local spellName, amount, overkill, critical, spellId, absorbed
-				if (string.find(clue, "SWING")) then
-					spellName, amount, overkill, _, _, _, absorbed, critical, _, _, _ = "pet", ...
-				elseif (string.find(clue, "ENVIRONMENTAL")) then
-					spellName, amount, overkill, _, _, _, absorbed, critical= ...
-				else
-					spellId, spellName, _, amount, overkill, _, _, _, absorbed, critical = ...
-				end
-				if spellId and spellId == 0 then
-					spellId = nil -- Don't pass spellId 0
-				end
-				if NameplateSCT.db.global.filterEnabled then
-					local spellInFilter = filtersTable[tostring(spellId)] or filtersTable[spellName]
-					if (NameplateSCT.db.global.inverseSpellFilter and not spellInFilter) or (not NameplateSCT.db.global.inverseSpellFilter and spellInFilter) then
-						return
-					end
-				end
-				self:DamageEvent(destGUID, spellName, amount, overkill, "pet", critical, spellId, absorbed)
-			end
-		end
-	end
-end
-
-function NameplateSCT:COMBAT_LOG_EVENT_UNFILTERED ()
-	return NameplateSCT:CombatFilter(CombatLogGetCurrentEventInfo())
 end
 
 -------------
@@ -1387,7 +1276,7 @@ end
 -------------
 
 local menu = {
-	name = "NameplateSCT",
+	name = L["NameplateSCT Reforged"],
 	handler = NameplateSCT,
 	type = 'group',
 	args = {
@@ -2197,54 +2086,6 @@ local menu = {
 	},
 }
 
-if isMidnight then
-	menu.args = {
-		disabledInMidnight = {
-			type = 'description',
-			name = "|cFFFF0000"..L["Unfortunately Blizzard has not added a SCT API in Midnight, until they do this addon will not have any functionality."].."|r",
-			order = 1,
-			width = "full",
-			fontSize = "large",
-		},
-		header = {
-			type = 'header',
-			name = "",
-			order = 2,
-		},
-		blizzardToggleDesc = {
-			type = 'description',
-			name = L["If you want to enable or disable the blizzard SCT you can do so here"],
-			order = 3,
-			width = "full",
-		},
-		disableBlizzardFCT = {
-			type = 'toggle',
-			name = L["BlizzardSCT"],
-			get = function(_, newValue) return GetCVar("floatingCombatTextCombatDamage") == "1" end,
-			set = function(_, newValue)
-				if (newValue) then
-					SetCVar("floatingCombatTextCombatDamage", 1)
-				else
-					SetCVar("floatingCombatTextCombatDamage", 0)
-				end
-			end,
-			order = 4,
-			width = "full",
-		},
-		header2 = {
-			type = 'header',
-			name = "",
-			order = 5,
-		},
-		thankYou = {
-			type = 'description',
-			name = "|cFFFFFF00"..L["Thank you for the years of support, and hopefully we'll be able to bring NameplateSCT back in the future! - Justwait"].."|r",
-			order = 6,
-			width = "full",
-		},
-	}
-end
-
 local filters = {
 	name = L["Filters"],
 	handler = NameplateSCT,
@@ -2310,10 +2151,8 @@ function NameplateSCT:OpenMenu()
 end
 
 function NameplateSCT:RegisterMenu()
-	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT", menu)
-	_, optionsMenuName = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT", "NameplateSCT")
-	if not isMidnight then
-		LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("Filters", filters)
-		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Filters", L["Filters"], "NameplateSCT")
-	end
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged", menu)
+	_, optionsMenuName = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged", L["NameplateSCT Reforged"])
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged_Filters", filters)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged_Filters", L["Filters"], L["NameplateSCT Reforged"])
 end
