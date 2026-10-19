@@ -1,3 +1,5 @@
+local _, ns = ...
+
 ---------------
 -- LIBRARIES --
 ---------------
@@ -514,12 +516,14 @@ function NameplateSCT:OnEnable()
 	playerGUID = UnitGUID("player")
 
 	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+	ns.Events.Start()
 
 	self.db.global.enabled = true
 end
 
 function NameplateSCT:OnDisable()
 	self:UnregisterAllEvents()
+	ns.Events.Stop()
 
 	for fontString, _ in pairs(animating) do
 		recycleFontString(fontString)

@@ -35,6 +35,8 @@ globals = {
 
 	-- framexml misc
 	"C_Timer",
+	"C_CombatLog",
+	"issecretvalue",
 	"CooldownFrame_Set",
 	"DEFAULT_CHAT_FRAME",
 	"GameTooltip_Hide",
