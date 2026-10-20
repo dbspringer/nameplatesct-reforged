@@ -3,13 +3,14 @@ _G.issecretvalue = function(value)
 end
 
 local ns = {}
+assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
-local Pairing = ns.Pairing
-local Label = assert(loadfile("tools/label-trace.lua"))()
+local Adapter, Pairing = ns.Adapter, ns.Pairing
 local Trace = assert(loadfile("tools/trace.lua"))()
 
-local GREY = { 0.7, 0.7, 0.7 }
-local WHITE = { 1, 1, 1 }
+-- Colours in the shape of the Log Filter's unit colours.
+local GREY = { r = 0.7, g = 0.7, b = 0.7, a = 1 }
+local WHITE = { r = 1, g = 1, b = 1, a = 1 }
 
 local entryCount = 0
 
@@ -22,15 +23,16 @@ end
 local function line(time, colour)
 	colour = colour or GREY
 	entryCount = entryCount + 1
-	return { kind = "line", time = time, entry = entryCount, r = colour[1], g = colour[2], b = colour[3] }
+	return { kind = "line", time = time, entry = entryCount, r = colour.r, g = colour.g, b = colour.b }
 end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
 -- Log Line entry that each Hit got, by the Hit's entry (false for none).
+-- colours defaults to grey; false gives no colours, so every colour pairs.
 local function pair(records, colours)
 	local decided = {}
 	local pairing = Pairing.New({
-		colours = colours == nil and { GREY } or colours or nil,
+		colours = colours == nil and { GREY } or colours,
 		onDecision = function(decidedHit, decidedLine)
 			assert(decided[decidedHit.entry] == nil, "a Hit was decided twice")
 			decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
@@ -65,11 +67,17 @@ describe("Pairing", function()
 	end)
 
 	it("pairs a physical Hit with a Log Line from 0.25 to 1.1 s earlier, for melee", function()
-		local swingLine, swing = line(1), hit(1.6, "nameplate1", 1)
-		local lateLine, tooLate = line(3), hit(4.2, "nameplate1", 1)
-		local decided = pair({ swingLine, swing, lateLine, tooLate })
-		assert.are.equal(swingLine.entry, decided[swing.entry])
-		assert.is_false(decided[tooLate.entry])
+		local records, expected = {}, {}
+		for i, case in ipairs({ { 0.2, false }, { 0.3, true }, { 1.05, true }, { 1.15, false } }) do
+			local swingLine = line(i * 10)
+			local swing = hit(i * 10 + case[1], "nameplate1", 1)
+			records[#records + 1], records[#records + 2] = swingLine, swing
+			expected[swing.entry] = case[2] and swingLine.entry
+		end
+		local decided = pair(records)
+		for entry, want in pairs(expected) do
+			assert.are.equal(want, decided[entry])
+		end
 	end)
 
 	it("gives the melee window to physical Hits only, and not to heals, which also report school 1", function()
@@ -120,6 +128,44 @@ describe("Pairing", function()
 		assert.is_false(decided[missed.entry])
 	end)
 
+	it("lets a newer Hit take its early Log Line, though a held Hit's hold ended first", function()
+		local held, early, newer = hit(3), line(3.1), hit(3.19)
+		assert.are.same({ false, early.entry }, (function()
+			local decided = pair({ held, early, newer })
+			return { decided[held.entry], decided[newer.entry] }
+		end)())
+
+		-- The same with a tick between the end of the hold and the newer Hit.
+		local decided = {}
+		local pairing = Pairing.New({
+			colours = { GREY },
+			onDecision = function(decidedHit, decidedLine)
+				decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
+			end,
+		})
+		local heldAgain, earlyAgain, newerAgain = hit(5), line(5.1), hit(5.19)
+		pairing.Push(heldAgain)
+		pairing.Push(earlyAgain)
+		pairing.Tick(5.16)
+		pairing.Push(newerAgain)
+		pairing.Tick(math.huge)
+		assert.are.same({ false, earlyAgain.entry }, { decided[heldAgain.entry], decided[newerAgain.entry] })
+	end)
+
+	it("gives a held Hit the oldest late Log Line, and the first held Hit goes first", function()
+		local held, first, second = hit(1), line(1.02), line(1.1)
+		assert.are.equal(first.entry, pair({ held, first, second })[held.entry])
+
+		local one, two, only = hit(3), hit(3.01, "nameplate2"), line(3.1)
+		local decided = pair({ one, two, only })
+		assert.are.same({ only.entry, false }, { decided[one.entry], decided[two.entry] })
+	end)
+
+	it("keeps a Log Line whose colour is secret, since it cannot be compared", function()
+		local secret, tick = line(1, { r = "<secret>", g = "<secret>", b = "<secret>" }), hit(1)
+		assert.are.equal(secret.entry, pair({ secret, tick })[tick.entry])
+	end)
+
 	it("lets a later Hit take its own early Log Line before a held Hit can", function()
 		local theirs, early, mine = hit(1), line(1.05), hit(1.08)
 		local decided = pair({ theirs, early, mine })
@@ -144,15 +190,15 @@ describe("Pairing", function()
 	end)
 
 	describe("Hits on you and your pet", function()
-		it("take a Log Line in their own frame for a heal or for damage, as from Drain Life", function()
+		it("take a Log Line in their own frame for a heal or for damage, as from Drain Life or Health Funnel", function()
 			local heal, healLine = hit(1, "player", 1, "HEAL"), line(1)
-			local funnel, funnelLine = hit(2, "pet", 32, "WOUND"), line(2)
+			local funnel, funnelLine = hit(2, "player", 32, "WOUND"), line(2)
 			local decided = pair({ heal, healLine, funnel, funnelLine })
 			assert.are.equal(healLine.entry, decided[heal.entry])
 			assert.are.equal(funnelLine.entry, decided[funnel.entry])
 		end)
 
-		it("never take a waiting Log Line, so a mob's attack cannot take your line", function()
+		it("never take a waiting or a late Log Line, so a mob's attack cannot take your line", function()
 			local swingLine, onYou, onPet = line(1), hit(1.05, "player", 1), hit(1.5, "pet", 1)
 			local boltLine, late = line(3), hit(2.9, "pet", 32)
 			local decided = pair({ swingLine, onYou, onPet, late, boltLine })
@@ -183,9 +229,39 @@ describe("Pairing", function()
 		assert.are.equal(petLine.entry, decided[petSwing.entry])
 	end)
 
+	it("gives no Log Line to a WOUND of 0 that comes first in a frame, so the frame's real Hit keeps it", function()
+		local zero, tick, tickLine = hit(1, "nameplate1", 32, "WOUND", 0), hit(1), line(1)
+		local decided = pair({ zero, tick, tickLine })
+		assert.is_false(decided[zero.entry])
+		assert.are.equal(tickLine.entry, decided[tick.entry])
+	end)
+
+	it("does not hold a WOUND of 0 for a late Log Line", function()
+		local zero, later = hit(1, "nameplate1", 32, "WOUND", 0), line(1.1)
+		assert.is_false(pair({ zero, later })[zero.entry])
+	end)
+
 	it("can still pair a WOUND whose amount is secret", function()
 		local tickLine, tick = line(1), hit(1, "nameplate1", 32, "WOUND", "<secret>")
 		assert.are.equal(tickLine.entry, pair({ tickLine, tick })[tick.entry])
+	end)
+
+	describe("colours from the Log Filter", function()
+		local function filter(priority)
+			return {
+				colors = { unitColoring = { [0x4511] = GREY, [0x3111] = WHITE, [0x3222] = { r = 1, g = 0, b = 0 } } },
+				settings = { lineColoring = true, lineColorPriority = priority },
+			}
+		end
+
+		it("are the player's and the pet's unit colours when lines take their source's colour", function()
+			assert.are.same({ GREY, WHITE }, Pairing.ColoursOf(filter(1)))
+		end)
+
+		it("are unknown when lines take another colour, so every colour pairs", function()
+			assert.is_nil(Pairing.ColoursOf(filter(3)))
+			assert.is_nil(Pairing.ColoursOf(nil))
+		end)
 	end)
 
 	describe("on the Warlock Traces", function()
@@ -193,31 +269,32 @@ describe("Pairing", function()
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
 				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
-				local hits, logLines = Label.Adapt(trace)
-				local records = {}
-				for _, record in ipairs(hits) do
-					records[#records + 1] = record
-				end
-				for _, record in ipairs(logLines) do
-					records[#records + 1] = record
-				end
-				table.sort(records, function(a, b)
-					return a.entry < b.entry
+				local decided, timeOf = {}, {}
+				local pairing = Pairing.New({
+					colours = Pairing.ColoursOf(trace.header.logFilter.filter),
+					onDecision = function(decidedHit, decidedLine)
+						decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
+					end,
+				})
+				-- The adapter feeds Pairing as the live addon will.
+				local adapter = Adapter.New(function(record)
+					if record.kind == "line" then
+						timeOf[record.entry] = record.time
+					end
+					pairing.Push(record)
 				end)
-				local decided = pair(records)
-				-- The Log Lines of one frame have the same time and colour and no
-				-- content, so any line from the Label line's frame is equal.
-				local timeOf = {}
-				for _, record in ipairs(logLines) do
-					timeOf[record.entry] = record.time
+				for _, entry in ipairs(trace.entries) do
+					adapter.Push(entry)
 				end
+				adapter.Tick(math.huge)
+				pairing.Tick(math.huge)
+				-- Pairing reads only a Log Line's time and colour, so any line of
+				-- the player's colour from the Label line's frame is equal.
 				local wrong = {}
 				for _, row in ipairs(labels) do
 					local got = decided[row.hit]
-					local same = got == row.line or (got and row.line and timeOf[got] == timeOf[row.line])
-					if not same then
-						wrong[#wrong + 1] = ("hit %d: Label %s, Pairing %s"):format(row.hit, tostring(row.line),
-							tostring(decided[row.hit]))
+					if not (got == row.line or (got and row.line and timeOf[got] == timeOf[row.line])) then
+						wrong[#wrong + 1] = ("hit %d: Label %s, Pairing %s"):format(row.hit, tostring(row.line), tostring(got))
 					end
 				end
 				assert.are.same({}, wrong)
