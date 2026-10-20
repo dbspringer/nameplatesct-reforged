@@ -14,12 +14,12 @@ end
 -- truncateMethod ("NONE", "WESTERN", or "EASTASIA"), truncateLetter, and
 -- commaSeperate. eastAsiaLetter is the unit letter for "EASTASIA". A Secret
 -- Amount cannot be compared or calculated with, so it goes to the game's
--- formatters, which accept one and return a secret string: "NONE" with
--- commas keeps every digit, and every other setting gives the game's own
--- abbreviation.
+-- formatters, which accept one and return a secret string: "NONE" keeps
+-- every digit, with separators even when commaSeperate is off, and every
+-- other setting gives the game's own abbreviation.
 function Amount.Format(amount, settings, eastAsiaLetter)
 	if issecretvalue(amount) then
-		if settings.truncateMethod == 'NONE' and settings.commaSeperate then
+		if settings.truncateMethod == 'NONE' then
 			return BreakUpLargeNumbers(amount)
 		end
 		return AbbreviateNumbers(amount)

@@ -53,7 +53,7 @@ describe("Amount.Format", function()
 			for _, letter in ipairs({ true, false }) do
 				for _, comma in ipairs({ true, false }) do
 					local text = Amount.Format(secret, settings(method, letter, comma), "w")
-					if method == "NONE" and comma then
+					if method == "NONE" then
 						assert.are.equal(secret, rawget(text, "broken"))
 					else
 						assert.are.equal(secret, rawget(text, "abbreviated"))
