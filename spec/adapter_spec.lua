@@ -1,0 +1,234 @@
+-- A secret is the string "SECRET" here, since plain Lua has no secret values.
+_G.issecretvalue = function(value)
+	return value == "SECRET"
+end
+_G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
+
+local ns = {}
+assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
+local Adapter = ns.Adapter
+
+-- Pushes the entries through a new adapter, closes the last frame, and returns
+-- the records in the order they left.
+local function run(entries)
+	local records = {}
+	local adapter = Adapter.New(function(record)
+		records[#records + 1] = record
+	end)
+	for _, entry in ipairs(entries) do
+		adapter.Push(entry)
+	end
+	adapter.Tick(math.huge)
+	return records
+end
+
+local function report(time, unit, plate, action, amount)
+	return { time, "UNIT_COMBAT", unit, action or "WOUND", "", amount or 29, 1, plate = plate, guid = "<secret>" }
+end
+
+local function logLine(time, order)
+	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, order or 0 }
+end
+
+local function kinds(records)
+	local result = {}
+	for i, record in ipairs(records) do
+		result[i] = record.kind
+	end
+	return result
+end
+
+describe("Adapter", function()
+	describe("Hits", function()
+		it("makes one Hit from the repeats of one report on a nameplate, target, and soft target", function()
+			local records = run({
+				report(1, "nameplate1", "nameplate1"),
+				report(1, "target", "nameplate1"),
+				report(1, "softenemy", "nameplate1"),
+			})
+			assert.are.equal(1, #records)
+			assert.are.same({ kind = "hit", time = 1, entry = 1, unit = "nameplate1", action = "WOUND",
+				descriptor = "", amount = 29, school = 1 }, records[1])
+		end)
+
+		it("makes two Hits when one nameplate has two reports in a frame", function()
+			local records = run({
+				report(1, "nameplate1", "nameplate1"),
+				report(1, "target", "nameplate1"),
+				report(1, "nameplate1", "nameplate1"),
+				report(1, "target", "nameplate1"),
+			})
+			assert.are.same({ "hit", "hit" }, kinds(records))
+			assert.are.same({ 1, 3 }, { records[1].entry, records[2].entry })
+		end)
+
+		it("counts Hits on the token with the most reports, though another token reports first", function()
+			local records = run({
+				report(1, "target", "nameplate1"),
+				report(1, "nameplate1", "nameplate1"),
+				report(1, "nameplate1", "nameplate1"),
+			})
+			assert.are.same({ 1, 3 }, { records[1].entry, records[2].entry })
+		end)
+
+		it("keeps Hits on different nameplates apart", function()
+			local records = run({
+				report(1, "nameplate1", "nameplate1"),
+				report(1, "nameplate2", "nameplate2"),
+			})
+			assert.are.same({ "nameplate1", "nameplate2" }, { records[1].unit, records[2].unit })
+		end)
+
+		it("keeps Hits on the player and the pet, and drops targettarget", function()
+			local records = run({
+				report(1, "player", nil, "HEAL"),
+				report(1, "targettarget", nil, "HEAL"),
+				report(1, "pet", nil, "WOUND"),
+			})
+			assert.are.same({ "player", "pet" }, { records[1].unit, records[2].unit })
+		end)
+
+		it("merges enemy reports with no nameplate into one Hit per action, named by target first", function()
+			local records = run({
+				report(1, "softinteract", nil, "WOUND"),
+				report(1, "target", nil, "WOUND"),
+				report(1, "softenemy", nil, "MISS"),
+			})
+			assert.are.equal(2, #records)
+			assert.are.same({ "target", "WOUND", 1 }, { records[1].unit, records[1].action, records[1].entry })
+			assert.are.same({ "softenemy", "MISS", 3 }, { records[2].unit, records[2].action, records[2].entry })
+		end)
+
+		it("passes the amount through without reading it, so a live secret reaches the renderer", function()
+			local secret = setmetatable({}, {
+				__eq = function() error("compared a secret") end,
+				__lt = function() error("compared a secret") end,
+				__index = function() error("read a secret") end,
+			})
+			local records = run({ report(1, "nameplate1", "nameplate1", "WOUND", secret) })
+			assert.is_true(rawequal(records[1].amount, secret))
+		end)
+	end)
+
+	describe("frames", function()
+		it("holds a frame's records until an event with a new time comes", function()
+			local records = {}
+			local adapter = Adapter.New(function(record)
+				records[#records + 1] = record
+			end)
+			adapter.Push(logLine(1))
+			adapter.Push(report(1, "nameplate1", "nameplate1"))
+			assert.are.equal(0, #records)
+			adapter.Push(logLine(2))
+			assert.are.same({ "line", "hit" }, kinds(records))
+		end)
+
+		it("closes a frame on a tick after it, and not on a tick at the same time", function()
+			local records = {}
+			local adapter = Adapter.New(function(record)
+				records[#records + 1] = record
+			end)
+			adapter.Push(report(1, "nameplate1", "nameplate1"))
+			adapter.Tick(1)
+			assert.are.equal(0, #records)
+			adapter.Tick(1.1)
+			assert.are.equal(1, #records)
+		end)
+
+		it("gives out a frame's records in entry order, with a Hit at its first report", function()
+			local records = run({
+				report(1, "target", "nameplate1"),
+				logLine(1),
+				report(1, "nameplate1", "nameplate1"),
+				{ 1, "PLAYER_SWING", 2.0, 0 },
+			})
+			assert.are.same({ "hit", "line", "swing" }, kinds(records))
+			assert.are.same({ 1, 2, 4 }, { records[1].entry, records[2].entry, records[3].entry })
+		end)
+
+		it("counts every pushed entry, ignored ones too, so entry numbers match the Trace", function()
+			local records = run({
+				{ 1, "PLAYER_TARGET_CHANGED" },
+				{ 1, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "<secret>" },
+				report(1, "nameplate1", "nameplate1"),
+				{ 2, "NAME_PLATE_UNIT_REMOVED", "nameplate1", guid = "<secret>" },
+			})
+			assert.are.same({ "hit" }, kinds(records))
+			assert.are.equal(3, records[1].entry)
+		end)
+	end)
+
+	describe("Log Lines", function()
+		it("keeps the time and the raw colour", function()
+			local records = run({ { 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.5, 0.25, 0 } })
+			assert.are.same({ kind = "line", time = 1, entry = 1, r = 1, g = 0.5, b = 0.25 }, records[1])
+		end)
+
+		it("drops the old lines that the game sends again to fill a new chat frame", function()
+			local records = run({ logLine(1, Enum.CombatLogMessageOrder.Oldest), logLine(1) })
+			assert.are.equal(1, #records)
+			assert.are.equal(2, records[1].entry)
+		end)
+
+		it("keeps a line whose order is secret", function()
+			local records = run({ logLine(1, "SECRET") })
+			assert.are.equal(1, #records)
+		end)
+	end)
+
+	describe("casts and swings", function()
+		it("makes one Cast for each stage, without the target name", function()
+			local records = run({
+				{ 1, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-1", 707 },
+				{ 1, "UNIT_SPELLCAST_START", "player", "Cast-1", 707, "CastBar-1" },
+				{ 3, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 707, "CastBar-1" },
+				{ 4, "UNIT_SPELLCAST_INTERRUPTED", "pet", "Cast-2", 3716, "<nil>", "CastBar-2" },
+			})
+			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "SENT", unit = "player",
+				castGUID = "Cast-1", spellID = 707 }, records[1])
+			assert.are.same({ "START", "SUCCEEDED", "INTERRUPTED" }, { records[2].stage, records[3].stage, records[4].stage })
+			assert.are.same({ "pet", "Cast-2", 3716 }, { records[4].unit, records[4].castGUID, records[4].spellID })
+		end)
+
+		it("makes a Swing from a swing timer start", function()
+			local records = run({ { 1, "PLAYER_SWING", 1.7, 2 } })
+			assert.are.same({ kind = "swing", time = 1, entry = 1, duration = 1.7, swingType = 2 }, records[1])
+		end)
+	end)
+
+	-- Each count comes from the Trace's part of the Combat Log File: one Hit for
+	-- each damage, miss, or heal event on that unit while the Trace ran.
+	describe("on the Warlock Traces", function()
+		local function counts(name)
+			local chunk = assert(loadfile("spec/traces/" .. name .. ".lua"))
+			local env = {}
+			setfenv(chunk, env)
+			chunk()
+			local result = { enemy = 0, player = 0, pet = 0, line = 0 }
+			for _, record in ipairs(run(env.NameplateSCTReforgedTraces.entries)) do
+				if record.kind == "hit" then
+					local who = (record.unit == "player" or record.unit == "pet") and record.unit or "enemy"
+					result[who] = result[who] + 1
+				elseif record.kind == "line" then
+					result.line = result.line + 1
+				end
+			end
+			return result
+		end
+
+		it("finds every Hit in the Stockade Trace", function()
+			-- Mana gains on the player are in the file but make no Hit.
+			assert.are.same({ enemy = 25, player = 6, pet = 3, line = 15 }, counts("warlock-stockade"))
+		end)
+
+		it("finds every Hit in the Thanes Trace", function()
+			assert.are.same({ enemy = 58, player = 17, pet = 5, line = 49 }, counts("warlock-thanes"))
+		end)
+
+		it("finds every Hit in the pet Trace", function()
+			-- 65 enemy events in the file, plus a WOUND of 0 just after the pet's
+			-- Torment that has no line in the file.
+			assert.are.same({ enemy = 66, player = 14, pet = 41, line = 89 }, counts("warlock-pet-thanes"))
+		end)
+	end)
+end)
