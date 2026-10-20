@@ -10,15 +10,22 @@ ns.Flow = Flow
 -- is optional, gets Your Hit on target or a soft target that has no
 -- Nameplate. how is the rule that paired the Hit (see Pairing.New). Hits on
 -- the player or the pet go nowhere: they are there to use up the Log Lines of
--- heals and self-damage. readColours() gives the colours of Pairing.ColoursOf
+-- heals and self-damage. A Hit decided after its Nameplate hid goes nowhere
+-- too: the plate is gone, and its token can name another unit by then.
+-- readColours() gives the colours of Pairing.ColoursOf
 -- at each Log Line: the player can change or switch the Log Filter at any
 -- time, and the game can load the filters after login.
 function Flow.New(options)
 	local show, noPlate, readColours = options.show, options.noPlate, options.readColours
+	-- When each nameplate token last hid.
+	local hiddenAt = {}
 
 	local pairing = ns.Pairing.New({
 		onDecision = function(hit, line, how)
 			if not line or hit.unit == "player" or hit.unit == "pet" then
+				return
+			end
+			if hiddenAt[hit.unit] and hiddenAt[hit.unit] >= hit.time then
 				return
 			end
 			if hit.unit:match("^nameplate%d+$") then
@@ -30,10 +37,20 @@ function Flow.New(options)
 	})
 	local adapter = ns.Adapter.New(pairing.Push)
 
+	local function tick(now)
+		adapter.Tick(now)
+		pairing.Tick(now)
+	end
+
 	local flow = {}
 
 	function flow.Push(entry)
-		if entry[2] == "COMBAT_LOG_MESSAGE" then
+		if entry[2] == "NAME_PLATE_UNIT_REMOVED" then
+			-- Decide the Hits from before this moment first, as the live Tick of
+			-- each frame does, so the result is the same at any tick rate.
+			tick(entry[1])
+			hiddenAt[entry[3]] = entry[1]
+		elseif entry[2] == "COMBAT_LOG_MESSAGE" then
 			-- The adapter holds a frame's lines until a later event closes the
 			-- frame. Close it now, so its lines meet the colours they came under.
 			adapter.Tick(entry[1])
@@ -42,10 +59,7 @@ function Flow.New(options)
 		adapter.Push(entry)
 	end
 
-	function flow.Tick(now)
-		adapter.Tick(now)
-		pairing.Tick(now)
-	end
+	flow.Tick = tick
 
 	return flow
 end

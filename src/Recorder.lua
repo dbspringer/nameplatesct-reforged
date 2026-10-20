@@ -37,9 +37,11 @@ local function copy(value)
 	return result
 end
 
+-- A chat message from the addon, for this file and the others.
 local function say(text)
 	DEFAULT_CHAT_FRAME:AddMessage(("|cff33ff99%s|r: %s"):format(L["NameplateSCT Reforged"], text))
 end
+ns.Say = say
 
 -- Pairing needs a Log Filter that sends the player's damage, so a Trace keeps
 -- the filter that was on.

@@ -88,6 +88,19 @@ describe("Flow", function()
 		assert.are.same({ "3:frame", "6:frame" }, shown)
 	end)
 
+	it("shows nothing for a Hit whose Nameplate hid before the Hit was decided", function()
+		local shown = run({
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+			{ 1, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+			-- The token now names another unit; its Hits show as usual.
+			{ 2, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+			{ 2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
+		}, { GREY })
+		assert.are.same({ 5 }, entriesOf(shown))
+	end)
+
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
