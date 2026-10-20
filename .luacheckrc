@@ -1,6 +1,9 @@
 std = "lua51"
 max_line_length = false
 exclude_files = {
+	"Libs/",
+	-- Traces are SavedVariables files the game wrote.
+	"spec/traces/",
 }
 ignore = {
 	"11./SLASH_.*", -- Setting an undefined (Slash handler) global variable
@@ -40,6 +43,9 @@ globals = {
 	"C_Timer",
 	"C_CombatLog",
 	"issecretvalue",
+	"C_Spell",
+	"Enum",
+	"Settings",
 	"CooldownFrame_Set",
 	"DEFAULT_CHAT_FRAME",
 	"GameTooltip_Hide",
@@ -19363,4 +19369,20 @@ globals = {
 	"ZOOM_OUT",
 	"ZOOM_OUT_BUTTON_TEXT",
 	"_RECORDING_WARNING_CORRUPTED",
+}
+
+files["spec"] = { std = "+busted" }
+
+-- Upstream warnings left after step 1 removed the combat log path. Remove this
+-- once they are fixed.
+files["NameplateSCT.lua"] = {
+	ignore = {
+		"241/filtersTable",
+		"241/npcFiltersTable",
+		"311/text",
+		"412/amount",
+		"412/absorbed",
+		"211/unit",
+		"431/playerGUID",
+	},
 }
