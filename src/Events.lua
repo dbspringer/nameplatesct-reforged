@@ -27,7 +27,7 @@ local CAST_EVENTS = {
 	"UNIT_SPELLCAST_INTERRUPTED",
 }
 
-local keepTicker
+local keepTicker, flow
 local frame = CreateFrame("Frame")
 
 -- Nameplate tokens that are shown now.
@@ -70,29 +70,57 @@ local function ownerOf(unit)
 	end
 end
 
+-- The colours of the player's and the pet's Log Lines under the Log Filter
+-- that is on, or nil when the game has not loaded its Log Filters.
+local function logLineColours()
+	local saved = Blizzard_CombatLog_Filters
+	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
+		return nil
+	end
+	return ns.Pairing.ColoursOf(saved.filters[saved.currentFilter])
+end
+
 local function onEvent(_, event, ...)
+	local now = GetTime()
 	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
 	if isPlateEvent then
 		local unit = ...
 		plates[unit] = event == "NAME_PLATE_UNIT_ADDED" or nil
 	end
+
+	-- The entry has the shape of a Trace entry, so Flow gets the same input
+	-- live as in the specs.
+	local entry = { now, event, ... }
+	if event == "UNIT_COMBAT" then
+		local unit = ...
+		entry.plate, entry.own = plateFor(unit), ownerOf(unit)
+	end
+	flow.Push(entry)
+
 	if not ns.Recorder.IsRecording() then
 		return
 	end
-
 	local extra
 	if isPlateEvent then
 		local unit = ...
 		extra = { guid = UnitGUID(unit) }
 	elseif event == "UNIT_COMBAT" then
 		local unit = ...
-		extra = { plate = plateFor(unit), own = ownerOf(unit), guid = UnitGUID(unit) }
+		extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
 	end
-	ns.Recorder.Record(GetTime(), event, extra, ...)
+	ns.Recorder.Record(now, event, extra, ...)
 end
 frame:SetScript("OnEvent", onEvent)
 
-function Events.Start()
+local function onUpdate()
+	flow.Tick(GetTime())
+end
+
+-- show(hit, how) gets each of Your Hits on an enemy Nameplate (see Flow.New).
+function Events.Start(show)
+	flow = ns.Flow.New({ colours = logLineColours(), show = show })
+	frame:SetScript("OnUpdate", onUpdate)
+
 	keepFilteredEvents()
 	if not keepTicker then
 		keepTicker = C_Timer.NewTicker(KEEP_INTERVAL, keepFilteredEvents)
@@ -116,5 +144,7 @@ function Events.Stop()
 		keepTicker = nil
 	end
 	frame:UnregisterAllEvents()
+	frame:SetScript("OnUpdate", nil)
+	flow = nil
 	wipe(plates)
 end

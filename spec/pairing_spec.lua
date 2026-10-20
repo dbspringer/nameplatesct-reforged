@@ -161,6 +161,23 @@ describe("Pairing", function()
 		assert.are.same({ only.entry, false }, { decided[one.entry], decided[two.entry] })
 	end)
 
+	it("tells how it paired each Hit, so the renderer can give melee its own animation", function()
+		local how = {}
+		local pairing = Pairing.New({
+			colours = { GREY },
+			onDecision = function(decidedHit, _, decidedHow)
+				how[decidedHit.entry] = decidedHow or false
+			end,
+		})
+		local frameHit, short, melee, late, alone = hit(1), hit(3.05), hit(5.5, "nameplate1", 1), hit(7), hit(9)
+		for _, record in ipairs({ frameHit, line(1), line(3), short, line(5), melee, late, line(7.1), alone }) do
+			pairing.Push(record)
+		end
+		pairing.Tick(math.huge)
+		assert.are.same({ "frame", "short", "melee", "late", false },
+			{ how[frameHit.entry], how[short.entry], how[melee.entry], how[late.entry], how[alone.entry] })
+	end)
+
 	it("keeps a Log Line whose colour is secret, since it cannot be compared", function()
 		local secret, tick = line(1, { r = "<secret>", g = "<secret>", b = "<secret>" }), hit(1)
 		assert.are.equal(secret.entry, pair({ secret, tick })[tick.entry])

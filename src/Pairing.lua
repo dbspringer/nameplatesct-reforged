@@ -37,13 +37,16 @@ local function isZeroWound(hit)
 	return hit.action == "WOUND" and not issecretvalue(hit.amount) and hit.amount == 0
 end
 
--- Whether a waiting line, from an earlier frame, fits an enemy Hit.
+-- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
+-- "melee", or nil when it does not fit.
 local function fits(hit, line)
 	local age = hit.time - line.time
 	if age >= 0 and age <= SHORT_WINDOW then
-		return true
+		return "short"
 	end
-	return age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
+	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit) then
+		return "melee"
+	end
 end
 
 -- The colours of the player's and the pet's Log Lines under a Log Filter, as
@@ -69,9 +72,11 @@ end
 -- player's or the pet's, or decides that it is someone else's. Records go in
 -- through Push in the adapter's order. Tick(now) closes the open frame and
 -- ends the holds that are over; call it often, or the last Hits wait for the
--- next record. onDecision(hit, line) runs once for every Hit, with a nil line
--- when the Hit is not yours. colours comes from Pairing.ColoursOf; nil
--- accepts lines of every colour.
+-- next record. onDecision(hit, line, how) runs once for every Hit, with a nil
+-- line when the Hit is not yours. how tells which rule paired it: "frame" (a
+-- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier),
+-- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
+-- colours comes from Pairing.ColoursOf; nil accepts lines of every colour.
 function Pairing.New(options)
 	local colours, onDecision = options.colours, options.onDecision
 	local frameTime
@@ -116,7 +121,11 @@ function Pairing.New(options)
 				break
 			end
 			table.remove(heldHits, 1)
-			onDecision(hit, index and table.remove(waitingLines, index))
+			if index then
+				onDecision(hit, table.remove(waitingLines, index), "late")
+			else
+				onDecision(hit, nil)
+			end
 		end
 		while waitingLines[1] and now - waitingLines[1].time > MELEE_TO do
 			table.remove(waitingLines, 1)
@@ -127,19 +136,21 @@ function Pairing.New(options)
 		if isZeroWound(hit) then
 			onDecision(hit, nil)
 		elseif OWN_UNITS[hit.unit] then
-			onDecision(hit, OWN_ACTIONS[hit.action] and table.remove(frameLines, 1) or nil)
+			local found = OWN_ACTIONS[hit.action] and table.remove(frameLines, 1) or nil
+			onDecision(hit, found, found and "frame")
 		else
-			local found = table.remove(frameLines, 1)
+			local found, how = table.remove(frameLines, 1), "frame"
 			if not found then
 				for i, line in ipairs(waitingLines) do
-					if fits(hit, line) then
+					how = fits(hit, line)
+					if how then
 						found = table.remove(waitingLines, i)
 						break
 					end
 				end
 			end
 			if found then
-				onDecision(hit, found)
+				onDecision(hit, found, how)
 			else
 				heldHits[#heldHits + 1] = hit
 			end
