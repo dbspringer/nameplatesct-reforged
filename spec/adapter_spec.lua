@@ -19,6 +19,7 @@ _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 local ns = {}
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 local Adapter = ns.Adapter
+local Trace = assert(loadfile("tools/trace.lua"))()
 
 -- A new adapter, and the list that its records go into as they leave.
 local function collect()
@@ -255,12 +256,9 @@ describe("Adapter", function()
 	-- while the Trace ran. The line count is the Trace's own Log Line count.
 	describe("on the Warlock Traces", function()
 		local function counts(name)
-			local chunk = assert(loadfile("spec/traces/" .. name .. ".lua"))
-			local env = {}
-			setfenv(chunk, env)
-			chunk()
+			local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 			local result = { enemy = 0, player = 0, pet = 0, line = 0 }
-			for _, record in ipairs(run(env.NameplateSCTReforgedTraces.entries)) do
+			for _, record in ipairs(run(trace.entries)) do
 				if record.kind == "hit" then
 					local who = (record.unit == "player" or record.unit == "pet") and record.unit or "enemy"
 					result[who] = result[who] + 1
