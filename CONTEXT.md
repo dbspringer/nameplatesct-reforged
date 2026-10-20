@@ -23,7 +23,7 @@ _Avoid_: Orphan time, linger
 ## Combat data
 
 **Hit**:
-One report from the game that a unit took damage or avoided it. The game repeats a Hit for each name the unit has (target, nameplate, soft target), but it is still one Hit.
+One time that a unit took damage, avoided it, or was healed, as the game reports it. The game sends one report of a Hit for each name the unit has (target, nameplate, soft target, player, pet), but it is still one Hit.
 _Avoid_: Event, wound, combat event
 
 **Log Line**:

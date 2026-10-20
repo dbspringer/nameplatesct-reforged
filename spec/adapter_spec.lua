@@ -1,6 +1,18 @@
--- A secret is the string "SECRET" here, since plain Lua has no secret values.
+-- Stand-in for a WoW secret: it errors when code compares, orders, or reads
+-- it. Lua 5.1 runs __eq only between two tables, so a compare with a plain
+-- value passes quietly; a spec that must catch a compare needs a secret on
+-- both sides. Trace placeholders such as "<secret>" are public here.
+local SECRET = {
+	__eq = function() error("compared a secret") end,
+	__lt = function() error("compared a secret") end,
+	__le = function() error("compared a secret") end,
+	__index = function() error("read a secret") end,
+}
+local function newSecret()
+	return setmetatable({}, SECRET)
+end
 _G.issecretvalue = function(value)
-	return value == "SECRET"
+	return getmetatable(value) == SECRET
 end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
@@ -8,13 +20,19 @@ local ns = {}
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 local Adapter = ns.Adapter
 
--- Pushes the entries through a new adapter, closes the last frame, and returns
--- the records in the order they left.
-local function run(entries)
+-- A new adapter, and the list that its records go into as they leave.
+local function collect()
 	local records = {}
 	local adapter = Adapter.New(function(record)
 		records[#records + 1] = record
 	end)
+	return adapter, records
+end
+
+-- Pushes the entries through a new adapter, closes the last frame, and returns
+-- the records in the order they left.
+local function run(entries)
+	local adapter, records = collect()
 	for _, entry in ipairs(entries) do
 		adapter.Push(entry)
 	end
@@ -88,10 +106,42 @@ describe("Adapter", function()
 			assert.are.same({ "player", "pet" }, { records[1].unit, records[2].unit })
 		end)
 
+		describe("counts a report on another token as a repeat of the player's or pet's own report", function()
+			local function owned(own, entry)
+				entry.own = own
+				return entry
+			end
+
+			it("when the player targets themself", function()
+				local records = run({
+					owned("player", report(1, "player", nil, "HEAL")),
+					owned("player", report(1, "target", nil, "HEAL")),
+				})
+				assert.are.same({ { "player", 1 } }, { { records[1].unit, records[1].entry }, records[2] })
+			end)
+
+			it("when the player targets a pet that has no nameplate", function()
+				local records = run({
+					owned("pet", report(1, "target", nil, "WOUND")),
+					owned("pet", report(1, "pet", nil, "WOUND")),
+				})
+				assert.are.same({ { "pet", 1 } }, { { records[1].unit, records[1].entry }, records[2] })
+			end)
+
+			it("when the pet's friendly nameplate shows", function()
+				local records = run({
+					owned("pet", report(1, "pet", "nameplate3", "WOUND")),
+					owned("pet", report(1, "nameplate3", "nameplate3", "WOUND")),
+				})
+				assert.are.same({ { "pet", 1 } }, { { records[1].unit, records[1].entry }, records[2] })
+			end)
+		end)
+
 		it("merges enemy reports with no nameplate into one Hit per action, named by target first", function()
 			local records = run({
 				report(1, "softinteract", nil, "WOUND"),
 				report(1, "target", nil, "WOUND"),
+				report(1, "softinteract", nil, "MISS"),
 				report(1, "softenemy", nil, "MISS"),
 			})
 			assert.are.equal(2, #records)
@@ -100,11 +150,7 @@ describe("Adapter", function()
 		end)
 
 		it("passes the amount through without reading it, so a live secret reaches the renderer", function()
-			local secret = setmetatable({}, {
-				__eq = function() error("compared a secret") end,
-				__lt = function() error("compared a secret") end,
-				__index = function() error("read a secret") end,
-			})
+			local secret = newSecret()
 			local records = run({ report(1, "nameplate1", "nameplate1", "WOUND", secret) })
 			assert.is_true(rawequal(records[1].amount, secret))
 		end)
@@ -112,10 +158,7 @@ describe("Adapter", function()
 
 	describe("frames", function()
 		it("holds a frame's records until an event with a new time comes", function()
-			local records = {}
-			local adapter = Adapter.New(function(record)
-				records[#records + 1] = record
-			end)
+			local adapter, records = collect()
 			adapter.Push(logLine(1))
 			adapter.Push(report(1, "nameplate1", "nameplate1"))
 			assert.are.equal(0, #records)
@@ -124,15 +167,18 @@ describe("Adapter", function()
 		end)
 
 		it("closes a frame on a tick after it, and not on a tick at the same time", function()
-			local records = {}
-			local adapter = Adapter.New(function(record)
-				records[#records + 1] = record
-			end)
+			local adapter, records = collect()
 			adapter.Push(report(1, "nameplate1", "nameplate1"))
 			adapter.Tick(1)
 			assert.are.equal(0, #records)
 			adapter.Tick(1.1)
 			assert.are.equal(1, #records)
+		end)
+
+		it("does nothing on a tick with no frame open, as most live ticks are", function()
+			local adapter, records = collect()
+			adapter.Tick(1)
+			assert.are.equal(0, #records)
 		end)
 
 		it("gives out a frame's records in entry order, with a Hit at its first report", function()
@@ -170,8 +216,16 @@ describe("Adapter", function()
 			assert.are.equal(2, records[1].entry)
 		end)
 
-		it("keeps a line whose order is secret", function()
-			local records = run({ logLine(1, "SECRET") })
+		it("keeps a line whose order is secret, without comparing the order", function()
+			-- With Oldest a secret too, any compare with the order errors. This does
+			-- not check which side the guard reads: live, only the order is secret.
+			local orders = Enum.CombatLogMessageOrder
+			local oldest = orders.Oldest
+			finally(function()
+				orders.Oldest = oldest
+			end)
+			orders.Oldest = newSecret()
+			local records = run({ logLine(1, newSecret()) })
 			assert.are.equal(1, #records)
 		end)
 	end)
@@ -196,8 +250,9 @@ describe("Adapter", function()
 		end)
 	end)
 
-	-- Each count comes from the Trace's part of the Combat Log File: one Hit for
-	-- each damage, miss, or heal event on that unit while the Trace ran.
+	-- The Hit counts come from the Trace's part of the Combat Log File: one Hit
+	-- for each damage, miss, or heal event on an enemy, the player, or the pet
+	-- while the Trace ran. The line count is the Trace's own Log Line count.
 	describe("on the Warlock Traces", function()
 		local function counts(name)
 			local chunk = assert(loadfile("spec/traces/" .. name .. ".lua"))
@@ -217,7 +272,8 @@ describe("Adapter", function()
 		end
 
 		it("finds every Hit in the Stockade Trace", function()
-			-- Mana gains on the player are in the file but make no Hit.
+			-- Mana gains on the player are in the file, but the game sends no
+			-- UNIT_COMBAT for them.
 			assert.are.same({ enemy = 25, player = 6, pet = 3, line = 15 }, counts("warlock-stockade"))
 		end)
 
@@ -227,7 +283,7 @@ describe("Adapter", function()
 
 		it("finds every Hit in the pet Trace", function()
 			-- 65 enemy events in the file, plus a WOUND of 0 just after the pet's
-			-- Torment that has no line in the file.
+			-- Torment that has no event in the Combat Log File.
 			assert.are.same({ enemy = 66, player = 14, pet = 41, line = 89 }, counts("warlock-pet-thanes"))
 		end)
 	end)
