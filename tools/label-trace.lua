@@ -111,6 +111,8 @@ function Label.Adapt(trace)
 		issecretvalue = function(value)
 			return value == "<secret>"
 		end,
+		-- The adapter drops the lines that refill a chat frame by this order.
+		Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } },
 	}, { __index = _G })
 	local chunk = assert(loadfile(here .. "../src/Adapter.lua"))
 	setfenv(chunk, env)

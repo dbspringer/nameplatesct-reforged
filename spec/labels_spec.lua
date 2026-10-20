@@ -1,7 +1,7 @@
 local Label = assert(loadfile("tools/label-trace.lua"))()
 local Trace = assert(loadfile("tools/trace.lua"))()
 
-local TRACES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes" }
+local TRACES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }
 
 -- The checked Labels must still fit the Trace: a change to the adapter that
 -- adds, drops, or renumbers a Hit or a Log Line breaks them.

@@ -1,6 +1,7 @@
 _G.issecretvalue = function(value)
 	return value == "<secret>"
 end
+_G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
@@ -340,7 +341,7 @@ describe("Pairing", function()
 	end)
 
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes" }) do
+		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
 				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()

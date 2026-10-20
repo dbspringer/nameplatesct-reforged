@@ -1,6 +1,7 @@
 _G.issecretvalue = function(value)
 	return value == "<secret>"
 end
+_G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
 for _, file in ipairs({ "src/Adapter.lua", "src/Pairing.lua", "src/Flow.lua" }) do
@@ -88,7 +89,7 @@ describe("Flow", function()
 	end)
 
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes" }) do
+		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
 				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
