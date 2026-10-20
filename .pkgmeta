@@ -24,3 +24,6 @@ ignore:
  - .todo
  - .gitignore
  - fetch-libs.sh
+ - .busted
+ - spec
+ - tools
