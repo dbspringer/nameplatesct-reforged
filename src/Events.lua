@@ -58,6 +58,18 @@ local function plateFor(unit)
 	end
 end
 
+-- The player or the pet, when the unit is one of them. A report on target or
+-- a friendly nameplate can name either one, and the adapter must count it as
+-- a repeat of the player's or the pet's own report.
+local function ownerOf(unit)
+	if isTrue(UnitIsUnit(unit, "player")) then
+		return "player"
+	end
+	if isTrue(UnitIsUnit(unit, "pet")) then
+		return "pet"
+	end
+end
+
 local function onEvent(_, event, ...)
 	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
 	if isPlateEvent then
@@ -74,7 +86,7 @@ local function onEvent(_, event, ...)
 		extra = { guid = UnitGUID(unit) }
 	elseif event == "UNIT_COMBAT" then
 		local unit = ...
-		extra = { plate = plateFor(unit), guid = UnitGUID(unit) }
+		extra = { plate = plateFor(unit), own = ownerOf(unit), guid = UnitGUID(unit) }
 	end
 	ns.Recorder.Record(GetTime(), event, extra, ...)
 end
