@@ -19372,17 +19372,3 @@ globals = {
 }
 
 files["spec"] = { std = "+busted" }
-
--- Upstream warnings left after step 1 removed the combat log path. Remove this
--- once they are fixed.
-files["NameplateSCT.lua"] = {
-	ignore = {
-		"241/filtersTable",
-		"241/npcFiltersTable",
-		"311/text",
-		"412/amount",
-		"412/absorbed",
-		"211/unit",
-		"431/playerGUID",
-	},
-}

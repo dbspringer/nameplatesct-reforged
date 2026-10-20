@@ -208,26 +208,14 @@ local defaults = {
 	},
 }
 
-local filtersTable = {}
-
+-- The filters are saved for the Pairing data path to read again; nothing has
+-- read them since the combat log path was removed.
 function NameplateSCT:updateFilterTable(filterData)
 	NameplateSCT.db.global.filter = filterData
-	local splitData = {strsplit("\n", filterData)}
-	filtersTable = {}
-	for _, spellInfo in ipairs(splitData) do
-		filtersTable[spellInfo] = true
-	end
 end
-
-local npcFiltersTable = {}
 
 function NameplateSCT:updateNPCFilterTable(npcFilterData)
 	NameplateSCT.db.global.npcFilter = npcFilterData
-	local splitData = {strsplit("\n", npcFilterData)}
-	npcFiltersTable = {}
-	for _, npcId in ipairs(splitData) do
-		npcFiltersTable[npcId] = true
-	end
 end
 
 ---------------------
@@ -822,7 +810,7 @@ local function commaSeperate(number)
 end
 
 function NameplateSCT:truncateText(amount)
-	local text = ''
+	local text
 	if self.db.global.truncateMethod == 'NONE' then
 		if (self.db.global.commaSeperate) then
 			text = commaSeperate(amount)
@@ -876,8 +864,8 @@ local numDamageEvents = 0
 local lastDamageEventTime
 local runningAverageDamageEvents = 0
 function NameplateSCT:DamageEvent(guid, spellName, amount, overkill, school, crit, spellId, absorbed)
-	local amount = amount or 0
-	local absorbed = absorbed or 0
+	amount = amount or 0
+	absorbed = absorbed or 0
 	local onPlayer = guid == playerGUID
 
 	-- Hide small hits based on threshold
@@ -937,7 +925,7 @@ function NameplateSCT:DamageEvent(guid, spellName, amount, overkill, school, cri
             text = L["%s (A: %s)"]:format(text, absorbedText)
         end
         -- color text
-        text = self:ColorText(text, guid, playerGUID, school, spellName, crit)
+        text = self:ColorText(text, guid, school, spellName, crit)
     end
 
 	-- shrink small hits
@@ -980,7 +968,7 @@ function NameplateSCT:DamageEvent(guid, spellName, amount, overkill, school, cri
     if NameplateSCT.db.global.showIconOnly then
         self:DisplayIconWithoutText(guid, size, animation, spellId, pow, spellName)
     elseif (type(overkill) == "number" and overkill > 0 and (self.db.global.shouldDisplayOverkill or onPlayer)) then
-        text = self:ColorText(L["%s (O: %s)"]:format(text, self:truncateText(overkill)), guid, playerGUID, school, spellName, crit)
+        text = self:ColorText(L["%s (O: %s)"]:format(text, self:truncateText(overkill)), guid, school, spellName, crit)
         self:DisplayTextOverkill(guid, text, size, animation, spellId, pow, spellName)
     else
         self:DisplayText(guid, text, size, animation, spellId, pow, spellName)
@@ -1175,7 +1163,6 @@ end
 function NameplateSCT:DisplayTextOverkill(guid, text, size, animation, spellId, pow, spellName)
 	local fontString
 	local icon
-	local unit = guidToUnit[guid]
 	local nameplate
 
 	nameplate = "player"
@@ -1238,7 +1225,7 @@ function NameplateSCT:DisplayTextOverkill(guid, text, size, animation, spellId, 
 	self:Animate(fontString, nameplate, duration, animation)
 end
 
-function NameplateSCT:ColorText(startingText, guid, playerGUID, school, spellName, crit)
+function NameplateSCT:ColorText(startingText, guid, school, spellName, crit)
 	local finalText
 	if guid ~= playerGUID then
 		if crit and self.db.global.useCritColor then
