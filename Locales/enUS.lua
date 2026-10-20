@@ -108,6 +108,7 @@ L["Spells"] = true
 L["Target Strata"] = true
 L["Text Formatting"] = true
 L["Text Shadow"] = true
+L["The options open when combat ends."] = true
 L["Thick Outline"] = true
 L["Tooltip"] = true
 L["Top Left"] = true
