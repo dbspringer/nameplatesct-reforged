@@ -117,13 +117,8 @@ end
 local defaults = {
 	global = {
 		enabled = true,
-		shouldDisplayOverkill = false,
-		showAbsorbDamage = true,
 		xOffset = 0,
 		yOffset = 0,
-		personalOnly = false,
-		xOffsetPersonal = 0,
-		yOffsetPersonal = -100,
 
 		modOffTargetStrata = false,
 		strata = {
@@ -149,11 +144,6 @@ local defaults = {
 		yOffsetIcon = 0,
 		xVariance = 0,
 		yVariance = 0,
-
-		damageColorPersonal = false,
-		defaultColorPersonal = "ff0000",
-		useMissColorPersonal = false,
-		missColorPersonal = "ffffff",
 
 		truncateMethod = 'WESTERN',
 		truncateLetter = true,
@@ -182,12 +172,6 @@ local defaults = {
 			animationspeed = 1,
 			fireworksRadius = 100,
 			fireworksDuration = 1,
-		},
-
-		animationsPersonal = {
-			normal = "rainfall",
-			crit = "verticalUp",
-			miss = "verticalUp",
 		},
 
 		formatting = {
@@ -636,12 +620,7 @@ local function AnimationOnUpdate()
 				-- the animation is over
 				recycleFontString(fontString)
 			else
-				local isTarget = false
-				if fontString.unit then
-					isTarget = isTrue(UnitIsUnit(fontString.unit, "target"))
-				else
-					fontString.unit = "player"
-				end
+				local isTarget = isTrue(UnitIsUnit(fontString.unit, "target"))
 
 				-- frame level
 				local frame = fontString:GetParent()
@@ -650,7 +629,7 @@ local function AnimationOnUpdate()
 
 				-- alpha
 				local startAlpha = NameplateSCT.db.global.formatting.alpha
-				if (NameplateSCT.db.global.useOffTargetAppearance and not isTarget and fontString.unit ~= "player") then
+				if (NameplateSCT.db.global.useOffTargetAppearance and not isTarget) then
 					startAlpha = NameplateSCT.db.global.offTargetFormatting.alpha
 				end
 
@@ -717,16 +696,12 @@ local function AnimationOnUpdate()
 					-- TODO
 				end
 
-				if ((not isTrue(UnitIsDead(fontString.unit)) or fontString.unit == "player") and fontString.anchorFrame and fontString.anchorFrame:IsShown()) then
+				if (not isTrue(UnitIsDead(fontString.unit)) and fontString.anchorFrame and fontString.anchorFrame:IsShown()) then
 					if fontString.animation == "fireworks" then
 						-- -- Fireworks effect ignores global offset and random jitter, always relative to center
 						fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", xOffset, yOffset)
 					else
-						if fontString.unit == "player" then -- player frame
-							fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", NameplateSCT.db.global.xOffsetPersonal + xOffset + randomX[fontString], NameplateSCT.db.global.yOffsetPersonal + yOffset + randomY[fontString]) -- Only allows for adjusting vertical offset
-						else -- nameplate frames
-							fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", NameplateSCT.db.global.xOffset + xOffset + randomX[fontString], NameplateSCT.db.global.yOffset + yOffset + randomY[fontString])
-						end
+						fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", NameplateSCT.db.global.xOffset + xOffset + randomX[fontString], NameplateSCT.db.global.yOffset + yOffset + randomY[fontString])
 					end
 				else
 					recycleFontString(fontString)
@@ -749,7 +724,7 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	fontString.animation = animation
 	fontString.animatingDuration = duration
 	fontString.animatingStartTime = GetTime()
-	fontString.anchorFrame = anchorFrame == "player" and UIParent or anchorFrame
+	fontString.anchorFrame = anchorFrame
 
 	if (animation == "verticalUp") then
 		fontString.distance = ANIMATION_VERTICAL_DISTANCE
@@ -815,18 +790,16 @@ end
 local numDamageEvents = 0
 local lastDamageEventTime
 local runningAverageDamageEvents = 0
-function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, crit, spellId, absorbed)
+function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId)
 	-- A Secret Amount can only be shown, so the options that compare an
 	-- amount pass it by.
 	local secret = issecretvalue(amount)
 	if not secret then
 		amount = amount or 0
 	end
-	absorbed = absorbed or 0
-	local onPlayer = unit == "player"
 
 	-- Hide small hits based on threshold
-	if not secret and self.db.global.sizing.hideSmallHitsThreshold > (amount + absorbed) then
+	if not secret and self.db.global.sizing.hideSmallHitsThreshold > amount then
 		return
 	end
 
@@ -835,16 +808,16 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, cri
 
 	-- select an animation
 	if (autoattack and crit) then
-		animation = not onPlayer and self.db.global.animations.autoattackcrit or self.db.global.animationsPersonal.crit
+		animation = self.db.global.animations.autoattackcrit
 		pow = true
 	elseif (autoattack) then
-		animation = not onPlayer and self.db.global.animations.autoattack or self.db.global.animationsPersonal.normal
+		animation = self.db.global.animations.autoattack
 		pow = false
 	elseif (crit) then
-		animation = not onPlayer and self.db.global.animations.crit or self.db.global.animationsPersonal.crit
+		animation = self.db.global.animations.crit
 		pow = true
 	elseif (not autoattack and not crit) then
-		animation = not onPlayer and self.db.global.animations.ability or self.db.global.animationsPersonal.normal
+		animation = self.db.global.animations.ability
 		pow = false
 	end
 
@@ -859,7 +832,7 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, cri
 		return
 	end
 
-	if (self.db.global.useOffTargetAppearance and not isTarget and not onPlayer) then
+	if (self.db.global.useOffTargetAppearance and not isTarget) then
 		size = self.db.global.offTargetFormatting.size
 		alpha = self.db.global.offTargetFormatting.alpha
 	else
@@ -870,21 +843,11 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, cri
     if not NameplateSCT.db.global.showIconOnly then
         -- truncate
         text = self:truncateText(amount)
-
-        -- if damage was done to the player, negate the amount.
-        if onPlayer then
-            text = ("-%s"):format(text)
-        end
-
-        if NameplateSCT.db.global.showAbsorbDamage and absorbed > 0 then
-            local absorbedText = self:truncateText(absorbed)
-            text = L["%s (A: %s)"]:format(text, absorbedText)
-        end
-        color = self:TextColor(unit, school, spellName, crit)
+        color = self:TextColor(school, spellName, crit)
     end
 
 	-- shrink small hits
-	if (self.db.global.sizing.smallHits or self.db.global.sizing.smallHitsHide) and not onPlayer and not secret then
+	if (self.db.global.sizing.smallHits or self.db.global.sizing.smallHitsHide) and not secret then
 		if (not lastDamageEventTime or (lastDamageEventTime + SMALL_HIT_EXPIRY_WINDOW < GetTime())) then
 			numDamageEvents = 0
 			runningAverageDamageEvents = 0
@@ -906,7 +869,7 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, cri
 	end
 
 	-- embiggen crit's size
-	if (self.db.global.sizing.crits and crit) and not onPlayer then
+	if (self.db.global.sizing.crits and crit) then
 		if (autoattack and not self.db.global.sizing.autoattackcritsizing) then
 			-- don't embiggen autoattacks
 			pow = false
@@ -922,9 +885,6 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, overkill, school, cri
 
     if NameplateSCT.db.global.showIconOnly then
         self:DisplayIconWithoutText(unit, size, animation, spellId, pow, spellName)
-    elseif (type(overkill) == "number" and overkill > 0 and (self.db.global.shouldDisplayOverkill or onPlayer)) then
-        text = L["%s (O: %s)"]:format(text, self:truncateText(overkill))
-        self:DisplayTextOverkill(unit, text, color, size, animation, spellId, pow, spellName)
     else
         self:DisplayText(unit, text, color, size, animation, spellId, pow, spellName)
     end
@@ -934,18 +894,13 @@ function NameplateSCT:MissEvent(unit, spellName, missType, spellId)
 	local text, animation, pow, size, alpha, color
 	local isTarget = isTrue(UnitIsUnit(unit, "target"))
 
-	if unit ~= "player" then
-		animation = self.db.global.animations.miss
-		color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
-	else
-		animation = self.db.global.animationsPersonal.miss
-		color = self.db.global.useMissColorPersonal and self.db.global.missColorPersonal or defaults.global.missColorPersonal
-	end
+	animation = self.db.global.animations.miss
+	color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
 
 	-- No animation set, cancel out
 	if (animation == "disabled") then return end
 
-	if (self.db.global.useOffTargetAppearance and not isTarget and unit ~= "player") then
+	if (self.db.global.useOffTargetAppearance and not isTarget) then
 		size = self.db.global.offTargetFormatting.size
 		alpha = self.db.global.offTargetFormatting.alpha
 	else
@@ -954,7 +909,7 @@ function NameplateSCT:MissEvent(unit, spellName, missType, spellId)
 	end
 
 	-- embiggen miss size
-	if self.db.global.sizing.miss and unit ~= "player" then
+	if self.db.global.sizing.miss then
 		size = size * self.db.global.sizing.missScale
 	end
 
@@ -974,7 +929,7 @@ function NameplateSCT:ShowHit(hit, how)
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(hit.unit, spellName, hit.amount, nil, school, crit)
+		self:DamageEvent(hit.unit, spellName, hit.amount, school, crit)
 	elseif MISS_EVENT_STRINGS[hit.action] then
 		self:MissEvent(hit.unit, spellName, hit.action)
 	end
@@ -1117,89 +1072,16 @@ function NameplateSCT:DisplayIconWithoutText(unit, size, animation, spellId, pow
 	self:Animate(fontString, nameplate, duration, animation)
 end
 
-function NameplateSCT:DisplayTextOverkill(unit, text, color, size, animation, spellId, pow, spellName)
-	local fontString
-	local icon
-	local nameplate
-
-	nameplate = "player"
-
-	fontString = getFontString()
-
-	fontString.NSCTText = text
-	fontString:SetText(fontString.NSCTText)
-	fontString:SetTextColor(hexToRGB(color))
-
-	fontString.NSCTFontSize = size
-	fontString:SetFont(getFontPath(NameplateSCT.db.global.font), fontString.NSCTFontSize, NameplateSCT.db.global.fontFlag)
-	if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
-	fontString.startHeight = fontString:GetStringHeight()
-	fontString.pow = pow
-
-	if (fontString.startHeight <= 0) then
-		fontString.startHeight = 5
-	end
-
-	fontString.unit = "player"
-	local texture = GetSpellTexture(spellId or spellName or "")
-	if NameplateSCT.db.global.showIcon and texture then
-	icon = fontString.icon
-	icon:Show()
-	icon:SetTexture(texture)
-	if MSQ and NameplateSCT.db.global.enableMSQ then
-		icon.button:SetSize(size*NameplateSCT.db.global.iconScale, size*NameplateSCT.db.global.iconScale)
-		icon.button:SetPoint(
-		inversePositions[NameplateSCT.db.global.iconPosition],
-		fontString,
-		NameplateSCT.db.global.iconPosition,
-		NameplateSCT.db.global.xOffsetIcon,
-		NameplateSCT.db.global.yOffsetIcon
-		)
-		icon.button:Show()
-	else
-		icon:SetSize(size*NameplateSCT.db.global.iconScale, size*NameplateSCT.db.global.iconScale)
-		icon:SetPoint(
-		inversePositions[NameplateSCT.db.global.iconPosition],
-		fontString,
-		NameplateSCT.db.global.iconPosition,
-		NameplateSCT.db.global.xOffsetIcon,
-		NameplateSCT.db.global.yOffsetIcon
-		)
-	end
-	fontString.icon = icon
-	else
-	if fontString.icon then
-		fontString.icon:Hide()
-		if MSQ and NameplateSCT.db.global.enableMSQ then
-		fontString.icon.button:Hide()
-		end
-	end
-	end
-	local duration = NameplateSCT.db.global.animations.animationspeed
-	if animation == "fireworks" then
-		duration = NameplateSCT.db.global.animations.fireworksDuration
-	end
-	self:Animate(fontString, nameplate, duration, animation)
-end
-
 -- The hex colour of a damage text.
-function NameplateSCT:TextColor(unit, school, spellName, crit)
-	if unit ~= "player" then
-		if crit and self.db.global.useCritColor then
-			return self.db.global.critColor
-		elseif self.db.global.damageColor and school and DAMAGE_TYPE_COLORS[school] then
-			return DAMAGE_TYPE_COLORS[school]
-		elseif self.db.global.damageColor and spellName == "melee" and DAMAGE_TYPE_COLORS[spellName] then
-			return DAMAGE_TYPE_COLORS[spellName]
-		end
-		return self.db.global.defaultColor
-	end
-	if self.db.global.damageColorPersonal and school and DAMAGE_TYPE_COLORS[school] then
+function NameplateSCT:TextColor(school, spellName, crit)
+	if crit and self.db.global.useCritColor then
+		return self.db.global.critColor
+	elseif self.db.global.damageColor and school and DAMAGE_TYPE_COLORS[school] then
 		return DAMAGE_TYPE_COLORS[school]
-	elseif self.db.global.damageColorPersonal and spellName == "melee" and DAMAGE_TYPE_COLORS[spellName] then
+	elseif self.db.global.damageColor and spellName == "melee" and DAMAGE_TYPE_COLORS[spellName] then
 		return DAMAGE_TYPE_COLORS[spellName]
 	end
-	return self.db.global.defaultColorPersonal
+	return self.db.global.defaultColor
 end
 
 -------------
@@ -1263,50 +1145,6 @@ local menu = {
 			width = "full",
 		},
 
-		displayOverkill = {
-			type = 'toggle',
-			name = L["Display Overkill"],
-			desc = L["Display your overkill for a target over your own nameplate"],
-			get = function() return NameplateSCT.db.global.shouldDisplayOverkill end,
-			set = function(_, newValue) NameplateSCT.db.global.shouldDisplayOverkill = newValue end,
-			order = 6,
-		},
-
-		showAbsorbs = {
-			type = 'toggle',
-			name = L["Show Absorbed Damage"],
-			desc = L["Show Absorbed Damage shown as: '5 (A: 3)' where A: 3 is the absorbed amount"],
-			get = function() return NameplateSCT.db.global.showAbsorbDamage end,
-			set = function(_, newValue) NameplateSCT.db.global.showAbsorbDamage = newValue end,
-			order = 6.3,
-		},
-
-		divider = {
-			type = 'description',
-			name = "",
-			order = 6.6,
-			width = "full",
-		},
-
-		personalNameplate = {
-			type = 'toggle',
-			name = L["Personal SCT"],
-			desc = L["Also show numbers when you take damage on your personal nameplate or center screen"],
-			get = function() return NameplateSCT.db.global.personal end,
-			set = function(_, newValue) NameplateSCT.db.global.personal = newValue end,
-			order = 7,
-			disabled = function() return not NameplateSCT.db.global.enabled end
-		},
-
-		personalNameplateOnly = {
-			type = 'toggle',
-			name = L["Personal SCT Only"],
-			desc = L["Don't display any numbers on enemies and only use the personal SCT."],
-				get = function() return NameplateSCT.db.global.personalOnly end,
-				set = function(_, newValue) NameplateSCT.db.global.personalOnly = newValue end,
-			order = 8,
-			disabled = function() return (not NameplateSCT.db.global.personal or not NameplateSCT.db.global.enabled) end
-		},
 		animations = {
 			type = 'group',
 			name = L["Animations"],
@@ -1606,6 +1444,8 @@ local menu = {
 					name = L["Icons"],
 					order = 60,
 					inline = true,
+					-- A Hit has no spell until Spell Identity, so there is no icon to show.
+					hidden = true,
 					disabled = function() return not NameplateSCT.db.global.enabled end,
 					args = {
 						showIcon = {
@@ -1698,108 +1538,6 @@ local menu = {
 			},
 		},
 
-		animationsPersonal = {
-			type = 'group',
-			name = L["Personal SCT Animations"],
-			order = 60,
-			inline = true,
-			disabled = function() return not NameplateSCT.db.global.personal end,
-			args = {
-				normalPersonal = {
-					type = 'select',
-					name = L["Default"],
-					desc = "",
-					get = function() return NameplateSCT.db.global.animationsPersonal.normal end,
-					set = function(_, newValue) NameplateSCT.db.global.animationsPersonal.normal = newValue end,
-					values = animationValues,
-					order = 5,
-				},
-				critPersonal = {
-					type = 'select',
-					name = L["Criticals"],
-					desc = "",
-					get = function() return NameplateSCT.db.global.animationsPersonal.crit end,
-					set = function(_, newValue) NameplateSCT.db.global.animationsPersonal.crit = newValue end,
-					values = animationValues,
-					order = 10,
-				},
-				missPersonal = {
-					type = 'select',
-					name = L["Miss/Parry/Dodge/etc"],
-					desc = "",
-					get = function() return NameplateSCT.db.global.animationsPersonal.miss end,
-					set = function(_, newValue) NameplateSCT.db.global.animationsPersonal.miss = newValue end,
-					values = animationValues,
-					order = 15,
-				},
-				damageColorPersonal = {
-					type = 'toggle',
-					name = L["Use Damage Type Color"],
-					desc = "",
-					get = function() return NameplateSCT.db.global.damageColorPersonal end,
-					set = function(_, newValue) NameplateSCT.db.global.damageColorPersonal = newValue end,
-					order = 40,
-				},
-				defaultColorPersonal = {
-					type = 'color',
-					name = L["Default Color"],
-					desc = "",
-					disabled = function() return NameplateSCT.db.global.damageColorPersonal end,
-					hasAlpha = false,
-					set = function(_, r, g, b) NameplateSCT.db.global.defaultColorPersonal = rgbToHex(r, g, b) end,
-					get = function() return hexToRGB(NameplateSCT.db.global.defaultColorPersonal) end,
-					order = 45,
-				},
-				personalMissColorNewLine = {
-					type = 'description',
-					name = "",
-					desc = "",
-					order = 49,
-				},
-				useMissColorPersonal = {
-					type = 'toggle',
-					name = L["Custom Miss Color"],
-					desc = "",
-					get = function() return NameplateSCT.db.global.useMissColorPersonal end,
-					set = function(_, newValue) NameplateSCT.db.global.useMissColorPersonal = newValue end,
-					order = 50,
-				},
-				missColorPersonal = {
-					type = 'color',
-					name = L["Miss Color"],
-					desc = "",
-					disabled = function() return not NameplateSCT.db.global.useMissColorPersonal end,
-					hasAlpha = false,
-					set = function(_, r, g, b) NameplateSCT.db.global.missColorPersonal = rgbToHex(r, g, b) end,
-					get = function() return hexToRGB(NameplateSCT.db.global.missColorPersonal) end,
-					order = 55,
-				},
-				xOffsetPersonal = {
-					type = 'range',
-					name = L["X Offset Personal SCT"],
-					desc = L["Only used if Personal Nameplate is Disabled"],
-					softMin = -400,
-					softMax = 400,
-					step = 1,
-					get = function() return NameplateSCT.db.global.xOffsetPersonal end,
-					set = function(_, newValue) NameplateSCT.db.global.xOffsetPersonal = newValue end,
-					order = 80,
-					width = "full",
-				},
-				yOffsetPersonal = {
-					type = 'range',
-					name = L["Y Offset Personal SCT"],
-					desc = L["Only used if Personal Nameplate is Disabled"],
-					softMin = -400,
-					softMax = 400,
-					step = 1,
-					get = function() return NameplateSCT.db.global.yOffsetPersonal end,
-					set = function(_, newValue) NameplateSCT.db.global.yOffsetPersonal = newValue end,
-					order = 90,
-					width = "full",
-				},
-			},
-		},
 		formatting = {
 			type = 'group',
 			name = L["Text Formatting"],
@@ -2017,6 +1755,11 @@ local menu = {
 	},
 }
 
+-- The Filters panel stays hidden until spell filters have Spell Identity and
+-- the NPC filter has a new design, since NPC GUIDs are secret in dungeons.
+-- Nothing reads the filters until then.
+local SHOW_FILTERS = false
+
 local filters = {
 	name = L["Filters"],
 	handler = NameplateSCT,
@@ -2092,6 +1835,8 @@ end
 function NameplateSCT:RegisterMenu()
 	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged", menu)
 	_, optionsMenuName = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged", L["NameplateSCT Reforged"])
-	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged_Filters", filters)
-	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged_Filters", L["Filters"], L["NameplateSCT Reforged"])
+	if SHOW_FILTERS then
+		LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged_Filters", filters)
+		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged_Filters", L["Filters"], L["NameplateSCT Reforged"])
+	end
 end
