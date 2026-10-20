@@ -10,50 +10,12 @@ local DEFAULT_WOW_DIR = "/Applications/World of Warcraft/_classic_beta_"
 -- Hit at either end pairs with.
 local MARGIN_MS = 10000
 
-local COMBATLOG_OBJECT_AFFILIATION_MINE = 0x1
-local COMBATLOG_OBJECT_TYPE_PLAYER = 0x400
-
-local function hasFlag(flags, flag)
-	return math.floor(flags / flag) % 2 == 1
-end
-
--- Splits the fields of a log line and keeps each field's raw text, quotes
--- included, so a join gives back the same line.
-local function split(fields)
-	local tokens, pos = {}, 1
-	while pos <= #fields + 1 do
-		local stop
-		if fields:sub(pos, pos) == '"' then
-			stop = fields:find('"', pos + 1, true) + 1
-		else
-			stop = fields:find(",", pos, true) or #fields + 1
-		end
-		tokens[#tokens + 1] = fields:sub(pos, stop - 1)
-		pos = stop + 1
-	end
-	return tokens
-end
-
-local function parseLine(line)
-	local stamp, fields = line:match("^(%S+ %S+)  (.*)$")
-	return stamp, split(fields)
-end
+local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
+local Trace = assert(loadfile(here .. "trace.lua"))()
+local hasFlag, parseLine = Trace.HasFlag, Trace.ParseLogLine
 
 local function isGuid(token)
 	return token == "0000000000000000" or token:find("^%a+%-%d+%-") ~= nil
-end
-
--- Milliseconds since the epoch, from the local time in a log line stamp.
-local function stampToMs(stamp)
-	local month, day, year, hour, min, sec, ms = stamp:match("^(%d+)/(%d+)/(%d+) (%d+):(%d+):(%d+)%.(%d+)")
-	local seconds = os.time({ year = year, month = month, day = day, hour = hour, min = min, sec = sec })
-	return seconds * 1000 + tonumber(ms)
-end
-
--- Seconds since the epoch, from the header's local start time.
-local function startedToSeconds(started)
-	local year, month, day, hour, min, sec = started:match("^(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)$")
-	return os.time({ year = year, month = month, day = day, hour = hour, min = min, sec = sec })
 end
 
 -- The recorder's GUID: public on the Trace's own "player" Hits, and otherwise
@@ -70,7 +32,7 @@ local function findRecorder(trace, lines)
 		for _, at in ipairs({ 2, 6 }) do
 			local flags = tonumber(tokens[at + 2] or "")
 			if tokens[at] and tokens[at]:find("^Player%-") and flags
-				and hasFlag(flags, COMBATLOG_OBJECT_AFFILIATION_MINE) and hasFlag(flags, COMBATLOG_OBJECT_TYPE_PLAYER) then
+				and hasFlag(flags, Trace.COMBATLOG_OBJECT_AFFILIATION_MINE) and hasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PLAYER) then
 				return tokens[at]
 			end
 		end
@@ -144,11 +106,11 @@ function Import.Cut(lines, trace)
 	local entries = trace.entries
 	local durationMs = math.floor((entries[#entries][1] - trace.header.startTime) * 1000 + 0.5)
 	-- The header's start time has whole seconds only.
-	local startMs = startedToSeconds(trace.header.started) * 1000
+	local startMs = Trace.StartedToSeconds(trace.header.started) * 1000
 	local first, last = startMs - MARGIN_MS, startMs + 1000 + durationMs + MARGIN_MS
 	local kept = { lines[1] }
 	for i = 2, #lines do
-		local ms = stampToMs(parseLine(lines[i]))
+		local ms = Trace.StampToMs(parseLine(lines[i]))
 		if ms >= first and ms <= last then
 			kept[#kept + 1] = lines[i]
 		end
@@ -239,7 +201,7 @@ end
 -- The newest Combat Log File that started before the Trace. Its name holds
 -- the local time that /combatlog turned on.
 local function findCombatLog(wowDir, trace)
-	local traceStart = startedToSeconds(trace.header.started)
+	local traceStart = Trace.StartedToSeconds(trace.header.started)
 	local best, bestStart
 	for _, path in ipairs(listFiles(shellQuote(wowDir) .. "/Logs/WoWCombatLog-*.txt")) do
 		local month, day, year, hour, min, sec = path:match("WoWCombatLog%-(%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)%.txt$")
@@ -257,11 +219,7 @@ local function findCombatLog(wowDir, trace)
 end
 
 local function loadTrace(path)
-	local chunk = assert(loadfile(path))
-	local env = {}
-	setfenv(chunk, env)
-	chunk()
-	local trace = env.NameplateSCTReforgedTraces
+	local trace = assert(Trace.Load(path))
 	if type(trace) ~= "table" or type(trace.entries) ~= "table" or #trace.entries == 0 then
 		fail(path .. " has no finished recording; stop it with /nsctr record, then /reload")
 	end
