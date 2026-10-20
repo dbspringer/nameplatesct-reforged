@@ -17,7 +17,9 @@ local GREY = { r = 0.7, g = 0.7, b = 0.7 }
 local function run(entries, colours)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
-		colours = colours,
+		readColours = function()
+			return colours
+		end,
 		show = function(hit, how)
 			shown[#shown + 1] = { hit = hit, how = how }
 		end,
@@ -49,6 +51,40 @@ describe("Flow", function()
 		assert.are.same({}, shown)
 		assert.are.equal(1, #plateless)
 		assert.are.same({ "target", "frame" }, { plateless[1].hit.unit, plateless[1].how })
+	end)
+
+	it("works with no noPlate, passes how to show, and judges each Log Line by the colours when it came", function()
+		local shown, current = {}, { GREY }
+		local flow = Flow.New({
+			readColours = function()
+				return current
+			end,
+			show = function(hit, how)
+				shown[#shown + 1] = hit.entry .. ":" .. how
+			end,
+		})
+		local push = function(entries)
+			for _, entry in ipairs(entries) do
+				flow.Push(entry)
+			end
+		end
+		push({
+			{ 1, "UNIT_COMBAT", "target", "WOUND", "", 29, 32 },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+			{ 2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
+		})
+		-- The player switches the Log Filter while the adapter still holds the
+		-- grey line of the frame at 2.
+		current = { { r = 1, g = 1, b = 1 } }
+		push({
+			{ 3, "COMBAT_LOG_MESSAGE", "|Ky3|k", 1, 1, 1, 0 },
+			{ 3, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 4, "COMBAT_LOG_MESSAGE", "|Ky4|k", 0.7, 0.7, 0.7, 0 },
+			{ 4, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+		})
+		flow.Tick(math.huge)
+		assert.are.same({ "3:frame", "6:frame" }, shown)
 	end)
 
 	describe("on the Warlock Traces", function()

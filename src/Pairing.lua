@@ -21,9 +21,18 @@ local SCHOOL_PHYSICAL = 1
 local OWN_UNITS = { player = true, pet = true }
 local OWN_ACTIONS = { WOUND = true, HEAL = true }
 
+-- The player cannot heal an enemy, and Plate Text shows no heal, so a heal on
+-- a unit other than the player or the pet takes no line: an enemy's heal must
+-- not take the line of the player's Hit. The player's heal on a friendly
+-- Nameplate then leaves its line waiting, as a heal on a party member with no
+-- Nameplate already does.
+local function isOthersHeal(hit)
+	return hit.action == "HEAL" and not OWN_UNITS[hit.unit]
+end
+
 -- The Log Filter's unit colour keys for the player and the pet
 -- (COMBATLOG_FILTER_MINE and COMBATLOG_FILTER_MY_PET).
-local FILTER_MINE, FILTER_MY_PET = 0x4511, 0x3111
+local OWN_COLOUR_KEYS = { 0x4511, 0x3111 }
 
 -- Heals also report school 1, so a physical Hit is a school 1 Hit that is
 -- not a heal.
@@ -60,7 +69,7 @@ function Pairing.ColoursOf(filter)
 		return nil
 	end
 	local colours = {}
-	for _, key in ipairs({ FILTER_MINE, FILTER_MY_PET }) do
+	for _, key in ipairs(OWN_COLOUR_KEYS) do
 		if type(colors.unitColoring[key]) == "table" then
 			colours[#colours + 1] = colors.unitColoring[key]
 		end
@@ -73,7 +82,8 @@ end
 -- through Push in the adapter's order. Tick(now) closes the open frame and
 -- ends the holds that are over; call it often, or the last Hits wait for the
 -- next record. onDecision(hit, line, how) runs once for every Hit, with a nil
--- line when the Hit is not yours. how tells which rule paired it: "frame" (a
+-- line when the Hit is not yours; an error in it drops the rest of that
+-- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier),
 -- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
 -- colours comes from Pairing.ColoursOf; nil accepts lines of every colour.
@@ -121,25 +131,22 @@ function Pairing.New(options)
 				break
 			end
 			table.remove(heldHits, 1)
-			if index then
-				onDecision(hit, table.remove(waitingLines, index), "late")
-			else
-				onDecision(hit, nil)
-			end
+			local found = index and table.remove(waitingLines, index) or nil
+			onDecision(hit, found, found and "late")
 		end
 		while waitingLines[1] and now - waitingLines[1].time > MELEE_TO do
 			table.remove(waitingLines, 1)
 		end
 	end
 
-	local function decide(hit)
-		if isZeroWound(hit) then
+	local function decide(hit, lines)
+		if isZeroWound(hit) or isOthersHeal(hit) then
 			onDecision(hit, nil)
 		elseif OWN_UNITS[hit.unit] then
-			local found = OWN_ACTIONS[hit.action] and table.remove(frameLines, 1) or nil
+			local found = OWN_ACTIONS[hit.action] and table.remove(lines, 1) or nil
 			onDecision(hit, found, found and "frame")
 		else
-			local found, how = table.remove(frameLines, 1), "frame"
+			local found, how = table.remove(lines, 1), "frame"
 			if not found then
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line)
@@ -160,25 +167,33 @@ function Pairing.New(options)
 	-- Ends the holds that are over before this frame, then decides its Hits.
 	-- Enemy Hits take the frame's lines first, so a mob's attack on the player
 	-- or the pet in the same frame cannot take the line of the player's Hit.
+	-- The frame closes before any decision, so an error in onDecision cannot
+	-- make the next call decide the same Hits again.
 	local function endFrame()
-		advance(frameTime)
-		for _, hit in ipairs(frameHits) do
+		local time, hits, lines = frameTime, frameHits, frameLines
+		frameTime, frameHits, frameLines = nil, {}, {}
+		advance(time)
+		for _, hit in ipairs(hits) do
 			if not OWN_UNITS[hit.unit] then
-				decide(hit)
+				decide(hit, lines)
 			end
 		end
-		for _, hit in ipairs(frameHits) do
+		for _, hit in ipairs(hits) do
 			if OWN_UNITS[hit.unit] then
-				decide(hit)
+				decide(hit, lines)
 			end
 		end
-		for _, line in ipairs(frameLines) do
+		for _, line in ipairs(lines) do
 			waitingLines[#waitingLines + 1] = line
 		end
-		frameTime, frameHits, frameLines = nil, {}, {}
 	end
 
 	local pairing = {}
+
+	-- New Log Filter colours, for the lines that come after.
+	function pairing.SetColours(newColours)
+		colours = newColours
+	end
 
 	-- Casts and Swings pass by: no rule uses them yet, and they do not open a
 	-- frame.

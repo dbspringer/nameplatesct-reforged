@@ -10,12 +10,13 @@ ns.Flow = Flow
 -- is optional, gets Your Hit on target or a soft target that has no
 -- Nameplate. how is the rule that paired the Hit (see Pairing.New). Hits on
 -- the player or the pet go nowhere: they are there to use up the Log Lines of
--- heals. colours comes from Pairing.ColoursOf.
+-- heals and self-damage. readColours() gives the colours of Pairing.ColoursOf
+-- at each Log Line: the player can change or switch the Log Filter at any
+-- time, and the game can load the filters after login.
 function Flow.New(options)
-	local show, noPlate = options.show, options.noPlate
+	local show, noPlate, readColours = options.show, options.noPlate, options.readColours
 
 	local pairing = ns.Pairing.New({
-		colours = options.colours,
 		onDecision = function(hit, line, how)
 			if not line or hit.unit == "player" or hit.unit == "pet" then
 				return
@@ -32,6 +33,12 @@ function Flow.New(options)
 	local flow = {}
 
 	function flow.Push(entry)
+		if entry[2] == "COMBAT_LOG_MESSAGE" then
+			-- The adapter holds a frame's lines until a later event closes the
+			-- frame. Close it now, so its lines meet the colours they came under.
+			adapter.Tick(entry[1])
+			pairing.SetColours(readColours())
+		end
 		adapter.Push(entry)
 	end
 

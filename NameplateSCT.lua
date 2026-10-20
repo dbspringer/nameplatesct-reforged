@@ -30,8 +30,8 @@ local animating = {}
 local randomX = {}
 local randomY = {}
 
--- A unit test such as UnitIsUnit can give a secret, which cannot be tested
--- as a boolean.
+-- A unit query such as UnitIsUnit or UnitIsDead can give a secret, which
+-- cannot be tested as a boolean.
 local function isTrue(value)
 	return not issecretvalue(value) and value == true
 end
@@ -801,13 +801,14 @@ end
 -- DISPLAY --
 -------------
 
+local eastAsiaLetter = L["Truncate Letter East Asia"]
+if eastAsiaLetter == 'Truncate Letter East Asia' then
+	-- miss locale, Use its pronunciation instead
+	-- 'w' means 'wan', 1wan = 10000
+	eastAsiaLetter = 'w'
+end
+
 function NameplateSCT:truncateText(amount)
-	local eastAsiaLetter = L["Truncate Letter East Asia"]
-	if eastAsiaLetter == 'Truncate Letter East Asia' then
-		-- miss locale, Use its pronunciation instead
-		-- 'w' means 'wan', 1wan = 10000
-		eastAsiaLetter = 'w'
-	end
 	return ns.Amount.Format(amount, self.db.global, eastAsiaLetter)
 end
 
@@ -965,8 +966,9 @@ function NameplateSCT:MissEvent(unit, spellName, missType, spellId)
 end
 
 -- Plate Text for Your Hit on an enemy Nameplate. A melee Log Line comes one
--- Swing Delay before its Hit, so a Hit that paired that way is an autoattack.
--- A Hit has no spell, so it has no icon until Spell Identity.
+-- Swing Delay before its Hit, so a Hit that paired that way is treated as an
+-- autoattack; a swing whose line comes in its own frame gets the ability
+-- animation. A Hit has no spell, so it has no icon until Spell Identity.
 function NameplateSCT:ShowHit(hit, how)
 	local spellName = how == "melee" and "melee" or nil
 	if hit.action == "WOUND" then

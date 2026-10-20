@@ -1,5 +1,6 @@
--- Stand-in for a Secret Amount: it errors when code compares it, calculates
--- with it, joins it, or turns it into a string.
+-- Stand-in for a Secret Amount: it errors when code orders it, calculates
+-- with it, joins it, or turns it into a string. Lua 5.1 runs __eq only
+-- between two tables, so `secret == 0` passes quietly.
 local function refuse()
 	error("used a secret")
 end
@@ -36,13 +37,14 @@ describe("Amount.Format", function()
 			{ 12345, settings("WESTERN", true, true), "12k" },
 			{ 1234, settings("WESTERN", true, true), "1.2k" },
 			{ 1234, settings("WESTERN", false, true), "1.2" },
+			{ 1234567, settings("WESTERN", false, true), "1235" },
 			{ 999, settings("WESTERN", true, true), "999" },
-			{ 123456, settings("EASTASIA", true, true), "12w" },
-			{ 12345, settings("EASTASIA", true, true), "1.2w" },
+			{ 123456, settings("EASTASIA", true, true), "12x" },
+			{ 12345, settings("EASTASIA", true, true), "1.2x" },
 			{ 12345, settings("EASTASIA", false, true), "1.2" },
 		}
 		for _, case in ipairs(cases) do
-			assert.are.equal(case[3], Amount.Format(case[1], case[2], "w"))
+			assert.are.equal(case[3], Amount.Format(case[1], case[2], "x"))
 		end
 	end)
 
