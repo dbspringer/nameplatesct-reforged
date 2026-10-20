@@ -24,7 +24,9 @@ local CAST_STAGES = {
 
 -- The unit a report names: player or pet, or else the nameplate token that
 -- Events.lua recorded with it. Returns nil for a token whose reports only
--- repeat others, such as targettarget.
+-- repeat others, such as targettarget, and for a nameplate that Events.lua
+-- never saw added: in a dungeon a friendly plate reports combat without
+-- NAME_PLATE_UNIT_ADDED, and Plate Text is for enemies only.
 local function unitOf(entry)
 	local token = entry[3]
 	if entry.own then
