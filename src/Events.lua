@@ -27,7 +27,7 @@ local CAST_EVENTS = {
 	"UNIT_SPELLCAST_INTERRUPTED",
 }
 
-local keepTicker
+local keepTicker, flow
 local frame = CreateFrame("Frame")
 
 -- Nameplate tokens that are shown now.
@@ -70,29 +70,62 @@ local function ownerOf(unit)
 	end
 end
 
+-- The colours of the player's and the pet's Log Lines under the Log Filter
+-- that is on. nil, which makes Pairing accept lines of every colour, when the
+-- game has not loaded its Log Filters or when lines do not take their
+-- source's colour (see Pairing.ColoursOf).
+local function logLineColours()
+	local saved = Blizzard_CombatLog_Filters
+	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
+		return nil
+	end
+	return ns.Pairing.ColoursOf(saved.filters[saved.currentFilter])
+end
+
 local function onEvent(_, event, ...)
+	local now = GetTime()
+	-- The first argument of the nameplate events and UNIT_COMBAT.
+	local unit = ...
 	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
 	if isPlateEvent then
-		local unit = ...
 		plates[unit] = event == "NAME_PLATE_UNIT_ADDED" or nil
 	end
-	if not ns.Recorder.IsRecording() then
-		return
+
+	-- The entry has the shape of a Trace entry, so Flow gets the same input
+	-- live as in the specs. The adapter names a report by its owner first, so
+	-- the plate search is needed only for other units.
+	local entry = { now, event, ... }
+	if event == "UNIT_COMBAT" then
+		entry.own = ownerOf(unit)
+		if not entry.own then
+			entry.plate = plateFor(unit)
+		end
 	end
 
-	local extra
-	if isPlateEvent then
-		local unit = ...
-		extra = { guid = UnitGUID(unit) }
-	elseif event == "UNIT_COMBAT" then
-		local unit = ...
-		extra = { plate = plateFor(unit), own = ownerOf(unit), guid = UnitGUID(unit) }
+	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
+	if ns.Recorder.IsRecording() then
+		local extra
+		if isPlateEvent then
+			extra = { guid = UnitGUID(unit) }
+		elseif event == "UNIT_COMBAT" then
+			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
+		end
+		ns.Recorder.Record(now, event, extra, ...)
 	end
-	ns.Recorder.Record(GetTime(), event, extra, ...)
+
+	flow.Push(entry)
 end
 frame:SetScript("OnEvent", onEvent)
 
-function Events.Start()
+local function onUpdate()
+	flow.Tick(GetTime())
+end
+
+-- show(hit, how) gets each of Your Hits on an enemy Nameplate (see Flow.New).
+function Events.Start(show)
+	flow = ns.Flow.New({ readColours = logLineColours, show = show })
+	frame:SetScript("OnUpdate", onUpdate)
+
 	keepFilteredEvents()
 	if not keepTicker then
 		keepTicker = C_Timer.NewTicker(KEEP_INTERVAL, keepFilteredEvents)
@@ -116,5 +149,7 @@ function Events.Stop()
 		keepTicker = nil
 	end
 	frame:UnregisterAllEvents()
+	frame:SetScript("OnUpdate", nil)
+	flow = nil
 	wipe(plates)
 end

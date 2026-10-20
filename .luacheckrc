@@ -84,6 +84,7 @@ globals = {
 	-- api functions
 	"AbandonQuest",
 	"AbandonSkill",
+	"AbbreviateNumbers",
 	"AcceptAreaSpiritHeal",
 	"AcceptBattlefieldPort",
 	"AcceptDuel",

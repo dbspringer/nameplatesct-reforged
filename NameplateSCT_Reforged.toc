@@ -24,5 +24,9 @@
 embeds.xml
 Locales\locale.xml
 src\Recorder.lua
+src\Adapter.lua
+src\Pairing.lua
+src\Flow.lua
+src\Amount.lua
 src\Events.lua
 NameplateSCT.lua

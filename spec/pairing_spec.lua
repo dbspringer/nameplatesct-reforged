@@ -1,6 +1,7 @@
 _G.issecretvalue = function(value)
 	return value == "<secret>"
 end
+_G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
@@ -161,6 +162,81 @@ describe("Pairing", function()
 		assert.are.same({ only.entry, false }, { decided[one.entry], decided[two.entry] })
 	end)
 
+	it("tells how it paired each Hit, so the renderer can give melee its own animation", function()
+		local how = {}
+		local pairing = Pairing.New({
+			colours = { GREY },
+			onDecision = function(decidedHit, _, decidedHow)
+				how[decidedHit.entry] = decidedHow or false
+			end,
+		})
+		local frameHit, short, melee, late, alone = hit(1), hit(3.05), hit(5.5, "nameplate1", 1), hit(7), hit(9)
+		for _, record in ipairs({ frameHit, line(1), line(3), short, line(5), melee, late, line(7.1), alone }) do
+			pairing.Push(record)
+		end
+		pairing.Tick(math.huge)
+		assert.are.same({ "frame", "short", "melee", "late", false },
+			{ how[frameHit.entry], how[short.entry], how[melee.entry], how[late.entry], how[alone.entry] })
+	end)
+
+	it("gives no Log Line to an enemy's heal, so your Hit keeps its line", function()
+		local heal, tick, tickLine = hit(1, "nameplate2", 2, "HEAL"), hit(1), line(1)
+		local early, laterHeal, bolt = line(3), hit(3.02, "nameplate2", 2, "HEAL"), hit(3.05)
+		local sameFrameHeal, lastBolt = hit(5, "nameplate2", 2, "HEAL"), hit(5.05)
+		local lastLine = line(5)
+		local drain, drainHeal, drainLine, drainHealLine = hit(7), hit(7, "player", 32, "HEAL"), line(7), line(7)
+		local decided = pair({ heal, tick, tickLine, early, laterHeal, bolt, lastLine, sameFrameHeal, lastBolt,
+			hit(7, "nameplate2", 2, "HEAL"), drain, drainHeal, drainLine, drainHealLine })
+		assert.are.same({ false, tickLine.entry, false, early.entry, false, lastLine.entry, drainHealLine.entry },
+			{ decided[heal.entry], decided[tick.entry], decided[laterHeal.entry], decided[bolt.entry],
+				decided[sameFrameHeal.entry], decided[lastBolt.entry], decided[drainHeal.entry] })
+	end)
+
+	it("decides no Hit twice when onDecision errors, as the renderer can", function()
+		local calls, failed = {}, false
+		local pairing = Pairing.New({
+			colours = { GREY },
+			onDecision = function(decidedHit, decidedLine)
+				calls[#calls + 1] = decidedHit.entry .. ":" .. tostring(decidedLine and decidedLine.entry)
+				if not failed then
+					failed = true
+					error("renderer failed")
+				end
+			end,
+		})
+		local first, second, firstLine, secondLine = hit(1), hit(1), line(1), line(1)
+		for _, record in ipairs({ first, second, firstLine, secondLine }) do
+			pairing.Push(record)
+		end
+		assert.has_error(function()
+			pairing.Tick(2)
+		end)
+		pairing.Tick(3)
+		pairing.Tick(math.huge)
+		assert.are.same({ first.entry .. ":" .. firstLine.entry }, calls)
+	end)
+
+	it("pairs Log Lines that come after a colour change by the new colours", function()
+		local decided = {}
+		local pairing = Pairing.New({
+			colours = { GREY },
+			onDecision = function(decidedHit, decidedLine)
+				decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
+			end,
+		})
+		local grey, greyLine = hit(1), line(1)
+		pairing.Push(grey)
+		pairing.Push(greyLine)
+		pairing.SetColours({ WHITE })
+		local white, whiteLine, stale, staleLine = hit(2), line(2, WHITE), hit(3), line(3)
+		for _, record in ipairs({ white, whiteLine, stale, staleLine }) do
+			pairing.Push(record)
+		end
+		pairing.Tick(math.huge)
+		assert.are.same({ greyLine.entry, whiteLine.entry, false },
+			{ decided[grey.entry], decided[white.entry], decided[stale.entry] })
+	end)
+
 	it("keeps a Log Line whose colour is secret, since it cannot be compared", function()
 		local secret, tick = line(1, { r = "<secret>", g = "<secret>", b = "<secret>" }), hit(1)
 		assert.are.equal(secret.entry, pair({ secret, tick })[tick.entry])
@@ -265,7 +341,7 @@ describe("Pairing", function()
 	end)
 
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes" }) do
+		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
 				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
