@@ -103,8 +103,9 @@ local function parseEvents(lines)
 	return events
 end
 
--- Runs the adapter on the Trace, as the live addon will.
-local function adapt(trace)
+-- Runs the adapter on the Trace, as the live addon will. Returns its Hits and
+-- Log Lines.
+function Label.Adapt(trace)
 	local env = setmetatable({
 		-- A Trace holds secrets as this placeholder.
 		issecretvalue = function(value)
@@ -223,7 +224,7 @@ end
 -- Returns one row per Hit, the Log Lines with no Hit, or nil and a message.
 function Label.Make(trace, lines)
 	local events = parseEvents(lines)
-	local hits, logLines = adapt(trace)
+	local hits, logLines = Label.Adapt(trace)
 	local candidates, message = lineEvents(trace, events)
 	if not candidates then
 		return nil, message
