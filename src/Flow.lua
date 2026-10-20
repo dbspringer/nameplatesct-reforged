@@ -11,13 +11,15 @@ ns.Flow = Flow
 -- Nameplate. how is the rule that paired the Hit (see Pairing.New). Hits on
 -- the player or the pet go nowhere: they are there to use up the Log Lines of
 -- heals and self-damage. A Hit decided after its Nameplate hid goes nowhere
--- too: the plate is gone, and its token can name another unit by then.
+-- too: the renderer finds a Nameplate by its token, and by then the token can
+-- name another unit, or none.
 -- readColours() gives the colours of Pairing.ColoursOf
 -- at each Log Line: the player can change or switch the Log Filter at any
 -- time, and the game can load the filters after login.
 function Flow.New(options)
 	local show, noPlate, readColours = options.show, options.noPlate, options.readColours
-	-- When each nameplate token last hid.
+	-- The adapter's entry number at which each token's Nameplate last hid.
+	-- Entry order, not time, so a Hit on a new unit in the same frame stays.
 	local hiddenAt = {}
 
 	local pairing = ns.Pairing.New({
@@ -25,7 +27,7 @@ function Flow.New(options)
 			if not line or hit.unit == "player" or hit.unit == "pet" then
 				return
 			end
-			if hiddenAt[hit.unit] and hiddenAt[hit.unit] >= hit.time then
+			if (hiddenAt[hit.unit] or 0) > hit.entry then
 				return
 			end
 			if hit.unit:match("^nameplate%d+$") then
@@ -49,7 +51,8 @@ function Flow.New(options)
 			-- Decide the Hits from before this moment first, as the live Tick of
 			-- each frame does, so the result is the same at any tick rate.
 			tick(entry[1])
-			hiddenAt[entry[3]] = entry[1]
+			hiddenAt[entry[3]] = adapter.Push(entry)
+			return
 		elseif entry[2] == "COMBAT_LOG_MESSAGE" then
 			-- The adapter holds a frame's lines until a later event closes the
 			-- frame. Close it now, so its lines meet the colours they came under.

@@ -30,8 +30,8 @@ local animating = {}
 local randomX = {}
 local randomY = {}
 
--- A unit query such as UnitIsUnit or UnitIsDead can give a secret, which
--- cannot be tested as a boolean.
+-- A unit query such as UnitIsUnit can give a secret, which cannot be tested
+-- as a boolean.
 local function isTrue(value)
 	return not issecretvalue(value) and value == true
 end
@@ -487,8 +487,8 @@ end
 
 -- The player's own Blizzard Target Text setting, kept while the addon hides
 -- that text, so it comes back when the option goes off, when the addon is
--- disabled, and at logout. The CVar is saved only at a clean logout, which
--- restores it first, so a crash leaves the player's setting as it was.
+-- disabled, and at logout. A crash should leave the player's setting as it
+-- was, if the game saves the CVar only at a clean logout (unverified).
 local savedTargetText
 
 local function hideTargetText()
@@ -498,17 +498,20 @@ local function hideTargetText()
 	SetCVar(blizzardCvar, 0)
 end
 
+-- A value other than the addon's 0 is a newer choice, from Blizzard's options
+-- or another addon, so it stays.
 local function restoreTargetText()
-	if savedTargetText ~= nil then
+	if savedTargetText ~= nil and GetCVar(blizzardCvar) == "0" then
 		SetCVar(blizzardCvar, savedTargetText)
-		savedTargetText = nil
 	end
+	savedTargetText = nil
 end
 
 local noPlateNoticeShown = false
 
 -- Your Hit on a unit with no Nameplate shows nothing. When enemy nameplates
--- are off, that is every Hit, so the player gets one notice each session.
+-- are off, that is every Hit, so the player gets one notice each time the UI
+-- loads (at login or /reload).
 function NameplateSCT:NoPlate()
 	if noPlateNoticeShown or GetCVar("nameplateShowEnemies") == "1" then
 		return
@@ -534,9 +537,10 @@ function NameplateSCT:OnEnable()
 end
 
 function NameplateSCT:OnDisable()
+	-- First, so an error below cannot leave Blizzard Target Text off.
+	restoreTargetText()
 	self:UnregisterAllEvents()
 	ns.Events.Stop()
-	restoreTargetText()
 
 	for fontString, _ in pairs(animating) do
 		recycleFontString(fontString)
@@ -654,12 +658,12 @@ local function GetLinearEasing(p)
 	return linearPoints[#linearPoints][2]
 end
 
--- The Grace Period: when a Nameplate hides, its text finishes its animation
--- there, so a killing blow is not lost. No addon can measure a nameplate on
--- Forever ("Can't measure restricted regions"), but a hidden plate stays where
--- its unit was, so the text stays anchored to it. The text lets go of the
--- token, which can soon name another unit, and ends when the plate frame
--- shows another unit (see NAME_PLATE_UNIT_ADDED).
+-- The Grace Period: when a Nameplate hides, its Plate Text finishes its
+-- animation there, so a killing blow is not lost. No addon can measure a
+-- Nameplate on Forever ("Can't measure restricted regions"), but a hidden
+-- Nameplate frame stays where its unit was, so the text stays anchored to it.
+-- The text lets go of the token, which can soon name another unit, and ends
+-- when the frame shows another unit (see NAME_PLATE_UNIT_ADDED).
 local function startGracePeriod(fontString)
 	fontString.unit = nil
 end
@@ -672,7 +676,7 @@ local function AnimationOnUpdate()
 				-- the animation is over
 				recycleFontString(fontString)
 			else
-				-- Text in its Grace Period keeps the look it had on its plate.
+				-- Plate Text in its Grace Period keeps the look it had on its Nameplate.
 				local isTarget = fontString.wasTarget
 				if fontString.unit then
 					isTarget = isTrue(UnitIsUnit(fontString.unit, "target"))
@@ -782,6 +786,8 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	fontString.animatingDuration = duration
 	fontString.animatingStartTime = GetTime()
 	fontString.anchorFrame = anchorFrame
+	-- Set here too, in case the Grace Period starts before the first update.
+	fontString.wasTarget = isTrue(UnitIsUnit(fontString.unit, "target"))
 
 	if (animation == "verticalUp") then
 		fontString.distance = ANIMATION_VERTICAL_DISTANCE
@@ -828,12 +834,13 @@ function NameplateSCT:NAME_PLATE_UNIT_REMOVED(event, unitID)
 	end
 end
 
--- The game gives hidden plate frames to new units, so text in its Grace
--- Period on this plate frame ends before it can show on the new unit.
+-- The game gives hidden Nameplate frames to new units. Any text on this frame
+-- belongs to an earlier unit, even text shown while that unit's Nameplate was
+-- hiding, so it ends before it can show on the new unit.
 function NameplateSCT:NAME_PLATE_UNIT_ADDED(event, unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
 	for fontString, _ in pairs(animating) do
-		if not fontString.unit and fontString.anchorFrame == plate then
+		if fontString.anchorFrame == plate then
 			recycleFontString(fontString)
 		end
 	end
@@ -1200,7 +1207,7 @@ local menu = {
 		hideTargetText = {
 			type = 'toggle',
 			name = L["Hide Blizzard Target Text"],
-			desc = L["Hide the damage numbers that the game draws over the unit you hit. Your own setting comes back when this is off, when the addon is off, and when you log out."],
+			desc = L["Hide the damage numbers that the game draws over the unit you hit. Turn this off, or the addon, to get them back the way you had them."],
 			get = function() return NameplateSCT.db.global.hideTargetText end,
 			set = function(_, newValue)
 				NameplateSCT.db.global.hideTargetText = newValue

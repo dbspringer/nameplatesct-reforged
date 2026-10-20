@@ -9,7 +9,7 @@ The text this addon draws above an enemy's Nameplate for one of Your Hits: an am
 _Avoid_: SCT, damage numbers, floating combat text
 
 **Blizzard Target Text**:
-The damage text the game engine draws over the unit the player hits. The addon hides it while Plate Text is on.
+The damage text the game engine draws over the unit the player hits. The addon hides it while the addon and its "Hide Blizzard Target Text" option are on, and gives back the player's own setting when either goes off.
 _Avoid_: Blizzard SCT, Blizzard FCT, world text
 
 **Nameplate**:

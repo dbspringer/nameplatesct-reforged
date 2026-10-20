@@ -37,7 +37,8 @@ local function copy(value)
 	return result
 end
 
--- A chat message from the addon, for this file and the others.
+-- Prints text in the default chat frame after the addon's name. Shared as
+-- ns.Say.
 local function say(text)
 	DEFAULT_CHAT_FRAME:AddMessage(("|cff33ff99%s|r: %s"):format(L["NameplateSCT Reforged"], text))
 end

@@ -143,7 +143,8 @@ function Adapter.New(onRecord)
 
 	local adapter = {}
 
-	-- Entry numbers count every pushed event, so they match the Trace.
+	-- Entry numbers count every pushed event, so they match the Trace. Returns
+	-- the entry's number.
 	function adapter.Push(entry)
 		count = count + 1
 		local time, event = entry[1], entry[2]
@@ -178,6 +179,7 @@ function Adapter.New(onRecord)
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
 		end
+		return count
 	end
 
 	function adapter.Tick(now)
