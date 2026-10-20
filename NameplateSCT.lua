@@ -1892,8 +1892,19 @@ local filters = {
 	},
 }
 
+-- The game blocks the settings panel in combat, so it opens when combat ends.
 function NameplateSCT:OpenMenu()
+	if InCombatLockdown() then
+		ns.Say(L["The options open when combat ends."])
+		self:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
 	Settings.OpenToCategory(optionsMenuName)
+end
+
+function NameplateSCT:PLAYER_REGEN_ENABLED()
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	self:OpenMenu()
 end
 
 function NameplateSCT:ChatCommand(input)
