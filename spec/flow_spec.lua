@@ -88,6 +88,38 @@ describe("Flow", function()
 		assert.are.same({ "3:frame", "6:frame" }, shown)
 	end)
 
+	it("shows nothing for a Hit whose Nameplate hid in its frame, and still shows a Hit on another Nameplate", function()
+		local shown = run({
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 1, "UNIT_COMBAT", "nameplate2", "WOUND", "", 29, 32, plate = "nameplate2" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
+			{ 1, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+		}, { GREY })
+		assert.are.same({ 2 }, entriesOf(shown))
+	end)
+
+	it("shows nothing for a Hit held for a late Log Line whose Nameplate hid during the hold", function()
+		local shown = run({
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 1.05, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+			{ 1.1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+		}, { GREY })
+		assert.are.same({}, entriesOf(shown))
+	end)
+
+	it("shows a Hit on the unit that a token names after the token's Nameplate hid, even in the same frame", function()
+		local shown = run({
+			{ 1, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+			{ 1, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+			{ 2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+			{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
+		}, { GREY })
+		assert.are.same({ 3, 5 }, entriesOf(shown))
+	end)
+
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()

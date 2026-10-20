@@ -121,9 +121,10 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how) gets each of Your Hits on an enemy Nameplate (see Flow.New).
-function Events.Start(show)
-	flow = ns.Flow.New({ readColours = logLineColours, show = show })
+-- show(hit, how) gets Your Hits on an enemy Nameplate, and noPlate(hit, how)
+-- Your Hits on target or a soft target with no Nameplate (see Flow.New).
+function Events.Start(show, noPlate)
+	flow = ns.Flow.New({ readColours = logLineColours, show = show, noPlate = noPlate })
 	frame:SetScript("OnUpdate", onUpdate)
 
 	keepFilteredEvents()

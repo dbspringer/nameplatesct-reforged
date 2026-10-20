@@ -37,9 +37,12 @@ local function copy(value)
 	return result
 end
 
+-- Prints text in the default chat frame after the addon's name. Shared as
+-- ns.Say.
 local function say(text)
 	DEFAULT_CHAT_FRAME:AddMessage(("|cff33ff99%s|r: %s"):format(L["NameplateSCT Reforged"], text))
 end
+ns.Say = say
 
 -- Pairing needs a Log Filter that sends the player's damage, so a Trace keeps
 -- the filter that was on.
