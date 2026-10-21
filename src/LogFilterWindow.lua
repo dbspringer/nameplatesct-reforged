@@ -17,7 +17,7 @@ local window, text, fixButton
 -- Blizzard table taints the Blizzard code that reads it.
 local function build()
 	window = CreateFrame("Frame", nil, UIParent, "BasicFrameTemplateWithInset")
-	window:SetSize(380, 250)
+	window:SetSize(380, 180)
 	window:SetPoint("CENTER")
 	window:SetFrameStrata("DIALOG")
 	window:Hide()
@@ -63,7 +63,7 @@ local function offer()
 		build()
 	end
 	if state == "fixable" then
-		text:SetText(L["Your combat log doesn't send all of your and your pet's damage and misses, each in the colour of its kind, or it sends other players' lines that look like yours. So some numbers can't show, or show wrongly.\n\nFix and reload changes Blizzard's \"%s\" filter: it turns them on, colours each line by its kind (spell, tick, melee, shot, miss, heal), leaves only you and your pet under Done By and no one under Done To, and picks the filter. Your other settings stay."]:format(myActions))
+		text:SetText(L["Your combat log needs a few changes so the addon can tell which hits are yours and your pet's.\n\nFix and reload updates Blizzard's \"%s\" filter, including its line colours, and switches your combat log to it."]:format(myActions))
 		fixButton:Show()
 	else
 		text:SetText(L["Your combat log has no \"%s\" filter, so some numbers can't show.\n\nPress Defaults in the combat log settings to get it back."]:format(myActions))
