@@ -528,11 +528,12 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
-	ns.Events.Start(function(hit, how)
-		self:ShowHit(hit, how)
+	self.db.global.spellFacts = self.db.global.spellFacts or {}
+	ns.Events.Start(function(hit, how, spellID)
+		self:ShowHit(hit, how, spellID)
 	end, function()
 		self:NoPlate()
-	end)
+	end, self.db.global.spellFacts)
 
 	self.db.global.enabled = true
 end
@@ -916,7 +917,9 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId
 		alpha = self.db.global.formatting.alpha
 	end
 
-    if not NameplateSCT.db.global.showIconOnly then
+	-- A Hit with no known spell has no icon, so it shows its number.
+	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and spellId ~= nil
+    if not iconOnly then
         -- truncate
         text = self:truncateText(amount)
         color = self:TextColor(school, spellName, crit)
@@ -959,7 +962,7 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId
 		size = 5
 	end
 
-    if NameplateSCT.db.global.showIconOnly then
+    if iconOnly then
         self:DisplayIconWithoutText(unit, size, animation, spellId, pow, spellName)
     else
         self:DisplayText(unit, text, color, size, animation, spellId, pow, spellName)
@@ -999,16 +1002,23 @@ end
 -- Plate Text for Your Hit on an enemy Nameplate. A melee Log Line comes one
 -- Swing Delay before its Hit, so a Hit that paired that way is treated as an
 -- autoattack; a swing whose line comes in its own frame gets the ability
--- animation. A Hit has no spell, so it has no icon until Spell Identity.
-function NameplateSCT:ShowHit(hit, how)
+-- animation. spellID, from Spell Identity, gives the icon, and is nil when
+-- the spell is not known.
+function NameplateSCT:ShowHit(hit, how, spellID)
 	local spellName = how == "melee" and "melee" or nil
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(hit.unit, spellName, hit.amount, school, crit)
+		self:DamageEvent(hit.unit, spellName, hit.amount, school, crit, spellID)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(hit.unit, spellName, hit.action)
+		self:MissEvent(hit.unit, spellName, hit.action, spellID)
 	end
+end
+
+-- Clears the Spell Facts in place, as Spell Identity holds the same table.
+function NameplateSCT:ForgetSpellFacts()
+	wipe(self.db.global.spellFacts)
+	ns.Say(L["Forgot the learned spells. Their icons come back as the addon learns them again."])
 end
 
 -- The text takes its colour from SetTextColor, not from a colour code joined
@@ -1525,8 +1535,6 @@ local menu = {
 					name = L["Icons"],
 					order = 60,
 					inline = true,
-					-- A Hit has no spell until Spell Identity, so there is no icon to show.
-					hidden = true,
 					disabled = function() return not NameplateSCT.db.global.enabled end,
 					args = {
 						showIcon = {
@@ -1613,6 +1621,13 @@ local menu = {
 							set = function(_, newValue) NameplateSCT.db.global.yOffsetIcon = newValue end,
 							order = 8,
 							width = "Half",
+						},
+						forgetSpellFacts = {
+							type = 'execute',
+							name = L["Forget learned spells"],
+							desc = L["Forget which spells made your hits, and learn them again as you play. Use it if an icon looks wrong."],
+							func = function() NameplateSCT:ForgetSpellFacts() end,
+							order = 9,
 						},
 					},
 				},
@@ -1917,8 +1932,11 @@ function NameplateSCT:PLAYER_REGEN_ENABLED()
 end
 
 function NameplateSCT:ChatCommand(input)
-	if self:GetArgs(input) == "record" then
+	local command = self:GetArgs(input)
+	if command == "record" then
 		ns.Recorder.Toggle()
+	elseif command == "forget" then
+		self:ForgetSpellFacts()
 	else
 		self:OpenMenu()
 	end

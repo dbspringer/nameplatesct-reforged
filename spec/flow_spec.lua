@@ -4,7 +4,7 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
-for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/Flow.lua" }) do
+for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua", "src/Identity.lua", "src/Flow.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
 end
 local Flow = ns.Flow
