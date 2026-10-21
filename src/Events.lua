@@ -25,7 +25,13 @@ local CAST_EVENTS = {
 	"UNIT_SPELLCAST_START",
 	"UNIT_SPELLCAST_SUCCEEDED",
 	"UNIT_SPELLCAST_INTERRUPTED",
+	"UNIT_SPELLCAST_CHANNEL_START",
+	"UNIT_SPELLCAST_CHANNEL_STOP",
 }
+local IS_CAST_EVENT = {}
+for _, event in ipairs(CAST_EVENTS) do
+	IS_CAST_EVENT[event] = true
+end
 
 local keepTicker, flow
 local frame = CreateFrame("Frame")
@@ -70,21 +76,19 @@ local function ownerOf(unit)
 	end
 end
 
--- The colours of the player's and the pet's Log Lines under the Log Filter
--- that is on. nil, which makes Pairing accept lines of every colour, when the
--- game has not loaded its Log Filters or when lines do not take their
--- source's colour (see Pairing.ColoursOf).
-local function logLineColours()
+-- How the picked Log Filter colours whole lines (see LineKind.ColouringOf).
+-- The player can switch the filter at any time, so each Log Line reads it.
+local function lineColouring()
 	local saved = Blizzard_CombatLog_Filters
 	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
 		return nil
 	end
-	return ns.Pairing.ColoursOf(saved.filters[saved.currentFilter])
+	return ns.LineKind.ColouringOf(saved.filters[saved.currentFilter])
 end
 
 local function onEvent(_, event, ...)
 	local now = GetTime()
-	-- The first argument of the nameplate events and UNIT_COMBAT.
+	-- The first argument of the nameplate events, UNIT_COMBAT, and the casts.
 	local unit = ...
 	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
 	if isPlateEvent then
@@ -100,6 +104,8 @@ local function onEvent(_, event, ...)
 		if not entry.own then
 			entry.plate = plateFor(unit)
 		end
+	elseif event == "COMBAT_LOG_MESSAGE" then
+		entry.colouring = lineColouring()
 	end
 
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
@@ -109,6 +115,12 @@ local function onEvent(_, event, ...)
 			extra = { guid = UnitGUID(unit) }
 		elseif event == "UNIT_COMBAT" then
 			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
+		elseif event == "COMBAT_LOG_MESSAGE" then
+			extra = { colouring = entry.colouring }
+		elseif IS_CAST_EVENT[event] and unit == "player" then
+			-- The Nameplate of the player's target at this cast event, which the
+			-- cast need not aim at. No rule reads it yet; Traces keep it.
+			extra = { target = plateFor("target") }
 		end
 		ns.Recorder.Record(now, event, extra, ...)
 	end
@@ -124,7 +136,7 @@ end
 -- show(hit, how) gets Your Hits on an enemy Nameplate, and noPlate(hit, how)
 -- Your Hits on target or a soft target with no Nameplate (see Flow.New).
 function Events.Start(show, noPlate)
-	flow = ns.Flow.New({ readColours = logLineColours, show = show, noPlate = noPlate })
+	flow = ns.Flow.New({ show = show, noPlate = noPlate })
 	frame:SetScript("OnUpdate", onUpdate)
 
 	keepFilteredEvents()

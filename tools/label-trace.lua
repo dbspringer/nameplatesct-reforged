@@ -114,10 +114,12 @@ function Label.Adapt(trace)
 		-- The adapter drops the lines that refill a chat frame by this order.
 		Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } },
 	}, { __index = _G })
-	local chunk = assert(loadfile(here .. "../src/Adapter.lua"))
-	setfenv(chunk, env)
 	local ns = {}
-	chunk("NameplateSCT_Reforged", ns)
+	for _, file in ipairs({ "LineKind.lua", "Adapter.lua" }) do
+		local chunk = assert(loadfile(here .. "../src/" .. file))
+		setfenv(chunk, env)
+		chunk("NameplateSCT_Reforged", ns)
+	end
 	local hits, logLines = {}, {}
 	local adapter = ns.Adapter.New(function(record)
 		if record.kind == "hit" then

@@ -8,6 +8,9 @@ Trace.COMBATLOG_OBJECT_TYPE_PLAYER = 0x400
 Trace.COMBATLOG_OBJECT_TYPE_PET = 0x1000
 Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN = 0x2000
 
+-- The Traces in spec/traces/ that have checked Labels.
+Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind" }
+
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111
 
@@ -25,6 +28,19 @@ function Trace.Load(path)
 	setfenv(chunk, env)
 	chunk()
 	return env.NameplateSCTReforgedTraces
+end
+
+-- Gives each Log Line of a Trace from before Events.lua recorded the
+-- colouring the one of the Log Filter in its header, which was picked when the
+-- recording started. colouringOf is LineKind.ColouringOf.
+function Trace.FillColouring(trace, colouringOf)
+	local colouring = colouringOf(trace.header.logFilter and trace.header.logFilter.filter)
+	for _, entry in ipairs(trace.entries) do
+		if entry[2] == "COMBAT_LOG_MESSAGE" and entry.colouring == nil then
+			entry.colouring = colouring
+		end
+	end
+	return trace
 end
 
 -- Splits the fields of a log line and keeps each field's raw text, quotes

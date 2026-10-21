@@ -11,8 +11,6 @@ local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
 local HOLD = 0.15
--- Log Line colours arrive as floats, such as 0.70196 for a 0.7 setting.
-local COLOUR_TOLERANCE = 0.01
 local SCHOOL_PHYSICAL = 1
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
@@ -30,10 +28,6 @@ local function isOthersHeal(hit)
 	return hit.action == "HEAL" and not OWN_UNITS[hit.unit]
 end
 
--- The Log Filter's unit colour keys for the player and the pet
--- (COMBATLOG_FILTER_MINE and COMBATLOG_FILTER_MY_PET).
-local OWN_COLOUR_KEYS = { 0x4511, 0x3111 }
-
 -- Heals also report school 1, so a physical Hit is a school 1 Hit that is
 -- not a heal.
 local function isPhysical(hit)
@@ -46,35 +40,50 @@ local function isZeroWound(hit)
 	return hit.action == "WOUND" and not issecretvalue(hit.amount) and hit.amount == 0
 end
 
+-- The sort of Hit a UNIT_COMBAT action is, in the terms of
+-- LineKind.Reports: a WOUND is damage, a HEAL a heal, the rest are avoids.
+local function reportOf(hit)
+	if hit.action == "WOUND" then
+		return "damage"
+	end
+	return hit.action == "HEAL" and "heal" or "miss"
+end
+
+-- Whether a Log Line can be the Hit's by its Line Kind: a line reports the
+-- same sort of Hit, and a melee line only a physical Hit. A line whose colour
+-- tells nothing (see LineKind.Of) can be any Hit's.
+local function suits(hit, line)
+	local lineKind = line.lineKind
+	if not lineKind then
+		return true
+	end
+	return ns.LineKind.Reports(lineKind) == reportOf(hit) and (not ns.LineKind.IsMelee(lineKind) or isPhysical(hit))
+end
+
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
--- "melee", or nil when it does not fit.
+-- "melee", or nil when it does not fit. Only a melee line, or one of unknown
+-- kind, comes one Swing Delay early.
 local function fits(hit, line)
+	if not suits(hit, line) then
+		return nil
+	end
 	local age = hit.time - line.time
 	if age >= 0 and age <= SHORT_WINDOW then
 		return "short"
 	end
-	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit) then
+	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
+		and (not line.lineKind or ns.LineKind.IsMelee(line.lineKind)) then
 		return "melee"
 	end
 end
 
--- The colours of the player's and the pet's Log Lines under a Log Filter, as
--- Blizzard_CombatLog_Filters stores one: keyed { r =, g =, b = } tables. They
--- tell only when lines take their source's colour (lineColorPriority 1), so
--- any other setting gives nil, and Pairing then accepts every colour.
-function Pairing.ColoursOf(filter)
-	local colors, settings = type(filter) == "table" and filter.colors, type(filter) == "table" and filter.settings
-	if type(colors) ~= "table" or type(colors.unitColoring) ~= "table" or type(settings) ~= "table"
-		or not settings.lineColoring or settings.lineColorPriority ~= 1 then
-		return nil
-	end
-	local colours = {}
-	for _, key in ipairs(OWN_COLOUR_KEYS) do
-		if type(colors.unitColoring[key]) == "table" then
-			colours[#colours + 1] = colors.unitColoring[key]
+-- Takes from lines the first one that suits the Hit.
+local function takeSuited(hit, lines)
+	for i, line in ipairs(lines) do
+		if suits(hit, line) then
+			return table.remove(lines, i)
 		end
 	end
-	return colours[1] and colours or nil
 end
 
 -- Pairs each Hit from the adapter with the Log Line that proves it is the
@@ -86,31 +95,14 @@ end
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier),
 -- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
--- colours comes from Pairing.ColoursOf; nil accepts lines of every colour.
+-- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
+-- or one in a colour that is never the player's, pairs with none.
 function Pairing.New(options)
-	local colours, onDecision = options.colours, options.onDecision
+	local onDecision = options.onDecision
 	local frameTime
 	local frameHits, frameLines = {}, {}
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
-
-	local function isOwnColour(line)
-		if not colours then
-			return true
-		end
-		local r, g, b = line.r, line.g, line.b
-		-- A secret colour cannot be compared, so such a line is kept.
-		if issecretvalue(r) or issecretvalue(g) or issecretvalue(b) then
-			return true
-		end
-		for _, colour in ipairs(colours) do
-			if math.abs(r - colour.r) <= COLOUR_TOLERANCE and math.abs(g - colour.g) <= COLOUR_TOLERANCE
-				and math.abs(b - colour.b) <= COLOUR_TOLERANCE then
-				return true
-			end
-		end
-		return false
-	end
 
 	-- Ends the holds and drops the lines that are over by this time. A held
 	-- Hit takes the oldest waiting line that came after it within the hold,
@@ -122,7 +114,7 @@ function Pairing.New(options)
 			local hit = heldHits[1]
 			local index
 			for i, line in ipairs(waitingLines) do
-				if line.time > hit.time and line.time <= hit.time + HOLD then
+				if line.time > hit.time and line.time <= hit.time + HOLD and suits(hit, line) then
 					index = i
 					break
 				end
@@ -143,10 +135,10 @@ function Pairing.New(options)
 		if isZeroWound(hit) or isOthersHeal(hit) then
 			onDecision(hit, nil)
 		elseif OWN_UNITS[hit.unit] then
-			local found = OWN_ACTIONS[hit.action] and table.remove(lines, 1) or nil
+			local found = OWN_ACTIONS[hit.action] and takeSuited(hit, lines) or nil
 			onDecision(hit, found, found and "frame")
 		else
-			local found, how = table.remove(lines, 1), "frame"
+			local found, how = takeSuited(hit, lines), "frame"
 			if not found then
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line)
@@ -190,11 +182,6 @@ function Pairing.New(options)
 
 	local pairing = {}
 
-	-- New Log Filter colours, for the lines that come after.
-	function pairing.SetColours(newColours)
-		colours = newColours
-	end
-
 	-- Casts and Swings pass by: no rule uses them yet, and they do not open a
 	-- frame.
 	function pairing.Push(record)
@@ -206,9 +193,7 @@ function Pairing.New(options)
 			frameHits[#frameHits + 1] = record
 		elseif record.kind == "line" then
 			frameTime = record.time
-			if isOwnColour(record) then
-				frameLines[#frameLines + 1] = record
-			end
+			frameLines[#frameLines + 1] = record
 		end
 	end
 
