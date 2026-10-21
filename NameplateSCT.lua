@@ -18,6 +18,8 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
+-- The spell whose icon a swing shows.
+local AUTO_ATTACK = 6603
 -- Forever has only the _v2 names of the Blizzard Target Text CVars.
 local blizzardCvar = "floatingCombatTextCombatDamage_v2"
 
@@ -1017,7 +1019,8 @@ end
 -- Swing Delay before its Hit, so a Hit that paired that way is treated as an
 -- autoattack; a swing whose line comes in its own frame gets the ability
 -- animation. spellID, from Spell Identity, gives the icon, and is nil when
--- the spell is not known. lineKind is the Line Kind of the Hit's Log Line,
+-- the spell is not known. A swing shows Auto Attack's icon, as the log makes
+-- the player's swings and the pet's look the same. lineKind is the Line Kind of the Hit's Log Line,
 -- or nil when its colour told none. late is the Nameplate as it hid, for a
 -- late Hit (see Flow.New).
 function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
@@ -1048,12 +1051,13 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 		end
 	end
 	local spellName = how == "melee" and "melee" or nil
+	local iconID = spellID or (ns.Filter.IsSwing(how, lineKind) and AUTO_ATTACK or nil)
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(where, spellName, hit.amount, school, crit, spellID)
+		self:DamageEvent(where, spellName, hit.amount, school, crit, iconID)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(where, spellName, hit.action, spellID)
+		self:MissEvent(where, spellName, hit.action, iconID)
 	end
 end
 
