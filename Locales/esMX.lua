@@ -68,7 +68,6 @@ L["Start radius for fireworks animation"] = "Start radius for fireworks animatio
 --L["Inverse Spell Filter"] = "Inverse Spell Filter"
 --L["Inverse the logic and only show the spells in the list instead of filtering them away."] = "Inverse the logic and only show the spells in the list instead of filtering them away."
 --L["Inverse NPC Filter"] = "Inverse NPC Filter"
---L["Inverse the logic and only show npc's in the list instead of filtering them away."] = "Inverse the logic and only show npc's in the list instead of filtering them away."
 --L["Left"] = "Left"
 --L["Let Masque skin the icons"] = "Let Masque skin the icons"
 --L["Low"] = "Low"

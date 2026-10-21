@@ -188,6 +188,10 @@ local defaults = {
 			alpha = 0.5,
 		},
 		filterEnabled = false,
+		-- The selected NPC Types (see Filter.NpcShows). Unlike a spell list,
+		-- they fit every class, so all characters share them.
+		npcTypes = { boss = false, rare = false, elite = false, normal = false, minor = false },
+		inverseNPCTypes = false,
 	},
 	-- A spell list is for one class, so each character has its own.
 	char = {
@@ -1021,6 +1025,10 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind)
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
 		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, how, lineKind) then
+			return
+		end
+		local npcType = ns.Filter.NpcType(UnitClassification(hit.unit), UnitIsBossMob(hit.unit))
+		if not ns.Filter.NpcShows(self.db.global.npcTypes, self.db.global.inverseNPCTypes, npcType) then
 			return
 		end
 	end
@@ -1870,6 +1878,10 @@ local menu = {
 	},
 }
 
+-- AceConfig lists a multiselect's boxes by key, so number keys keep the NPC
+-- Types in the order Filter.NpcType checks them.
+local NPC_TYPE_ORDER = { "boss", "rare", "elite", "normal", "minor" }
+
 local filters = {
 	name = L["Filters"],
 	type = 'group',
@@ -1892,6 +1904,15 @@ local filters = {
 			order = 1.5,
 			width = 1,
 		},
+		inverseNPCTypes = {
+			type = "toggle",
+			name = L["Inverse NPC Filter"],
+			desc = L["Inverse the logic and only show the NPC types you select instead of filtering them away."],
+			get = function() return NameplateSCT.db.global.inverseNPCTypes end,
+			set = function(_, newValue) NameplateSCT.db.global.inverseNPCTypes = newValue end,
+			order = 1.6,
+			width = 1,
+		},
 		header = {
 			type = "header",
 			name = "",
@@ -1906,6 +1927,16 @@ local filters = {
 			width = 1,
 			get = function() return NameplateSCT.db.char.spellFilter end,
 			set = function(_, newValue) NameplateSCT:SetSpellFilter(newValue) end,
+		},
+		npcTypes = {
+			type = "multiselect",
+			name = L["NPC Types"],
+			desc = L["A boss counts as Boss even when it is elite, and a rare elite as Rare. Minor covers totems, critters, and other trivial units. Your choices count for all your characters."],
+			values = { L["Boss"], L["Rare"], L["Elite"], L["Normal"], L["Minor"] },
+			get = function(_, index) return NameplateSCT.db.global.npcTypes[NPC_TYPE_ORDER[index]] end,
+			set = function(_, index, value) NameplateSCT.db.global.npcTypes[NPC_TYPE_ORDER[index]] = value end,
+			order = 4,
+			width = 1,
 		},
 	},
 }

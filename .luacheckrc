@@ -3544,6 +3544,7 @@ globals = {
 	"UnitIsAFK",
 	"UnitIsBattlePet",
 	"UnitIsBattlePetCompanion",
+	"UnitIsBossMob",
 	"UnitIsCharmed",
 	"UnitIsConnected",
 	"UnitIsControlling",
