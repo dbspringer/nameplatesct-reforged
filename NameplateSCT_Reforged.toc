@@ -29,4 +29,6 @@ src\Pairing.lua
 src\Flow.lua
 src\Amount.lua
 src\Events.lua
+src\LogFilter.lua
+src\LogFilterWindow.lua
 NameplateSCT.lua
