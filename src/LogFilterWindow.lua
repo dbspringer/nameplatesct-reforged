@@ -17,7 +17,7 @@ local window, text, fixButton
 -- Blizzard table taints the Blizzard code that reads it.
 local function build()
 	window = CreateFrame("Frame", nil, UIParent, "BasicFrameTemplateWithInset")
-	window:SetSize(380, 180)
+	window:SetSize(420, 180)
 	window:SetPoint("CENTER")
 	window:SetFrameStrata("DIALOG")
 	window:Hide()
