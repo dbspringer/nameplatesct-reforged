@@ -60,6 +60,22 @@ describe("LogFilter", function()
 		assert.are.same({ destFlags = { [ME] = false, [MY_PET] = false }, eventList = {} }, saved.filters[1].filters[2])
 	end)
 
+	it("accepts a picked filter of any name that sends everything", function()
+		local renamed = savedFilters()
+		LogFilter.Fix(renamed, MY_ACTIONS)
+		renamed.filters[1].name = "Mine"
+		assert.are.equal("ok", LogFilter.Check(renamed, MY_ACTIONS))
+
+		local custom = savedFilters()
+		custom.filters[3] = { name = "Raid", filters = { {
+			sourceFlags = { [ME] = true, [MY_PET] = true, [PARTY] = true },
+			eventList = { SWING_DAMAGE = true, RANGE_DAMAGE = true, SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true,
+				SWING_MISSED = true, RANGE_MISSED = true, SPELL_MISSED = true, SPELL_PERIODIC_MISSED = true },
+		} } }
+		custom.currentFilter = 3
+		assert.are.equal("ok", LogFilter.Check(custom, MY_ACTIONS))
+	end)
+
 	it("cannot fix a combat log that has no My actions filter, and changes nothing", function()
 		local saved = savedFilters()
 		table.remove(saved.filters, 1)

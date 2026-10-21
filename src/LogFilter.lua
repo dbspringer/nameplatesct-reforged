@@ -26,37 +26,39 @@ local function indexOf(saved, name)
 	end
 end
 
--- How the saved Log Filters (Blizzard_CombatLog_Filters) suit Pairing: "ok";
--- "fixable", when the filter named myActions lacks a source or a message
--- type, or is not picked; "gone", when no filter has that name; or nil, when
--- the game has not loaded its Log Filters.
-function LogFilter.Check(saved, myActions)
-	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
-		return nil
-	end
-	local index = indexOf(saved, myActions)
-	if not index then
-		return "gone"
-	end
-	if saved.currentFilter ~= index then
-		return "fixable"
-	end
-	local parts = saved.filters[index].filters
+-- Whether a filter's first part sends what Pairing needs.
+local function sendsAll(filter)
+	local parts = type(filter) == "table" and filter.filters
 	local part = type(parts) == "table" and parts[1]
 	if type(part) ~= "table" or type(part.sourceFlags) ~= "table" or type(part.eventList) ~= "table" then
-		return "fixable"
+		return false
 	end
 	for _, flag in ipairs(SOURCES) do
 		if part.sourceFlags[flag] ~= true then
-			return "fixable"
+			return false
 		end
 	end
 	for _, event in ipairs(EVENTS) do
 		if part.eventList[event] ~= true then
-			return "fixable"
+			return false
 		end
 	end
-	return "ok"
+	return true
+end
+
+-- How the saved Log Filters (Blizzard_CombatLog_Filters) suit Pairing: "ok",
+-- when the picked filter sends what Pairing needs, whatever its name;
+-- otherwise "fixable", when a filter named myActions exists to fix and pick,
+-- or "gone", when none does; or nil, when the game has not loaded its Log
+-- Filters.
+function LogFilter.Check(saved, myActions)
+	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
+		return nil
+	end
+	if sendsAll(saved.filters[saved.currentFilter]) then
+		return "ok"
+	end
+	return indexOf(saved, myActions) and "fixable" or "gone"
 end
 
 -- Turns on in the filter named myActions what Check needs, and picks it. It
