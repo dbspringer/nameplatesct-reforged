@@ -12,13 +12,14 @@ local Label = assert(loadfile("tools/label-trace.lua"))()
 local Trace = assert(loadfile("tools/trace.lua"))()
 
 -- Pushes the entries through a new Flow, ends every hold, and returns the
--- Hits that went to show and to noPlate, each with its how.
+-- Hits that went to show and to noPlate, each with its how, and for show
+-- the Line Kind.
 local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
 		spellFacts = {},
-		show = function(hit, how)
-			shown[#shown + 1] = { hit = hit, how = how }
+		show = function(hit, how, _, lineKind)
+			shown[#shown + 1] = { hit = hit, how = how, lineKind = lineKind }
 		end,
 		noPlate = function(hit, how)
 			plateless[#plateless + 1] = { hit = hit, how = how }
@@ -68,6 +69,16 @@ describe("Flow", function()
 		end
 		flow.Tick(math.huge)
 		assert.are.same({ "4:short" }, shown)
+	end)
+
+	it("passes the Line Kind of the Hit's Log Line to show", function()
+		local swing = ns.LineKind.EventColours().SWING_DAMAGE
+		local shown = run({
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+		})
+		assert.are.equal(1, #shown)
+		assert.are.equal("swing", shown[1].lineKind)
 	end)
 
 	it("shows nothing for a Hit whose Nameplate hid in its frame, and still shows a Hit on another Nameplate", function()

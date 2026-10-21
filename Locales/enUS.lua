@@ -85,10 +85,9 @@ L["Monochrome"] = true
 L["NameplateSCT Reforged"] = true
 L["None"] = true
 L["Not now"] = true
-L["NPC id (eg: 23682) seperated by line\n\n The example is the Headless Horseman."] = true
-L["NPCs"] = true
 L["Off-Target Strata"] = true
 L["Off-Target Text Appearance"] = true
+L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells"] = true
 L["Outline"] = true
 L["Parried"] = true
 L["Position"] = true
@@ -108,7 +107,6 @@ L["Show Truncated Letter"] = true
 L["Size"] = true
 L["Sizing Modifiers"] = true
 L["Small Hits Scale"] = true
-L["Spellid/Spellname seperated by line\n\nWhite hits/melee = melee\nMiss/Parry/Dodge/etc = missed"] = true
 L["Spells"] = true
 L["Target Strata"] = true
 L["Text Formatting"] = true

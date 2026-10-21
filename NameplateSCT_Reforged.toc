@@ -32,6 +32,7 @@ src\DirectSpells.lua
 src\Identity.lua
 src\Flow.lua
 src\Amount.lua
+src\Filter.lua
 src\Events.lua
 src\LogFilter.lua
 src\LogFilterWindow.lua

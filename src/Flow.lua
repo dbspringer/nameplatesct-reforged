@@ -6,8 +6,9 @@ ns.Flow = Flow
 -- Connects the adapter, Pairing and Spell Identity, and sends on Your Hits
 -- on enemies. Raw events go in through Push, in the shape of Trace entries.
 -- Tick(now) closes the open frame and ends the holds that are over; call it
--- once each frame. show(hit, how, spellID) gets Your Hit on an enemy
--- Nameplate, with the spell that made it or nil (see Identity.New);
+-- once each frame. show(hit, how, spellID, lineKind) gets Your Hit on an
+-- enemy Nameplate, with the spell that made it or nil (see Identity.New),
+-- and the Line Kind of its Log Line, or nil when the colour told none;
 -- noPlate(hit, how), which is optional, gets Your Hit on target or a soft
 -- target that has no Nameplate. how is the rule that paired the Hit (see
 -- Pairing.New). spellFacts, which is required, holds the Spell Facts, which
@@ -56,7 +57,7 @@ function Flow.New(options)
 			local hit = decision.hit
 			if not decision.hidden then
 				if hit.unit:match("^nameplate%d+$") then
-					show(hit, decision.how, spellIDs[i])
+					show(hit, decision.how, spellIDs[i], decision.line.lineKind)
 				elseif noPlate then
 					noPlate(hit, decision.how)
 				end
