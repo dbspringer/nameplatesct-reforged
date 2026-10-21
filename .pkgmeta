@@ -20,6 +20,12 @@ externals:
 
 
 ignore:
+ - docs
+ - .github
+ - README.md
+ - AGENTS.md
+ - CLAUDE.md
+ - CONTEXT.md
  - .luacheckrc
  - .todo
  - .gitignore
