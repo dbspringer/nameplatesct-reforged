@@ -1,3 +1,7 @@
+_G.issecretvalue = function(value)
+	return value == "<secret>"
+end
+
 local ns = {}
 for _, file in ipairs({ "src/LineKind.lua", "src/Filter.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
@@ -78,5 +82,59 @@ describe("Filter.SpellShows", function()
 			assert.is_true(shows(text, true, BOLT))
 			assert.is_true(shows(text, false, { kind = "direct" }))
 		end
+	end)
+end)
+
+describe("Filter.NpcType", function()
+	it("gives each NPC one type, with Boss first and Rare before Elite", function()
+		local cases = {
+			{ "elite", true, "boss" },
+			{ "worldboss", false, "boss" },
+			{ "rareelite", false, "rare" },
+			{ "rare", false, "rare" },
+			{ "elite", false, "elite" },
+			{ "normal", false, "normal" },
+			{ "trivial", false, "minor" },
+			{ "minus", false, "minor" },
+		}
+		for _, case in ipairs(cases) do
+			assert.are.equal(case[3], Filter.NpcType(case[1], case[2]))
+		end
+	end)
+
+	it("gives no type when the game hides the classification or the boss flag", function()
+		assert.is_nil(Filter.NpcType("<secret>", true))
+		assert.is_nil(Filter.NpcType("elite", "<secret>"))
+	end)
+
+	it("gives a player the player type, which every NPC filter lets through", function()
+		assert.are.equal("player", Filter.NpcType("normal", false, true))
+		assert.is_nil(Filter.NpcType("normal", false, "<secret>"))
+		assert.is_true(Filter.NpcShows({ normal = true }, false, "player"))
+		assert.is_true(Filter.NpcShows({ boss = true }, true, "player"))
+	end)
+end)
+
+describe("Filter.NpcShows", function()
+	it("hides the selected types, or with inverse shows only them", function()
+		local types = { boss = false, elite = true }
+		assert.is_false(Filter.NpcShows(types, false, "elite"))
+		assert.is_true(Filter.NpcShows(types, false, "boss"))
+		assert.is_true(Filter.NpcShows(types, true, "elite"))
+		assert.is_false(Filter.NpcShows(types, true, "normal"))
+	end)
+
+	it("counts an NPC with no type as not selected", function()
+		assert.is_true(Filter.NpcShows({ elite = true }, false, nil))
+		assert.is_false(Filter.NpcShows({ elite = true }, true, nil))
+	end)
+
+	it("lets everything through when no type is selected, also inverted", function()
+		assert.is_true(Filter.NpcShows({ boss = false }, true, "boss"))
+		assert.is_true(Filter.NpcShows({}, true, nil))
+	end)
+
+	it("reads only the NPC Types from the saved selection", function()
+		assert.is_true(Filter.NpcShows({ oldType = true }, true, "boss"))
 	end)
 end)

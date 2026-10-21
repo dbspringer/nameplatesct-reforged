@@ -60,3 +60,58 @@ function Filter.SpellShows(list, inverse, spellName, action, how, lineKind)
 		or (not swing and spellName == nil and list.words.unknown)
 	return (listed == true) == (inverse == true)
 end
+
+-- The NPC Types, highest rank first.
+Filter.NPC_TYPES = { "boss", "rare", "elite", "normal", "minor" }
+
+-- The NPC Type that each UnitClassification value gives when UnitIsBossMob
+-- is false. A rare elite is Rare, not Elite.
+local TYPE_OF_CLASSIFICATION = {
+	worldboss = "boss",
+	rareelite = "rare",
+	rare = "rare",
+	elite = "elite",
+	normal = "normal",
+	trivial = "minor",
+	minus = "minor",
+}
+
+-- The NPC Type of a unit with this classification and UnitIsBossMob and
+-- UnitIsPlayer results, so a dungeon boss, which is also elite, is a Boss.
+-- A player is "player", which is no NPC Type: the game calls players normal,
+-- and the NPC filter must not hide PvP numbers. nil when the game makes a
+-- value secret, or for a classification it adds later.
+function Filter.NpcType(classification, isBoss, isPlayer)
+	if issecretvalue(classification) or issecretvalue(isBoss) or issecretvalue(isPlayer) then
+		return nil
+	end
+	if isPlayer then
+		return "player"
+	end
+	if isBoss then
+		return "boss"
+	end
+	return TYPE_OF_CLASSIFICATION[classification]
+end
+
+-- Whether the NPC filter lets Plate Text on an NPC of this type through.
+-- types holds the selected NPC Types ({ elite = true }); they hide, or,
+-- inverted, are the only ones shown. An NPC with no type counts as not
+-- selected. With no type selected it lets everything through, also
+-- inverted, as an empty Spell Filter does. A player always passes. Only the
+-- keys in NPC_TYPES count, so a saved key that the options no longer show
+-- cannot hide anything.
+function Filter.NpcShows(types, inverse, npcType)
+	if npcType == "player" then
+		return true
+	end
+	local any = false
+	for _, key in ipairs(Filter.NPC_TYPES) do
+		any = any or types[key] == true
+	end
+	if not any then
+		return true
+	end
+	local selected = npcType ~= nil and types[npcType] == true
+	return selected == (inverse == true)
+end
