@@ -41,6 +41,7 @@ globals = {
 
 	-- framexml misc
 	"C_Timer",
+	"C_UI",
 	"C_CombatLog",
 	"issecretvalue",
 	"C_Spell",

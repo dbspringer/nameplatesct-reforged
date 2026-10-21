@@ -527,6 +527,7 @@ function NameplateSCT:OnEnable()
 	if self.db.global.hideTargetText then
 		hideTargetText()
 	end
+	ns.LogFilterWindow.Start()
 	ns.Events.Start(function(hit, how)
 		self:ShowHit(hit, how)
 	end, function()
@@ -541,6 +542,7 @@ function NameplateSCT:OnDisable()
 	restoreTargetText()
 	self:UnregisterAllEvents()
 	ns.Events.Stop()
+	ns.LogFilterWindow.Stop()
 
 	for fontString, _ in pairs(animating) do
 		recycleFontString(fontString)
