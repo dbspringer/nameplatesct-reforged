@@ -107,7 +107,8 @@ local function onEvent(_, event, ...)
 		entry.frame = plateFrames[unit]
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		-- The Nameplate as it hid, for a late Hit on it (see Flow.New). The
-		-- token still names the leaving unit here.
+		-- token still names the leaving unit here (unverified on Forever; the
+		-- Traces' GUIDs at this event say so).
 		entry.frame = plateFrames[unit]
 		plateFrames[unit] = nil
 		entry.wasTarget = isTrue(UnitIsUnit(unit, "target"))
@@ -152,7 +153,7 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how, spellID, lineKind) gets Your Hits on an enemy Nameplate, and
+-- show(hit, how, spellID, lineKind, late) gets Your Hits on an enemy Nameplate, and
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)

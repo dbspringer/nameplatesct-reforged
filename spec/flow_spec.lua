@@ -13,7 +13,7 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 -- Pushes the entries through a new Flow, ends every hold, and returns the
 -- Hits that went to show and to noPlate, each with its how, and for show
--- the Line Kind and the hidden Nameplate of a late Hit.
+-- the Line Kind, and for a late Hit its Nameplate as it hid.
 local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
@@ -86,11 +86,12 @@ describe("Flow", function()
 	local function added(time, token, frame)
 		return { time, "NAME_PLATE_UNIT_ADDED", token, frame = frame }
 	end
-	local function removed(time, token, frame)
-		return { time, "NAME_PLATE_UNIT_REMOVED", token, frame = frame, wasTarget = true, classification = "elite",
-			isBoss = false, isPlayer = false }
+	local function removed(time, token, frame, classification)
+		return { time, "NAME_PLATE_UNIT_REMOVED", token, frame = frame, wasTarget = true,
+			classification = classification or "elite", isBoss = false, isPlayer = false }
 	end
 	local AS_IT_HID = { frame = FRAME, wasTarget = true, classification = "elite", isBoss = false, isPlayer = false }
+	local plateHit = { 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" }
 
 	it("shows a Hit whose Nameplate hid in its frame on that Nameplate as it hid, and a Hit on another as usual", function()
 		local shown = run({
@@ -102,18 +103,19 @@ describe("Flow", function()
 			removed(1, "nameplate1", FRAME),
 		})
 		assert.are.same({ 2, 3 }, entriesOf(shown))
-		assert.are.same({ AS_IT_HID }, { shown[1].late })
+		assert.are.same(AS_IT_HID, shown[1].late)
 		assert.is_nil(shown[2].late)
 	end)
 
+	-- The Nameplate showed before Flow started, as after a /reload, so Flow
+	-- never saw it added.
 	it("shows a Hit held for a late Log Line whose Nameplate hid during the hold on that Nameplate", function()
 		local shown = run({
-			added(0, "nameplate1", FRAME),
 			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
 			removed(1.05, "nameplate1", FRAME),
 			{ 1.1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
 		})
-		assert.are.same({ 2 }, entriesOf(shown))
+		assert.are.same({ 1 }, entriesOf(shown))
 		assert.are.same(AS_IT_HID, shown[1].late)
 	end)
 
@@ -128,16 +130,64 @@ describe("Flow", function()
 		assert.are.same({}, entriesOf(shown))
 	end)
 
+	it("shows nothing for a late Hit whose frame, never seen added, shows a new unit", function()
+		local shown = run({
+			plateHit,
+			removed(1.05, "nameplate1", FRAME),
+			added(1.08, "nameplate4", FRAME),
+			{ 1.1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+		})
+		assert.are.same({}, entriesOf(shown))
+	end)
+
+	it("shows nothing for a late Hit whose frame showed a new unit that hid again", function()
+		local shown = run({
+			added(0, "nameplate1", FRAME), plateHit,
+			removed(1.02, "nameplate1", FRAME),
+			added(1.04, "nameplate1", FRAME),
+			removed(1.06, "nameplate1", FRAME),
+			{ 1.1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+		})
+		assert.are.same({}, entriesOf(shown))
+	end)
+
+	it("gives a late Hit its own Nameplate as it hid, though its token hid again during the hold", function()
+		local OTHER = {}
+		local shown = run({
+			added(0, "nameplate1", FRAME), plateHit,
+			removed(1.02, "nameplate1", FRAME),
+			added(1.04, "nameplate1", OTHER),
+			removed(1.06, "nameplate1", OTHER, "minus"),
+			{ 1.1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+		})
+		assert.are.same(AS_IT_HID, shown[1].late)
+	end)
+
+	it("gives a late Hit its own Nameplate however often its token hid during the hold", function()
+		local shown = run({
+			added(0, "nameplate1", FRAME), plateHit,
+			removed(1.02, "nameplate1", FRAME),
+			added(1.04, "nameplate1", {}),
+			removed(1.06, "nameplate1", {}),
+			added(1.08, "nameplate1", {}),
+			removed(1.1, "nameplate1", {}),
+			{ 1.12, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+		})
+		assert.are.same(AS_IT_HID, shown[1].late)
+	end)
+
 	it("shows a Hit on the unit that a token names after the token's Nameplate hid, even in the same frame", function()
 		local shown = run({
-			{ 1, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
-			{ 1, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+			added(0, "nameplate1", FRAME),
+			removed(1, "nameplate1", FRAME),
+			added(1, "nameplate1", FRAME),
 			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
 			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
 			{ 2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
 			{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
 		})
-		assert.are.same({ 3, 5 }, entriesOf(shown))
+		assert.are.same({ 4, 6 }, entriesOf(shown))
+		assert.are.same({}, { shown[1].late, shown[2].late })
 	end)
 
 	describe("on the Warlock Traces", function()

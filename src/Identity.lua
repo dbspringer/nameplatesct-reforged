@@ -72,15 +72,16 @@ local function firstTickFits(hit, spell, from, extra)
 	return since >= spell.interval - TICK_TOLERANCE and since <= spell.interval + TICK_TOLERANCE + extra
 end
 
--- The key of a decision's unit: its plate life (see Flow.New), or the unit.
-local function plateOf(decision)
-	return decision.plate or decision.hit.unit
+-- The key of a Hit's unit for its Tick Rhythms: its plate life (see
+-- Adapter.New), as one token shows other units over time, or the unit.
+local function plateOf(hit)
+	return hit.life or hit.unit
 end
 
 -- Whether two tick decisions can be the same spell's: the same time on the
 -- same unit, and the same school or a secret one.
 local function sameTick(a, b)
-	if plateOf(a) ~= plateOf(b) or a.hit.time ~= b.hit.time then
+	if plateOf(a.hit) ~= plateOf(b.hit) or a.hit.time ~= b.hit.time then
 		return false
 	end
 	local schoolA, schoolB = a.hit.school, b.hit.school
@@ -90,13 +91,11 @@ end
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
--- Cast(record) takes the adapter's cast records. Of(hit, line, crowded,
--- plate) gives the spell ID of Your Hit on an enemy, or nil; Hits come in
--- about the order of their time, a held Hit up to DECIDE_LATE late. crowded
--- says that another tick that could be the same spell's came at the same
--- time on the same unit. plate keys the unit's Tick Rhythms: the life of
--- its Nameplate (see Flow.New), as one token shows other units over time, or
--- nil for the Hit's unit. PlateGone(plate) forgets a plate's Tick Rhythms.
+-- Cast(record) takes the adapter's cast records. Of(hit, line, crowded)
+-- gives the spell ID of Your Hit on an enemy, or nil; Hits come in about the
+-- order of their time, a held Hit up to DECIDE_LATE late. crowded says that
+-- another tick that could be the same spell's came at the same time on the
+-- same unit.
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
@@ -106,7 +105,8 @@ function Identity.New(saved)
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
 	-- tick (none yet after a landing), and ends when its duration ends.
-	local rhythms = {}
+	-- Weak keys, so a plate life's rhythms go with the life.
+	local rhythms = setmetatable({}, { __mode = "k" })
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -248,9 +248,9 @@ function Identity.New(saved)
 		end
 	end
 
-	local function ofTick(hit, school, crowded, key)
-		local plate = rhythms[key] or {}
-		rhythms[key] = plate
+	local function ofTick(hit, school, crowded, plate)
+		local plateRhythms = rhythms[plate] or {}
+		rhythms[plate] = plateRhythms
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
@@ -258,15 +258,15 @@ function Identity.New(saved)
 				return
 			end
 			tried[spellID] = true
-			local rhythm = rhythmOf(hit, spellID, spell, plate[spellID])
+			local rhythm = rhythmOf(hit, spellID, spell, plateRhythms[spellID])
 			-- Every spell that fits keeps its Tick Rhythm, so a tie does not end
 			-- the rhythm of the one that ticked.
 			if rhythm then
-				plate[spellID] = rhythm
+				plateRhythms[spellID] = rhythm
 				fits, found = fits + 1, spellID
 			end
 		end
-		for spellID in pairs(plate) do
+		for spellID in pairs(plateRhythms) do
 			try(spellID)
 		end
 		for _, cast in ipairs(casts) do
@@ -293,8 +293,8 @@ function Identity.New(saved)
 			secret = secret or nil }
 	end
 
-	function identity.Of(hit, line, crowded, plate)
-		plate = plate or hit.unit
+	function identity.Of(hit, line, crowded)
+		local plate = plateOf(hit)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
 		if IS_TICK[line.lineKind] then
@@ -304,7 +304,7 @@ function Identity.New(saved)
 		return group and ofDirect(hit, group, school, miss, plate) or nil
 	end
 
-	-- Of for each { hit, line, plate } of decisions that came together, with
+	-- Of for each { hit, line } of decisions that came together, with
 	-- whether each tick is crowded. A resisted tick reports school 1 whatever
 	-- its spell, so only real ticks crowd.
 	function identity.OfAll(decisions)
@@ -319,13 +319,9 @@ function Identity.New(saved)
 					end
 				end
 			end
-			spellIDs[i] = identity.Of(decision.hit, decision.line, crowded, decision.plate)
+			spellIDs[i] = identity.Of(decision.hit, decision.line, crowded)
 		end
 		return spellIDs
-	end
-
-	function identity.PlateGone(plate)
-		rhythms[plate] = nil
 	end
 
 	return identity

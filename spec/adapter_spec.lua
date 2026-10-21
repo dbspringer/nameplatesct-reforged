@@ -67,6 +67,8 @@ describe("Adapter", function()
 				report(1, "softenemy", "nameplate1"),
 			})
 			assert.are.equal(1, #records)
+			assert.is_table(records[1].life)
+			records[1].life = nil
 			assert.are.same({ kind = "hit", time = 1, entry = 1, unit = "nameplate1", action = "WOUND",
 				descriptor = "", amount = 29, school = 1 }, records[1])
 		end)
@@ -89,6 +91,18 @@ describe("Adapter", function()
 				report(1, "nameplate1", "nameplate1"),
 			})
 			assert.are.same({ 1, 3 }, { records[1].entry, records[2].entry })
+		end)
+
+		it("keeps Hits apart on two plate lives of one token in one frame, and gives the old life its hide", function()
+			local records = run({
+				report(1, "nameplate1", "nameplate1"),
+				{ 1, "NAME_PLATE_UNIT_REMOVED", "nameplate1", classification = "elite" },
+				{ 1, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+				report(1, "nameplate1", "nameplate1"),
+			})
+			assert.are.equal(2, #records)
+			assert.are_not.equal(records[1].life, records[2].life)
+			assert.are.same({ "elite" }, { records[1].life.hid.classification, records[2].life.hid })
 		end)
 
 		it("keeps Hits on different nameplates apart", function()

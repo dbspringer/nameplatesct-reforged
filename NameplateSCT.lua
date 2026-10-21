@@ -684,23 +684,6 @@ local function startGracePeriod(fontString)
 	fontString.unit = nil
 end
 
--- A late Hit, decided after its Nameplate hid (see Flow.New), has no unit:
--- late is its Nameplate as it hid, and its text starts in the Grace Period on
--- that frame, with the look it had then.
-local function isTargetText(unit, late)
-	if late then
-		return late.wasTarget == true
-	end
-	return isTrue(UnitIsUnit(unit, "target"))
-end
-
-local function plateFrameOf(unit, late)
-	if late then
-		return late.frame
-	end
-	return C_NamePlate.GetNamePlateForUnit(unit)
-end
-
 local function AnimationOnUpdate()
 	if (next(animating)) then
 		for fontString, _ in pairs(animating) do
@@ -866,8 +849,8 @@ function NameplateSCT:NAME_PLATE_UNIT_REMOVED(event, unitID)
 end
 
 -- The game gives hidden Nameplate frames to new units. Any text on this frame
--- belongs to an earlier unit, even text shown while that unit's Nameplate was
--- hiding, so it ends before it can show on the new unit.
+-- belongs to an earlier unit, even text that started after that unit's
+-- Nameplate hid (a late Hit), so it ends before it can show on the new unit.
 function NameplateSCT:NAME_PLATE_UNIT_ADDED(event, unitID)
 	local plate = C_NamePlate.GetNamePlateForUnit(unitID)
 	for fontString, _ in pairs(animating) do
@@ -895,7 +878,7 @@ end
 local numDamageEvents = 0
 local lastDamageEventTime
 local runningAverageDamageEvents = 0
-function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId, late)
+function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellId)
 	-- A Secret Amount can only be shown, so the options that compare an
 	-- amount pass it by.
 	local secret = issecretvalue(amount)
@@ -931,7 +914,7 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId
 		return
 	end
 
-	local isTarget = isTargetText(unit, late)
+	local isTarget = where.isTarget
 
 	if (not isTarget and not self.db.global.displayOffTargetText) then
 		return
@@ -994,15 +977,15 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId
 	end
 
     if iconOnly then
-        self:DisplayIconWithoutText(unit, size, animation, spellId, pow, spellName, late)
+        self:DisplayIconWithoutText(where, size, animation, spellId, pow, spellName)
     else
-        self:DisplayText(unit, text, color, size, animation, spellId, pow, spellName, late)
+        self:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
     end
 end
 
-function NameplateSCT:MissEvent(unit, spellName, missType, spellId, late)
+function NameplateSCT:MissEvent(where, spellName, missType, spellId)
 	local text, animation, pow, size, alpha, color
-	local isTarget = isTargetText(unit, late)
+	local isTarget = where.isTarget
 
 	animation = self.db.global.animations.miss
 	color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
@@ -1027,7 +1010,7 @@ function NameplateSCT:MissEvent(unit, spellName, missType, spellId, late)
 
 	text = MISS_EVENT_STRINGS[missType] or L["Missed"]
 
-	self:DisplayText(unit, text, color, size, animation, spellId, pow, spellName, late)
+	self:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
 end
 
 -- Plate Text for Your Hit on an enemy Nameplate. A melee Log Line comes one
@@ -1035,9 +1018,19 @@ end
 -- autoattack; a swing whose line comes in its own frame gets the ability
 -- animation. spellID, from Spell Identity, gives the icon, and is nil when
 -- the spell is not known. lineKind is the Line Kind of the Hit's Log Line,
--- or nil when its colour told none. late is the hidden Nameplate of a late
--- Hit (see Flow.New), whose token can name another unit by now.
+-- or nil when its colour told none. late is the Nameplate as it hid, for a
+-- late Hit (see Flow.New).
 function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
+	-- Where the text goes. A late Hit's token can name another unit by now,
+	-- so its text has no unit: it starts in the Grace Period on the frame its
+	-- Nameplate hid with, and keeps the look it had then.
+	local where
+	if late then
+		where = { frame = late.frame, isTarget = late.wasTarget == true }
+	else
+		where = { unit = hit.unit, frame = C_NamePlate.GetNamePlateForUnit(hit.unit),
+			isTarget = isTrue(UnitIsUnit(hit.unit, "target")) }
+	end
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
 		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, how, lineKind) then
@@ -1058,9 +1051,9 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(hit.unit, spellName, hit.amount, school, crit, spellID, late)
+		self:DamageEvent(where, spellName, hit.amount, school, crit, spellID)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(hit.unit, spellName, hit.action, spellID, late)
+		self:MissEvent(where, spellName, hit.action, spellID)
 	end
 end
 
@@ -1073,10 +1066,10 @@ end
 -- The text takes its colour from SetTextColor, not from a colour code joined
 -- to it: a Secret Amount's text is a secret, and a join with one is not known
 -- to work.
-function NameplateSCT:DisplayText(unit, text, color, size, animation, spellId, pow, spellName, late)
+function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
 	local fontString
 	local icon
-	local nameplate = plateFrameOf(unit, late)
+	local nameplate = where.frame
 
 	if (not nameplate) then
 		return
@@ -1101,9 +1094,10 @@ function NameplateSCT:DisplayText(unit, text, color, size, animation, spellId, p
 		fontString.startHeight = 5
 	end
 
-	-- Set here, in case the Grace Period starts before the first update.
-	fontString.unit = not late and unit or nil
-	fontString.wasTarget = isTargetText(unit, late)
+	-- A late Hit's text is in the Grace Period from the start, and other text
+	-- can enter it before its first update, so wasTarget is set here.
+	fontString.unit = where.unit
+	fontString.wasTarget = where.isTarget
 
 	local texture = GetSpellTexture(spellId or spellName or "")
 	if NameplateSCT.db.global.showIcon and texture then
@@ -1146,10 +1140,10 @@ function NameplateSCT:DisplayText(unit, text, color, size, animation, spellId, p
 	self:Animate(fontString, nameplate, duration, animation)
 end
 
-function NameplateSCT:DisplayIconWithoutText(unit, size, animation, spellId, pow, spellName, late)
+function NameplateSCT:DisplayIconWithoutText(where, size, animation, spellId, pow, spellName)
 	local fontString
 	local icon
-	local nameplate = plateFrameOf(unit, late)
+	local nameplate = where.frame
 
 	if (not nameplate) then
 		return
@@ -1166,9 +1160,10 @@ function NameplateSCT:DisplayIconWithoutText(unit, size, animation, spellId, pow
 	    fontString.startHeight = 5
 	end
 
-	-- Set here, in case the Grace Period starts before the first update.
-	fontString.unit = not late and unit or nil
-	fontString.wasTarget = isTargetText(unit, late)
+	-- A late Hit's text is in the Grace Period from the start, and other text
+	-- can enter it before its first update, so wasTarget is set here.
+	fontString.unit = where.unit
+	fontString.wasTarget = where.isTarget
 
 	local texture = GetSpellTexture(spellId or spellName or "")
 	if NameplateSCT.db.global.showIcon and texture then

@@ -59,14 +59,16 @@ end
 -- The game sends one report of a Hit for each token that names the unit. So,
 -- for one unit and action in a frame, the token with the most reports gives
 -- the number of Hits, and the Nth report of each token is a repeat of the Nth
--- Hit. A Hit's entry number is that of its earliest repeat.
+-- Hit. A Hit's entry number is that of its earliest repeat. Reports on two
+-- plate lives of one token, as when it hides and shows a new unit in one
+-- frame, are two units.
 local function addHits(reports, records)
 	local groups, order = {}, {}
 	for _, report in ipairs(reports) do
-		local key = report.unit .. "\0" .. report.action
+		local key = report.unit .. "\0" .. report.action .. "\0" .. tostring(report.life)
 		local group = groups[key]
 		if not group then
-			group = { unit = report.unit, byToken = {}, tokens = {} }
+			group = { unit = report.unit, life = report.life, byToken = {}, tokens = {} }
 			groups[key] = group
 			order[#order + 1] = group
 		end
@@ -106,6 +108,7 @@ local function addHits(reports, records)
 				time = report.time,
 				entry = first,
 				unit = unit,
+				life = group.life,
 				action = report.action,
 				descriptor = report.descriptor,
 				amount = report.amount,
@@ -138,6 +141,20 @@ function Adapter.New(onRecord)
 		end
 	end
 
+	-- Each Nameplate token's current plate life: one unit's time on the token.
+	-- A Hit keeps the life that its reports came in, so Flow knows whether its
+	-- Nameplate hid, and which one, however often the token moves on before
+	-- Pairing decides the Hit. At the hide, hid is the Nameplate as it hid
+	-- (see Flow.New); reused says that its frame has shown a unit since.
+	local lives, lifeOnFrame = {}, {}
+
+	-- A token that showed before the first event, as after a /reload, starts
+	-- its life when the adapter first sees it.
+	local function lifeOf(token)
+		lives[token] = lives[token] or {}
+		return lives[token]
+	end
+
 	local function add(entry, record)
 		record.time = entry[1]
 		record.entry = count
@@ -156,12 +173,30 @@ function Adapter.New(onRecord)
 		end
 		frameTime = time
 
-		if event == "UNIT_COMBAT" then
+		if event == "NAME_PLATE_UNIT_ADDED" then
+			local life = {}
+			lives[entry[3]] = life
+			if entry.frame then
+				if lifeOnFrame[entry.frame] then
+					lifeOnFrame[entry.frame].reused = true
+				end
+				lifeOnFrame[entry.frame] = life
+			end
+		elseif event == "NAME_PLATE_UNIT_REMOVED" then
+			local life = lifeOf(entry[3])
+			life.hid = { frame = entry.frame, wasTarget = entry.wasTarget, classification = entry.classification,
+				isBoss = entry.isBoss, isPlayer = entry.isPlayer }
+			if entry.frame then
+				lifeOnFrame[entry.frame] = life
+			end
+			lives[entry[3]] = nil
+		elseif event == "UNIT_COMBAT" then
 			local unit = unitOf(entry)
 			if unit then
 				reports[#reports + 1] = {
 					index = count,
 					unit = unit,
+					life = unit:match("^nameplate%d+$") and lifeOf(unit) or nil,
 					token = entry[3],
 					time = time,
 					action = entry[4],

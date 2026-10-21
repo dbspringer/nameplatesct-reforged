@@ -349,12 +349,12 @@ describe("Spell Identity", function()
 			assert.are.same({ CORRUPTION, REND }, { spells[2], together(identity, 13, { PHYSICAL, { 1, "tickMiss" } })[1] })
 		end)
 
-		it("does not crowd ticks on two lives of one Nameplate token, which were two units", function()
+		it("does not crowd ticks on two plate lives of one token, which were two units", function()
 			local identity = Identity.New({})
 			cast(identity, 0, CORRUPTION)
 			local spells = identity.OfAll({
-				{ hit = { time = 3, unit = "nameplate1", school = SHADOW }, line = { lineKind = "tick" }, plate = "nameplate1#0" },
-				{ hit = { time = 3, unit = "nameplate1", school = SHADOW }, line = { lineKind = "tick" }, plate = "nameplate1#1" },
+				{ hit = { time = 3, unit = "nameplate1", school = SHADOW, life = {} }, line = { lineKind = "tick" } },
+				{ hit = { time = 3, unit = "nameplate1", school = SHADOW, life = {} }, line = { lineKind = "tick" } },
 			})
 			assert.are.equal(CORRUPTION, spells[2])
 		end)
@@ -439,13 +439,11 @@ describe("Spell Identity", function()
 			assert.are.same({ CORRUPTION, CORRUPTION, CORRUPTION }, ticks)
 		end)
 
-		it("follows a Tick Rhythm on its own Nameplate only, and forgets it when that plate is gone", function()
+		it("follows a Tick Rhythm on its own Nameplate only", function()
 			local identity = Identity.New({})
 			cast(identity, 1, DRAIN_LIFE)
 			local first = of(identity, 2, "tick", SHADOW)
-			local otherPlate = of(identity, 3, "tick", SHADOW, "nameplate2")
-			identity.PlateGone("nameplate1")
-			assert.are.same({ DRAIN_LIFE, nil, nil }, { first, otherPlate, of(identity, 3, "tick", SHADOW) })
+			assert.are.same({ DRAIN_LIFE, nil }, { first, of(identity, 3, "tick", SHADOW, "nameplate2") })
 		end)
 
 		it("gives no spell to a tick that no spell in the table explains", function()
@@ -464,6 +462,28 @@ describe("Spell Identity", function()
 				lineEntry(3.8, "tick"), lineEntry(3.8, "tick"),
 			})
 			assert.are.same({ FIREBALL, "none", "none" }, spells)
+		end)
+
+		it("gives a landing's first tick its spell", function()
+			local spells = shownSpells({
+				castEntry(0, FIREBALL),
+				hitEntry(0.8, "nameplate1", FIRE), lineEntry(0.8, "direct"),
+				hitEntry(2.8, "nameplate1", FIRE), lineEntry(2.8, "tick"),
+			})
+			assert.are.same({ FIREBALL, FIREBALL }, spells)
+		end)
+
+		it("gives a late tick its own Tick Rhythm, though its token hid again during the hold", function()
+			local spells = shownSpells({
+				castEntry(0, CORRUPTION),
+				hitEntry(3, "nameplate1", SHADOW), lineEntry(3, "tick"),
+				hitEntry(6, "nameplate1", SHADOW),
+				{ 6.02, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+				{ 6.04, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+				{ 6.06, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+				lineEntry(6.1, "tick"),
+			})
+			assert.are.same({ CORRUPTION, CORRUPTION }, spells)
 		end)
 
 		it("gives a Hit whose Nameplate hid its spell, but leaves the next unit on its token no Tick Rhythm", function()

@@ -18,8 +18,9 @@ ns.Flow = Flow
 -- Line came late, is a late Hit: its token can by then name another unit, or
 -- none. show gets it with late, the Nameplate as it hid: { frame, wasTarget,
 -- classification, isBoss, isPlayer }, from the NAME_PLATE_UNIT_REMOVED entry
--- (Events.lua). A late Hit whose frame the game already gave to a new unit
--- is not shown, as its text would show on that unit.
+-- (Events.lua), which the adapter keeps on the Hit's plate life. A late Hit
+-- whose frame the game gave to a new unit since the hide is not shown, as
+-- its text would show where that unit is or was.
 function Flow.New(options)
 	local show, noPlate = options.show, options.noPlate
 	local identity = ns.Identity.New(options.spellFacts)
@@ -29,16 +30,6 @@ function Flow.New(options)
 	-- Pairing returns, so an error in them cannot drop the rest of Pairing's
 	-- frame; it drops the rest of the queue.
 	local pending = {}
-	-- The adapter's entry number at which each token's Nameplate last hid.
-	-- Entry order, not time, so a Hit on a new unit in the same frame stays.
-	local hiddenAt = {}
-	-- For each token, its Nameplate as it last hid (see late above), and how
-	-- many times it hid: a plate life. A Hit's life keys its Tick Rhythms in
-	-- Spell Identity, so a late tick keeps its own unit's and the next unit
-	-- on the token starts with none.
-	local asItHid, lives = {}, {}
-	-- The token whose unit each Nameplate frame shows now.
-	local shownBy = {}
 
 	local pairing = ns.Pairing.New({
 		onDecision = function(hit, line, how)
@@ -59,23 +50,15 @@ function Flow.New(options)
 		if #decisions == 0 then
 			return
 		end
-		for _, decision in ipairs(decisions) do
-			local unit = decision.hit.unit
-			if unit:match("^nameplate%d+$") then
-				local hidden = (hiddenAt[unit] or 0) > decision.hit.entry
-				decision.late = hidden and asItHid[unit] or nil
-				decision.plate = unit .. "#" .. ((lives[unit] or 0) - (hidden and 1 or 0))
-			end
-		end
 		local spellIDs = identity.OfAll(decisions)
 		for i, decision in ipairs(decisions) do
-			local hit, late = decision.hit, decision.late
-			if not decision.plate then
+			local hit, life = decision.hit, decision.hit.life
+			if not life then
 				if noPlate then
 					noPlate(hit, decision.how)
 				end
-			elseif not (late and late.frame and shownBy[late.frame]) then
-				show(hit, decision.how, spellIDs[i], decision.line.lineKind, late)
+			elseif not life.reused then
+				show(hit, decision.how, spellIDs[i], decision.line.lineKind, life.hid)
 			end
 		end
 	end
@@ -108,25 +91,10 @@ function Flow.New(options)
 	local flow = {}
 
 	function flow.Push(entry)
-		local event, token = entry[2], entry[3]
-		if event == "NAME_PLATE_UNIT_REMOVED" then
+		if entry[2] == "NAME_PLATE_UNIT_REMOVED" then
 			-- Decide the Hits from before this moment first, as the live Tick of
 			-- each frame does, so the result is the same at any tick rate.
 			tick(entry[1])
-			hiddenAt[token] = adapter.Push(entry)
-			asItHid[token] = { frame = entry.frame, wasTarget = entry.wasTarget, classification = entry.classification,
-				isBoss = entry.isBoss, isPlayer = entry.isPlayer }
-			if entry.frame and shownBy[entry.frame] == token then
-				shownBy[entry.frame] = nil
-			end
-			-- Late Hits come at most one hide late, so the life before the one
-			-- that just ended can get no more ticks.
-			lives[token] = (lives[token] or 0) + 1
-			identity.PlateGone(token .. "#" .. (lives[token] - 2))
-			return
-		end
-		if event == "NAME_PLATE_UNIT_ADDED" and entry.frame then
-			shownBy[entry.frame] = token
 		end
 		adapter.Push(entry)
 		flush()
