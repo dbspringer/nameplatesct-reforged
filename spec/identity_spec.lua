@@ -540,9 +540,9 @@ describe("Spell Identity", function()
 				if not carryFacts then
 					facts = {}
 				end
-				local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), ns.LineKind.ColouringOf)
+				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
 				local spellOf = {}
-				for _, row in ipairs(assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()) do
+				for _, row in ipairs(labels) do
 					spellOf[row.hit] = row.spell
 				end
 				local flow = ns.Flow.New({

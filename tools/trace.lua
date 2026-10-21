@@ -44,6 +44,14 @@ function Trace.FillColouring(trace, colouringOf)
 	return trace
 end
 
+-- The checked Trace of this name in spec/traces/, with its colouring filled
+-- in (see FillColouring), and its Labels.
+function Trace.LoadChecked(name, colouringOf)
+	local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), colouringOf)
+	local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
+	return trace, labels
+end
+
 -- Splits the fields of a log line and keeps each field's raw text, quotes
 -- included, so a join gives back the same line.
 local function split(fields)
