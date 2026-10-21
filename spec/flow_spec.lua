@@ -116,8 +116,7 @@ describe("Flow", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
-				local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), ns.LineKind.ColouringOf)
-				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
+				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
 				local unitOf = {}
 				for _, hit in ipairs((Label.Adapt(trace))) do
 					unitOf[hit.entry] = hit.unit

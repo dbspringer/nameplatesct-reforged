@@ -344,8 +344,7 @@ describe("Pairing", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
-				local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), ns.LineKind.ColouringOf)
-				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
+				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
 				local decided, lineOf = {}, {}
 				local pairing = Pairing.New({
 					onDecision = function(decidedHit, decidedLine)
