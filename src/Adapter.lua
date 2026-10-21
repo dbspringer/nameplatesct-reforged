@@ -28,11 +28,17 @@ local CAST_STAGES = {
 -- Events.lua recorded with it. Returns nil for a token whose reports only
 -- repeat others, such as targettarget, and for a nameplate that Events.lua
 -- never saw added: in a dungeon a friendly plate reports combat without
--- NAME_PLATE_UNIT_ADDED, and Plate Text is for enemies only.
+-- NAME_PLATE_UNIT_ADDED, and Plate Text is for enemies only. Also nil for a
+-- unit the player cannot attack, such as a friendly player that a mob hits
+-- in the open world, so its Hit cannot take the player's Log Line; Traces
+-- from before canAttack keep every such Hit.
 local function unitOf(entry)
 	local token = entry[3]
 	if entry.own then
 		return entry.own
+	end
+	if entry.canAttack == false then
+		return nil
 	end
 	if OWN_TOKENS[token] then
 		return token

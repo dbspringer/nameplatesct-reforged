@@ -113,6 +113,16 @@ describe("Adapter", function()
 			assert.are.same({ "nameplate1", "nameplate2" }, { records[1].unit, records[2].unit })
 		end)
 
+		it("drops Hits on a unit the player cannot attack, and keeps them when a Trace does not say", function()
+			local friendly, target = report(1, "nameplate1", "nameplate1"), report(1, "target", nil)
+			friendly.canAttack, target.canAttack = false, false
+			local enemy = report(1, "nameplate2", "nameplate2")
+			enemy.canAttack = true
+			local records = run({ friendly, target, enemy, report(1, "nameplate3", "nameplate3") })
+			assert.are.same({ "nameplate2", "nameplate3" }, { records[1].unit, records[2].unit })
+			assert.are.equal(2, #records)
+		end)
+
 		it("keeps Hits on the player and the pet, and drops targettarget", function()
 			local records = run({
 				report(1, "player", nil, "HEAL"),
