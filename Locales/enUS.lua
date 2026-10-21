@@ -141,4 +141,5 @@ L["Y Variance"] = true
 L["YOUR ENEMY NAMEPLATES ARE DISABLED, NAMEPLATESCT WILL NOT WORK!!"] = true
 L["Your combat log needs a few changes so the addon can tell which hits are yours and your pet's.\n\nFix and reload updates Blizzard's \"%s\" filter, including its line colours, and switches your combat log to it."] = true
 L["Your combat log has no \"%s\" filter, so some numbers can't show.\n\nPress Defaults in the combat log settings to get it back."] = true
-L["Your hit has no enemy nameplate to show on. Press V to turn on enemy nameplates."] = true
+L["Your hit has no enemy nameplate to show on. Press %s to turn on enemy nameplates."] = true
+L["Your hit has no enemy nameplate to show on. Turn on enemy nameplates in the game's options."] = true

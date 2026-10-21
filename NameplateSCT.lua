@@ -532,13 +532,19 @@ local noPlateNoticeShown = false
 
 -- Your Hit on a unit with no Nameplate shows nothing. When enemy nameplates
 -- are off, that is every Hit, so the player gets one notice each time the UI
--- loads (at login or /reload).
+-- loads (at login or /reload). It names the player's own key for enemy
+-- nameplates, as the key binding window shows it.
 function NameplateSCT:NoPlate()
 	if noPlateNoticeShown or GetCVar("nameplateShowEnemies") == "1" then
 		return
 	end
 	noPlateNoticeShown = true
-	ns.Say(L["Your hit has no enemy nameplate to show on. Press V to turn on enemy nameplates."])
+	local key = GetBindingKey("NAMEPLATES")
+	if key then
+		ns.Say(L["Your hit has no enemy nameplate to show on. Press %s to turn on enemy nameplates."]:format(GetBindingText(key)))
+	else
+		ns.Say(L["Your hit has no enemy nameplate to show on. Turn on enemy nameplates in the game's options."])
+	end
 end
 
 function NameplateSCT:OnEnable()

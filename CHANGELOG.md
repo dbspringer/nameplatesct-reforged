@@ -12,5 +12,5 @@
 - Your numbers no longer go missing when a mob hits a friendly player near you.
 - Numbers finish their animation when an enemy's nameplate disappears, so you see your killing blow, even when the game reports it just after the nameplate goes.
 - The bottom of the main options page credits NameplateSCT, which this addon is based on.
-- If your enemy nameplates are off when you hit something, a chat message tells you to press V, once each time you log in.
+- If your enemy nameplates are off when you hit something, a chat message tells you which key turns them on, once each time you log in.
 - If your combat log filter doesn't send your and your pet's damage and misses, each kind of line in its own colour, or mixes in other players' lines that look like yours, a window offers to fix it with one click and a reload. The fix gives each kind of line in your Combat Log tab its own colour (spells, ticks, melee, shots, misses, heals), so the addon can tell them apart, and it stops the filter showing what others do to you, since those lines would look like yours. Since every filter lacks these colours before the fix, the window shows once for everyone. Until then, the numbers that can show still do.
