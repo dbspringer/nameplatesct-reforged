@@ -28,6 +28,7 @@ src\LineKind.lua
 src\Adapter.lua
 src\Pairing.lua
 src\TickSpells.lua
+src\DirectSpells.lua
 src\Identity.lua
 src\Flow.lua
 src\Amount.lua

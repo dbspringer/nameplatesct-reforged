@@ -1,0 +1,150 @@
+local _, ns = ...
+
+-- The spells that hit directly, by the spell ID of their cast: a direct hit,
+-- a shot, a weapon strike, or a leech such as Death Coil. For each, the school
+-- its Hit reports, or that it learns its school from its Hits, as a wand sets
+-- Shoot's. Only a cast of a spell in this table, or of one in TickSpells.lua
+-- whose cast also hits, can be the spell of a direct hit or a shot; a cast
+-- of any other spell, such as a buff or a Voidwalker's Torment, is never one
+-- (ADR 0004). The pets' spells are here so that they compete with the
+-- player's, though they never win. Spells that also tick are in
+-- TickSpells.lua.
+--
+-- From the Classic Era spell data (wago.tools DB2: SpellEffect school damage,
+-- health leech and weapon damage effects, SpellMisc school), for every rank
+-- that Forever's trainers teach (WhatsTraining's Camelot tables), the later
+-- ranks of 1.10 to 1.12, and the ranged attacks; Forever's own spells take
+-- their school from their description on the Forever client. Left out:
+-- spells whose damage comes from another spell or a script (Arcane Missiles,
+-- Hellfire, Execute, Judgement), and Mana Burn.
+
+local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
+
+local spells = {}
+ns.DirectSpells = spells
+
+local function hits(school, ids)
+	for _, id in ipairs(ids) do
+		spells[id] = { school = school }
+	end
+end
+
+local function learns(ids)
+	for _, id in ipairs(ids) do
+		spells[id] = { learns = true }
+	end
+end
+
+do
+	-- Ranged attacks
+	learns({ 5019 }) -- Shoot, whose school its wand sets
+	hits(PHYSICAL, { 75 }) -- Auto Shot
+	hits(PHYSICAL, { 2480, 7918, 7919 }) -- Shoot Bow, Shoot Gun, Shoot Crossbow
+	hits(PHYSICAL, { 2764 }) -- Throw
+	-- Druid
+	hits(PHYSICAL, { 769, 779, 780, 9754, 9908 }) -- Swipe
+	hits(ARCANE, { 2912, 8949, 8950, 8951, 9875, 9876, 25298 }) -- Starfire
+	hits(PHYSICAL, { 3029, 5201, 9849, 9850 }) -- Claw
+	hits(NATURE, { 5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912 }) -- Wrath
+	hits(PHYSICAL, { 5221, 6800, 8992, 9829, 9830 }) -- Shred
+	hits(PHYSICAL, { 6785, 6787, 9866, 9867 }) -- Ravage
+	hits(PHYSICAL, { 6807, 6808, 6809, 8972, 9745, 9880, 9881 }) -- Maul
+	hits(PHYSICAL, { 22568, 22827, 22828, 22829 }) -- Ferocious Bite
+	hits(PHYSICAL, { 407995 }) -- Mangle
+	hits(PHYSICAL, { 1238069, 1238070, 1238073 }) -- Primal Bite, Forever only
+
+	-- Hunter
+	hits(PHYSICAL, { 1495, 14269, 14270, 14271 }) -- Mongoose Bite
+	hits(PHYSICAL, { 2643, 25294 }) -- Multi-Shot
+	hits(PHYSICAL, { 2974, 14267, 14268, 27633 }) -- Wing Clip
+	hits(ARCANE, { 3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287 }) -- Arcane Shot
+	hits(PHYSICAL, { 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
+	hits(PHYSICAL, { 19306, 20909, 20910 }) -- Counterattack
+	hits(PHYSICAL, { 19434, 20900, 20901, 20902, 20903, 20904, 27632 }) -- Aimed Shot
+	hits(PHYSICAL, { 1242634 }) -- Counterattack, Forever's rank
+	hits(PHYSICAL, { 1310687, 1310785, 1310786 }) -- Sniper Shot, Forever only
+
+	-- Mage
+	hits(FROST, { 116, 205, 837, 7322, 8406, 8407, 8408, 10179, 10180, 10181, 25304 }) -- Frostbolt
+	hits(FROST, { 120, 8492, 10159, 10160, 10161 }) -- Cone of Cold
+	hits(FROST, { 122, 865, 6131, 10230 }) -- Frost Nova
+	hits(ARCANE, { 1449, 8437, 8438, 8439, 10201, 10202 }) -- Arcane Explosion
+	hits(FIRE, { 2136, 2137, 2138, 8412, 8413, 10197, 10199 }) -- Fire Blast
+	hits(FIRE, { 2948, 8444, 8445, 8446, 10205, 10206, 10207 }) -- Scorch
+	hits(FIRE, { 11113, 13018, 13019, 13020, 13021 }) -- Blast Wave
+	hits(ARCANE, { 400574 }) -- Arcane Blast
+	hits(FROST, { 400640 }) -- Ice Lance
+	hits(ARCANE, { 1239696, 1239697, 1239699, 1239700 }) -- Arcane Blast, Forever's ranks
+	hits(FROST, { 1240044, 1240045, 1240046, 1240047, 1312002 }) -- Ice Lance, Forever's ranks
+	hits(FROST, { 1326053, 1326054, 1326055 }) -- Frost Blast, Forever only
+	hits(ARCANE, { 1326079, 1326080, 1326081, 1326082 }) -- Arcane Wrath, Forever only
+
+	-- Paladin
+	hits(HOLY, { 879, 5614, 5615, 10312, 10313, 10314 }) -- Exorcism
+	hits(HOLY, { 2812, 10318 }) -- Holy Wrath
+	hits(HOLY, { 24239, 24274, 24275 }) -- Hammer of Wrath
+	-- Weapon damage plus Holy damage; which school the Hit reports is untested.
+	hits(HOLY, { 678, 679, 680, 1866, 2495, 5569, 10332, 10333 }) -- Holy Strike, Forever only
+	hits(HOLY, { 1311606 }) -- Holy Shock, Forever's rank
+
+	-- Priest
+	hits(HOLY, { 585, 591, 598, 984, 1004, 6060, 10933, 10934 }) -- Smite
+	hits(SHADOW, { 8092, 8102, 8103, 8104, 8105, 8106, 10945, 10946, 10947 }) -- Mind Blast
+	hits(HOLY, { 15237, 15430, 15431, 27799, 27800, 27801 }) -- Holy Nova
+	hits(HOLY, { 1277331, 1277332, 1277333, 1277334, 1277335 }) -- Chastise, Forever only
+	hits(SHADOW, { 1309595, 1309633, 1309635, 1309636 }) -- Shadow Word: Death, Forever only
+
+	-- Rogue
+	hits(PHYSICAL, { 53, 2589, 2590, 2591, 8721, 11279, 11280, 11281, 25300 }) -- Backstab
+	hits(PHYSICAL, { 1752, 1757, 1758, 1759, 1760, 8621, 11293, 11294 }) -- Sinister Strike
+	hits(PHYSICAL, { 1766, 1767, 1768, 1769 }) -- Kick
+	hits(PHYSICAL, { 1776, 1777, 8629, 11285, 11286 }) -- Gouge
+	hits(PHYSICAL, { 2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300 }) -- Eviscerate
+	hits(PHYSICAL, { 8676, 8724, 8725, 11267, 11268, 11269 }) -- Ambush
+	hits(PHYSICAL, { 1241582, 1241584, 1310706 }) -- Mutilate, Forever only
+
+	-- Shaman
+	hits(NATURE, { 403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208 }) -- Lightning Bolt
+	hits(NATURE, { 421, 930, 2860, 10605 }) -- Chain Lightning
+	hits(NATURE, { 8042, 8044, 8045, 8046, 10412, 10413, 10414 }) -- Earth Shock
+	hits(FROST, { 8056, 8058, 10472, 10473 }) -- Frost Shock
+	hits(FIRE, { 408490 }) -- Lava Burst
+	hits(FIRE, { 1238299, 1238300, 1326047 }) -- Lava Burst, Forever's ranks
+
+	-- Warlock
+	hits(SHADOW, { 686, 695, 705, 1088, 1106, 7641, 11659, 11660, 11661, 25307 }) -- Shadow Bolt
+	hits(FIRE, { 5676, 17919, 17920, 17921, 17922, 17923 }) -- Searing Pain
+	hits(FIRE, { 6353, 17924 }) -- Soul Fire
+	hits(SHADOW, { 6789, 17925, 17926 }) -- Death Coil
+	hits(SHADOW, { 17877, 18867, 18868, 18869, 18870, 18871 }) -- Shadowburn
+	hits(FIRE, { 17962, 18930, 18931, 18932 }) -- Conflagrate
+	hits(FIRE, { 412758 }) -- Incinerate
+	hits(FIRE, { 1293812, 1293813 }) -- Incinerate, Forever's ranks
+	hits(FIRE, { 1293817, 1293818 }) -- Conflagrate, Forever's ranks
+
+	-- Warrior
+	hits(PHYSICAL, { 72, 1671, 1672 }) -- Shield Bash
+	hits(PHYSICAL, { 78, 284, 285, 1608, 11564, 11565, 11566, 11567, 25286, 25712 }) -- Heroic Strike
+	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
+	hits(PHYSICAL, { 845, 7369, 11608, 11609, 20569 }) -- Cleave
+	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
+	hits(PHYSICAL, { 1680 }) -- Whirlwind
+	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring
+	hits(PHYSICAL, { 6343, 8198, 8204, 8205, 11580, 11581 }) -- Thunder Clap
+	hits(PHYSICAL, { 6552, 6554 }) -- Pummel
+	hits(PHYSICAL, { 6572, 6574, 7379, 11600, 11601, 25288 }) -- Revenge
+	hits(PHYSICAL, { 7384, 7887, 11584, 11585 }) -- Overpower
+	hits(PHYSICAL, { 12294, 21551, 21552, 21553, 27580 }) -- Mortal Strike
+	hits(PHYSICAL, { 23881, 23892, 23893, 23894 }) -- Bloodthirst
+	hits(PHYSICAL, { 23922, 23923, 23924, 23925 }) -- Shield Slam
+	hits(PHYSICAL, { 402927 }) -- Victory Rush
+	hits(PHYSICAL, { 1240193 }) -- Slam, Forever's rank
+
+	-- Pets
+	hits(FIRE, { 3110, 7799, 7800, 7801, 7802, 9057, 11762, 11763, 15598, 18187 }) -- Firebolt, the Imp's
+	hits(SHADOW, { 7814, 7815, 7816, 11778, 11779, 11780 }) -- Lash of Pain, the Succubus's
+	hits(PHYSICAL, { 1082, 3009, 3010, 16827, 16828, 16829, 16830, 16831, 16832 }) -- Claw
+	hits(PHYSICAL, { 17253, 17255, 17256, 17257, 17258, 17259, 17260, 17261 }) -- Bite
+	hits(NATURE, { 24844, 25008, 25009, 25010, 25011, 25012 }) -- Lightning Breath
+	hits(PHYSICAL, { 24423, 24577, 24578, 24579 }) -- Screech
+end

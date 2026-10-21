@@ -55,8 +55,8 @@ Which spell made Your Hit. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
 
 **Spell Facts**:
-What the addon has learned about one spell from Your Hits: the school of its direct hits, or of its shots. A fact counts only after two Hits agree on it. Spells that tick are known from the start, so they need none.
-_Avoid_: Spell data, spell profile, learned spells
+What the addon has learned about a spell whose school is not fixed, such as a wand's Shoot, from Your Hits: the school of its shots. A fact counts only once enough Hits agree on it. Other spells are known from the start, so they need none. Text for players calls them learned spells.
+_Avoid_: Spell data, spell profile
 
 **Tick Rhythm**:
 The times at which one spell's ticks come on one Nameplate. A tick that comes on a spell's Tick Rhythm can be that spell's.

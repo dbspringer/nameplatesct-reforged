@@ -460,6 +460,11 @@ function NameplateSCT:ConvertDB()
 			end
 		end
 	end
+	-- Before a Disable in OnInitialize, which skips OnEnable: /nsctr forget
+	-- needs the table.
+	if type(NameplateSCT.db.global.spellFacts) ~= "table" then
+		NameplateSCT.db.global.spellFacts = {}
+	end
 end
 
 function NameplateSCT:OnInitialize()
@@ -528,7 +533,6 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
-	self.db.global.spellFacts = self.db.global.spellFacts or {}
 	ns.Events.Start(function(hit, how, spellID)
 		self:ShowHit(hit, how, spellID)
 	end, function()
@@ -917,8 +921,11 @@ function NameplateSCT:DamageEvent(unit, spellName, amount, school, crit, spellId
 		alpha = self.db.global.formatting.alpha
 	end
 
-	-- A Hit with no known spell has no icon, so it shows its number.
+	-- Icon only draws just the icon, so a Hit shows its number when it would
+	-- have no icon: icons are off, or its spell or the spell's texture is not
+	-- known.
 	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and spellId ~= nil
+		and GetSpellTexture(spellId) ~= nil
     if not iconOnly then
         -- truncate
         text = self:truncateText(amount)
@@ -1018,7 +1025,7 @@ end
 -- Clears the Spell Facts in place, as Spell Identity holds the same table.
 function NameplateSCT:ForgetSpellFacts()
 	wipe(self.db.global.spellFacts)
-	ns.Say(L["Forgot the learned spells. Their icons come back as the addon learns them again."])
+	ns.Say(L["Forgot your wand's school. Shoot's icon comes back after your next two shots."])
 end
 
 -- The text takes its colour from SetTextColor, not from a colour code joined
@@ -1625,7 +1632,7 @@ local menu = {
 						forgetSpellFacts = {
 							type = 'execute',
 							name = L["Forget learned spells"],
-							desc = L["Forget which spells made your hits, and learn them again as you play. Use it if an icon looks wrong."],
+							desc = L["Forget the school the addon learned for your wand's Shoot, and learn it again from your next shots. Use it if Shoot shows a wrong icon."],
 							func = function() NameplateSCT:ForgetSpellFacts() end,
 							order = 9,
 						},
