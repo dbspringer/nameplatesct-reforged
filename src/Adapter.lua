@@ -116,10 +116,10 @@ local function addHits(reports, records)
 end
 
 -- Turns raw events, in the shape of Trace entries, into Hits, Log Lines (with
--- their Line Kind), casts (with the Nameplate the player targeted, which
--- Events.lua records), and swings. All events of one frame share a GetTime(), so a frame's
--- records leave together through onRecord, in entry order, once a later event
--- or tick shows that the frame is over.
+-- their Line Kind, read by the colouring that Events.lua records), casts, and
+-- swings. All events of one frame share a GetTime(), so a frame's records
+-- leave together through onRecord, in entry order, once a later event or
+-- tick shows that the frame is over.
 function Adapter.New(onRecord)
 	local count = 0
 	local frameTime
@@ -172,16 +172,13 @@ function Adapter.New(onRecord)
 			end
 		elseif event == "COMBAT_LOG_MESSAGE" then
 			if not isRefill(entry[7]) then
-				add(entry, { kind = "line", lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6]),
-					r = entry[4], g = entry[5], b = entry[6] })
+				add(entry, { kind = "line", lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6], entry.colouring) })
 			end
 		elseif event == "UNIT_SPELLCAST_SENT" then
 			-- entry[4] is the target's name, which can be secret.
-			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6],
-				target = entry.target })
+			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
-			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5],
-				target = entry.target })
+			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5] })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
 		end

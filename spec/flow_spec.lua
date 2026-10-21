@@ -101,9 +101,9 @@ describe("Flow", function()
 	end)
 
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind" }) do
+		for _, name in ipairs(Trace.NAMES) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
-				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
+				local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), ns.LineKind.ColouringOf)
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
 				local unitOf = {}
 				for _, hit in ipairs((Label.Adapt(trace))) do

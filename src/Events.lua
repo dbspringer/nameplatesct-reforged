@@ -76,9 +76,19 @@ local function ownerOf(unit)
 	end
 end
 
+-- How the picked Log Filter colours whole lines (see LineKind.ColouringOf).
+-- The player can switch the filter at any time, so each Log Line reads it.
+local function lineColouring()
+	local saved = Blizzard_CombatLog_Filters
+	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
+		return nil
+	end
+	return ns.LineKind.ColouringOf(saved.filters[saved.currentFilter])
+end
+
 local function onEvent(_, event, ...)
 	local now = GetTime()
-	-- The first argument of the nameplate events and UNIT_COMBAT.
+	-- The first argument of the nameplate events, UNIT_COMBAT, and the casts.
 	local unit = ...
 	local isPlateEvent = event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED"
 	if isPlateEvent then
@@ -94,10 +104,8 @@ local function onEvent(_, event, ...)
 		if not entry.own then
 			entry.plate = plateFor(unit)
 		end
-	elseif IS_CAST_EVENT[event] and unit == "player" then
-		-- The Nameplate the player's cast aims at, when it is the target. Spell
-		-- Identity does not use it yet; it is here so Traces have it.
-		entry.target = plateFor("target")
+	elseif event == "COMBAT_LOG_MESSAGE" then
+		entry.colouring = lineColouring()
 	end
 
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
@@ -107,8 +115,12 @@ local function onEvent(_, event, ...)
 			extra = { guid = UnitGUID(unit) }
 		elseif event == "UNIT_COMBAT" then
 			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
-		elseif entry.target then
-			extra = { target = entry.target }
+		elseif event == "COMBAT_LOG_MESSAGE" then
+			extra = { colouring = entry.colouring }
+		elseif IS_CAST_EVENT[event] and unit == "player" then
+			-- The Nameplate of the player's target at this cast event, which the
+			-- cast need not aim at. No rule reads it yet; Traces keep it.
+			extra = { target = plateFor("target") }
 		end
 		ns.Recorder.Record(now, event, extra, ...)
 	end

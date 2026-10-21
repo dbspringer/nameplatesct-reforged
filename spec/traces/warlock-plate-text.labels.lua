@@ -162,7 +162,7 @@ return {
 	{ hit = 763, line = false }, -- 139.518 pet WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.001 s
 	{ hit = 765, line = false }, -- 140.018 nameplate1 DODGE 0 <- pet: swing SWING_MISSED +0.534 s
 	{ hit = 768, line = 771 }, -- 140.334 nameplate1 WOUND 12 <- you: Immolate SPELL_PERIODIC_DAMAGE +0.000 s
-	{ hit = 773, line = 772 }, -- 140.518 nameplate1 WOUND 26 <- you: Drain Soul SPELL_PERIODIC_DAMAGE +0.000 s
+	{ hit = 773, line = 776 }, -- 140.518 nameplate1 WOUND 26 <- you: Drain Soul SPELL_PERIODIC_DAMAGE +0.000 s (checked: line 772 is the white killing blow line)
 	{ hit = 779, line = false }, -- 141.502 pet WOUND 19 <- creature: swing SWING_DAMAGE +1.001 s
 	{ hit = 780, line = false }, -- 142.502 pet WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.001 s
 	{ hit = 781, line = false }, -- 145.518 pet WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.001 s
@@ -249,7 +249,7 @@ return {
 	{ hit = 1072, line = false }, -- 222.352 pet WOUND 14 <- creature: swing SWING_DAMAGE +0.468 s
 	{ hit = 1074, line = 1071 }, -- 222.652 nameplate1 WOUND 11 <- pet: swing SWING_DAMAGE +0.584 s
 	{ hit = 1077, line = 1080 }, -- 222.885 nameplate1 WOUND 11 <- you: Immolate SPELL_PERIODIC_DAMAGE +0.000 s
-	{ hit = 1082, line = 1081 }, -- 223.252 nameplate1 WOUND 23 <- you: Corruption SPELL_PERIODIC_DAMAGE +0.000 s
+	{ hit = 1082, line = 1085 }, -- 223.252 nameplate1 WOUND 23 <- you: Corruption SPELL_PERIODIC_DAMAGE +0.000 s (checked: line 1081 is the white killing blow line)
 	{ hit = 1088, line = false }, -- 223.902 player WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.000 s
 	{ hit = 1089, line = false }, -- 226.902 player WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.001 s
 	{ hit = 1094, line = false }, -- 229.885 player WOUND 18 <- creature: Shadow Word: Pain SPELL_PERIODIC_DAMAGE +0.000 s
@@ -344,5 +344,5 @@ return {
 
 -- Log Lines with no Hit:
 -- line 309 at 51.718 <- you:  PARTY_KILL
--- line 776 at 140.518 <- you:  PARTY_KILL
--- line 1085 at 223.252 <- you:  PARTY_KILL
+-- line 772 at 140.518 <- you:  PARTY_KILL
+-- line 1081 at 223.252 <- you:  PARTY_KILL

@@ -131,6 +131,6 @@ L["X Variance"] = true
 L["Y Offset"] = true
 L["Y Variance"] = true
 L["YOUR ENEMY NAMEPLATES ARE DISABLED, NAMEPLATESCT WILL NOT WORK!!"] = true
-L["Your combat log doesn't send all of your and your pet's damage and misses, each in the colour of its kind, or it sends other players' lines that look like yours. So some numbers can't show, or show wrongly.\n\nFix and reload changes Blizzard's \"%s\" filter: it turns them on, colours each line by its kind (spell, tick, melee, shot, miss, heal), leaves only you and your pet under Done By, and picks the filter. Your other settings stay."] = true
+L["Your combat log doesn't send all of your and your pet's damage and misses, each in the colour of its kind, or it sends other players' lines that look like yours. So some numbers can't show, or show wrongly.\n\nFix and reload changes Blizzard's \"%s\" filter: it turns them on, colours each line by its kind (spell, tick, melee, shot, miss, heal), leaves only you and your pet under Done By and no one under Done To, and picks the filter. Your other settings stay."] = true
 L["Your combat log has no \"%s\" filter, so some numbers can't show.\n\nPress Defaults in the combat log settings to get it back."] = true
 L["Your hit has no enemy nameplate to show on. Press V to turn on enemy nameplates."] = true

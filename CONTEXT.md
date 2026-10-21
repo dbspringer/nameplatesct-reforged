@@ -31,7 +31,7 @@ One line of the player's own combat log that the game sends to addons. The addon
 _Avoid_: Combat log event, CLEU, chat message
 
 **Line Kind**:
-What a Log Line reports: a direct hit, a tick, a swing, or a shot, a miss of one of these, a heal, or a killing blow. The Log Line's colour tells it.
+What a Log Line reports: a direct hit, a tick, a swing, a shot, or a damage shield's hit, a miss of one of these, a heal or a heal over time, or a killing blow. The Log Line's colour tells it.
 _Avoid_: Event type, line type
 
 **Log Filter**:

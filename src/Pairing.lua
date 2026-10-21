@@ -50,9 +50,8 @@ local function reportOf(hit)
 end
 
 -- Whether a Log Line can be the Hit's by its Line Kind: a line reports the
--- same sort of Hit, and a melee line only a physical Hit. A line of unknown
--- kind, under a Log Filter that does not colour lines by kind, can be any
--- Hit's.
+-- same sort of Hit, and a melee line only a physical Hit. A line whose colour
+-- tells nothing (see LineKind.Of) can be any Hit's.
 local function suits(hit, line)
 	local lineKind = line.lineKind
 	if not lineKind then
@@ -96,8 +95,8 @@ end
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier),
 -- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
--- A line pairs only with a Hit that its Line Kind suits; a killing blow line
--- pairs with none.
+-- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
+-- or one in a colour that is never the player's, pairs with none.
 function Pairing.New(options)
 	local onDecision = options.onDecision
 	local frameTime
@@ -194,9 +193,7 @@ function Pairing.New(options)
 			frameHits[#frameHits + 1] = record
 		elseif record.kind == "line" then
 			frameTime = record.time
-			if not record.lineKind or ns.LineKind.Reports(record.lineKind) then
-				frameLines[#frameLines + 1] = record
-			end
+			frameLines[#frameLines + 1] = record
 		end
 	end
 

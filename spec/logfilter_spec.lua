@@ -37,21 +37,49 @@ local function savedFilters()
 end
 
 describe("LogFilter", function()
-	it("finds a filter that sends no misses fixable, and the fix turns them on", function()
+	-- A Blizzard_CombatLog_Filters that the fix has made "ok", for the specs
+	-- that then break one thing.
+	local function fixedFilters()
 		local saved = savedFilters()
-		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
 		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		return saved
+	end
+
+	it("finds a filter that sends no misses fixable, and the fix turns them on", function()
+		local saved = fixedFilters()
+		saved.filters[1].filters[1].eventList.SPELL_MISSED = false
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		LogFilter.Fix(saved, MY_ACTIONS)
 		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
 	it("adds Done By you and your pet, and picks My actions", function()
-		local saved = savedFilters()
-		saved.currentFilter = 2
+		local saved = fixedFilters()
 		saved.filters[1].filters[1].sourceFlags = { [ME] = true }
 		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		local picked = fixedFilters()
+		picked.currentFilter = 2
+		assert.are.equal("fixable", LogFilter.Check(picked, MY_ACTIONS))
 		LogFilter.Fix(saved, MY_ACTIONS)
-		assert.are.equal(1, saved.currentFilter)
-		assert.is_true(saved.filters[1].filters[1].sourceFlags[MY_PET])
+		LogFilter.Fix(picked, MY_ACTIONS)
+		assert.are.same({ "ok", "ok" }, { LogFilter.Check(saved, MY_ACTIONS), LogFilter.Check(picked, MY_ACTIONS) })
+	end)
+
+	it("finds a first part that asks for lines done to no one fixable, as it sends nothing", function()
+		local saved = fixedFilters()
+		saved.filters[1].filters[1].destFlags = { [ME] = false }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("finds a part that asks for one unit's lines by its GUID fixable", function()
+		local saved = fixedFilters()
+		saved.filters[1].filters[2] = { sourceFlags = { ["Player-1-0001"] = true }, destFlags = { [ME] = false } }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		saved.filters[1].filters[2] = { sourceFlags = { [ME] = false }, destFlags = { ["Creature-0-1"] = true } }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
 	it("keeps the player's other message types, and leaves only you and your pet under Done By", function()
@@ -66,16 +94,28 @@ describe("LogFilter", function()
 	end)
 
 	it("accepts a picked filter of any name once it is fixed", function()
-		local renamed = savedFilters()
-		LogFilter.Fix(renamed, MY_ACTIONS)
+		local renamed = fixedFilters()
 		renamed.filters[1].name = "Mine"
 		assert.are.equal("ok", LogFilter.Check(renamed, MY_ACTIONS))
 	end)
 
 	it("finds a filter that sends other players' lines fixable, since they would look like yours", function()
-		local saved = savedFilters()
-		LogFilter.Fix(saved, MY_ACTIONS)
+		local saved = fixedFilters()
 		saved.filters[1].filters[1].sourceFlags[PARTY] = true
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("finds a filter with another part that asks for other units' lines fixable, and the fix makes it ask for none", function()
+		local saved = fixedFilters()
+		-- Done To "Me": every unit's lines done to the player.
+		saved.filters[1].filters[2].destFlags[ME] = true
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		assert.are.same({ destFlags = {}, eventList = {} }, saved.filters[1].filters[2])
+
+		-- A part with no flags at all asks for every line.
+		saved.filters[1].filters[3] = { eventList = {} }
 		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
@@ -88,8 +128,7 @@ describe("LogFilter", function()
 	end
 
 	it("finds a filter that does not colour lines by kind fixable, and the fix colours each line so its kind reads back", function()
-		local saved = savedFilters()
-		LogFilter.Fix(saved, MY_ACTIONS)
+		local saved = fixedFilters()
 		saved.filters[1].settings.lineColorPriority = 1
 		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
 		LogFilter.Fix(saved, MY_ACTIONS)
@@ -100,16 +139,17 @@ describe("LogFilter", function()
 			SPELL_DAMAGE = "direct", SPELL_PERIODIC_DAMAGE = "tick", SWING_DAMAGE = "swing", RANGE_DAMAGE = "shot",
 			SPELL_MISSED_RESIST = "directMiss", SPELL_PERIODIC_MISSED_IMMUNE = "tickMiss", SWING_MISSED = "swingMiss",
 			SWING_MISSED_DODGE = "swingMiss", RANGE_MISSED = "shotMiss", SPELL_HEAL = "heal",
-			SPELL_PERIODIC_HEAL = "hot", PARTY_KILL = "kill",
+			SPELL_PERIODIC_HEAL = "hot", PARTY_KILL = "kill", DAMAGE_SHIELD = "shield",
+			DAMAGE_SHIELD_MISSED_RESIST = "shieldMiss", SPELL_LEECH = "direct", SPELL_PERIODIC_LEECH = "tick",
 		}
 		for event, kind in pairs(expected) do
-			assert.are.equal(kind, LineKind.Of(arrived(colouring[event])), event)
+			local r, g, b = arrived(colouring[event])
+			assert.are.equal(kind, LineKind.Of(r, g, b, "kind"), event)
 		end
 	end)
 
 	it("finds a filter whose lines of yours are brightened by highlighting fixable", function()
-		local saved = savedFilters()
-		LogFilter.Fix(saved, MY_ACTIONS)
+		local saved = fixedFilters()
 		saved.filters[1].settings.lineHighlighting = true
 		saved.filters[1].colors.highlightedEvents.SPELL_DAMAGE = true
 		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
@@ -117,11 +157,31 @@ describe("LogFilter", function()
 		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
-	it("keeps the colours and highlights of events it does not colour", function()
+	it("finds a filter whose event colours are not the Line Kinds' fixable, and accepts them as 8-bit values", function()
+		local saved = fixedFilters()
+		local colouring = saved.filters[1].colors.eventColoring
+		for _, colour in pairs(colouring) do
+			colour.r, colour.g, colour.b = arrived(colour)
+		end
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+
+		for _, channel in ipairs({ "r", "g", "b" }) do
+			local before = colouring.SPELL_DAMAGE[channel]
+			colouring.SPELL_DAMAGE[channel] = before - 0.1
+			assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS), channel)
+			colouring.SPELL_DAMAGE[channel] = before
+		end
+		saved.filters[1].settings.lineColoring = false
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("keeps the player's other settings, and the colours and highlights of events it does not colour", function()
 		local saved = savedFilters()
 		local blue = { r = 0, g = 0, b = 1, a = 1 }
+		saved.filters[1].settings = { fullText = true }
 		saved.filters[1].colors = { eventColoring = { UNIT_DIED = blue }, highlightedEvents = { UNIT_DIED = true } }
 		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.is_true(saved.filters[1].settings.fullText)
 		assert.are.same(blue, saved.filters[1].colors.eventColoring.UNIT_DIED)
 		assert.is_true(saved.filters[1].colors.highlightedEvents.UNIT_DIED)
 	end)

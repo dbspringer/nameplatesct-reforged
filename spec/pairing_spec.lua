@@ -119,9 +119,17 @@ describe("Pairing", function()
 		local resist, tick, tickLine, resistLine = hit(1, "nameplate1", 32, "RESIST"), hit(1), line(1, "tick"),
 			line(1, "directMiss")
 		local wound, healLine, woundLine = hit(3, "player"), line(3, "heal"), line(3, "tick")
-		local decided = pair({ resist, tick, tickLine, resistLine, wound, healLine, woundLine })
-		assert.are.same({ resistLine.entry, tickLine.entry, woundLine.entry },
-			{ decided[resist.entry], decided[tick.entry], decided[wound.entry] })
+		-- A HoT tick, a DoT's immune tick, and a missed shot each pair with
+		-- their own sort of Hit only.
+		local bolt, hotLine, heal = hit(5), line(5, "hot"), hit(5, "player", 2, "HEAL")
+		local immune, tickMissLine, shot = hit(7, "nameplate1", 32, "IMMUNE"), line(7, "tickMiss"), hit(7.01)
+		local missLine, missedShot = line(9, "shotMiss"), hit(9, "nameplate1", 32, "MISS")
+		local decided = pair({ resist, tick, tickLine, resistLine, wound, healLine, woundLine,
+			bolt, hotLine, heal, shot, tickMissLine, immune, missLine, missedShot })
+		assert.are.same({ resistLine.entry, tickLine.entry, woundLine.entry, false, hotLine.entry, false,
+			tickMissLine.entry, missLine.entry },
+			{ decided[resist.entry], decided[tick.entry], decided[wound.entry], decided[bolt.entry],
+				decided[heal.entry], decided[shot.entry], decided[immune.entry], decided[missedShot.entry] })
 	end)
 
 	it("gives the melee window only to a melee line, and a melee line only to a physical Hit", function()
@@ -137,6 +145,13 @@ describe("Pairing", function()
 		local resist, tickLine, missLine = hit(1, "nameplate1", 32, "RESIST"), line(1.05, "tick"), line(1.1, "directMiss")
 		local decided = pair({ resist, tickLine, missLine })
 		assert.are.equal(missLine.entry, decided[resist.entry])
+	end)
+
+	it("ignores a line in a colour that is never yours, such as a party member's or an uncoloured event's", function()
+		local party, bolt = line(1, "other"), hit(1)
+		local early, swing = line(3, "other"), hit(3.5, "nameplate1", 1)
+		local decided = pair({ party, bolt, early, swing })
+		assert.are.same({ false, false }, { decided[bolt.entry], decided[swing.entry] })
 	end)
 
 	it("pairs a line of unknown kind with any Hit, as under a Log Filter not yet fixed", function()
@@ -318,11 +333,11 @@ describe("Pairing", function()
 	end)
 
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind" }) do
+		for _, name in ipairs(Trace.NAMES) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
-				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
+				local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), ns.LineKind.ColouringOf)
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
-				local decided, timeOf = {}, {}
+				local decided, lineOf = {}, {}
 				local pairing = Pairing.New({
 					onDecision = function(decidedHit, decidedLine)
 						decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
@@ -331,7 +346,7 @@ describe("Pairing", function()
 				-- The adapter feeds Pairing as the live addon will.
 				local adapter = Adapter.New(function(record)
 					if record.kind == "line" then
-						timeOf[record.entry] = record.time
+						lineOf[record.entry] = record.time .. "/" .. tostring(record.lineKind)
 					end
 					pairing.Push(record)
 				end)
@@ -340,13 +355,12 @@ describe("Pairing", function()
 				end
 				adapter.Tick(math.huge)
 				pairing.Tick(math.huge)
-				-- Pairing reads only a Log Line's time and Line Kind, and these
-				-- Traces have no Line Kinds, so any line from the Label line's
-				-- frame is equal.
+				-- Pairing reads only a Log Line's time and Line Kind, so any line
+				-- of the Label line's kind from its frame is equal.
 				local wrong = {}
 				for _, row in ipairs(labels) do
 					local got = decided[row.hit]
-					if not (got == row.line or (got and row.line and timeOf[got] == timeOf[row.line])) then
+					if not (got == row.line or (got and row.line and lineOf[got] == lineOf[row.line])) then
 						wrong[#wrong + 1] = ("hit %d: Label %s, Pairing %s"):format(row.hit, tostring(row.line), tostring(got))
 					end
 				end
