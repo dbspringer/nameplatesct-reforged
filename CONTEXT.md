@@ -21,7 +21,7 @@ The player's list of spells, by name or ID, and of key words. Plate Text for a H
 _Avoid_: Spell blacklist, spell whitelist
 
 **NPC Type**:
-The one kind an enemy NPC has, by which the player can hide or show its Plate Text: Boss, Rare, Elite, Normal, or Minor. A boss is a Boss even when it is also elite, and a rare elite is Rare. Minor covers totems, critters, and other trivial units. The game hides which NPC a unit is in instances, but not its NPC Type.
+The one kind an enemy NPC has, by which the player can hide or show its Plate Text: Boss, Rare, Elite, Normal, or Minor. An enemy player has none, and the NPC filter never hides its Plate Text. A boss is a Boss even when it is also elite, and a rare elite is Rare. Minor covers totems, critters, and other trivial units. The game hides which NPC a unit is in instances, but not its NPC Type; if it ever hides the type, the NPC has none and counts as not selected.
 _Avoid_: Classification, mob type, NPC filter list
 
 **Grace Period**:

@@ -1027,7 +1027,8 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind)
 		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, how, lineKind) then
 			return
 		end
-		local npcType = ns.Filter.NpcType(UnitClassification(hit.unit), UnitIsBossMob(hit.unit))
+		local unit = hit.unit
+		local npcType = ns.Filter.NpcType(UnitClassification(unit), UnitIsBossMob(unit), UnitIsPlayer(unit))
 		if not ns.Filter.NpcShows(self.db.global.npcTypes, self.db.global.inverseNPCTypes, npcType) then
 			return
 		end
@@ -1878,10 +1879,6 @@ local menu = {
 	},
 }
 
--- AceConfig lists a multiselect's boxes by key, so number keys keep the NPC
--- Types in the order Filter.NpcType checks them.
-local NPC_TYPE_ORDER = { "boss", "rare", "elite", "normal", "minor" }
-
 local filters = {
 	name = L["Filters"],
 	type = 'group',
@@ -1907,7 +1904,7 @@ local filters = {
 		inverseNPCTypes = {
 			type = "toggle",
 			name = L["Inverse NPC Filter"],
-			desc = L["Inverse the logic and only show the NPC types you select instead of filtering them away."],
+			desc = L["Inverse the logic and only show numbers on the NPC types you check instead of hiding them."],
 			get = function() return NameplateSCT.db.global.inverseNPCTypes end,
 			set = function(_, newValue) NameplateSCT.db.global.inverseNPCTypes = newValue end,
 			order = 1.6,
@@ -1931,10 +1928,12 @@ local filters = {
 		npcTypes = {
 			type = "multiselect",
 			name = L["NPC Types"],
-			desc = L["A boss counts as Boss even when it is elite, and a rare elite as Rare. Minor covers totems, critters, and other trivial units. Your choices count for all your characters."],
+			desc = L["Hide numbers on the kinds of enemies you check. A boss counts as Boss even when it is elite, and a rare elite as Rare. Minor covers totems and critters. Your choices count for all your characters."],
+			-- AceConfig lists a multiselect's boxes by key, so number keys, in
+			-- the order of Filter.NPC_TYPES, keep the highest rank first.
 			values = { L["Boss"], L["Rare"], L["Elite"], L["Normal"], L["Minor"] },
-			get = function(_, index) return NameplateSCT.db.global.npcTypes[NPC_TYPE_ORDER[index]] end,
-			set = function(_, index, value) NameplateSCT.db.global.npcTypes[NPC_TYPE_ORDER[index]] = value end,
+			get = function(_, index) return NameplateSCT.db.global.npcTypes[ns.Filter.NPC_TYPES[index]] end,
+			set = function(_, index, value) NameplateSCT.db.global.npcTypes[ns.Filter.NPC_TYPES[index]] = value end,
 			order = 4,
 			width = 1,
 		},

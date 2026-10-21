@@ -1,6 +1,5 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("NameplateSCT_Reforged", "enUS", true)
 
-L["A boss counts as Boss even when it is elite, and a rare elite as Rare. Minor covers totems, critters, and other trivial units. Your choices count for all your characters."] = true
 L["Abilities"] = true
 L["Absorbed"] = true
 L["Alpha"] = true
@@ -24,7 +23,8 @@ L["Elite"] = true
 L["Forget learned spells"] = true
 L["Forget the school the addon learned for your wand's Shoot. It learns it again from your next shots."] = true
 L["Forgot your wand's school. Shoot's icon comes back from your second hit with it."] = true
-L["Inverse the logic and only show the NPC types you select instead of filtering them away."] = true
+L["Hide numbers on the kinds of enemies you check. A boss counts as Boss even when it is elite, and a rare elite as Rare. Minor covers totems and critters. Your choices count for all your characters."] = true
+L["Inverse the logic and only show numbers on the NPC types you check instead of hiding them."] = true
 L["Minor"] = true
 L["Miss Color"] = true
 L["Default Color"] = true
