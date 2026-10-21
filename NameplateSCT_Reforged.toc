@@ -24,6 +24,7 @@
 embeds.xml
 Locales\locale.xml
 src\Recorder.lua
+src\LineKind.lua
 src\Adapter.lua
 src\Pairing.lua
 src\Flow.lua

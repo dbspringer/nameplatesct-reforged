@@ -4,14 +4,11 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
+assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
 local Adapter, Pairing = ns.Adapter, ns.Pairing
 local Trace = assert(loadfile("tools/trace.lua"))()
-
--- Colours in the shape of the Log Filter's unit colours.
-local GREY = { r = 0.7, g = 0.7, b = 0.7, a = 1 }
-local WHITE = { r = 1, g = 1, b = 1, a = 1 }
 
 local entryCount = 0
 
@@ -21,19 +18,18 @@ local function hit(time, unit, school, action, amount)
 		descriptor = "", amount = amount or 10, school = school or 32 }
 end
 
-local function line(time, colour)
-	colour = colour or GREY
+-- A Log Line of the given Line Kind; with none, its kind is unknown, as under
+-- a Log Filter that does not colour lines by kind.
+local function line(time, lineKind)
 	entryCount = entryCount + 1
-	return { kind = "line", time = time, entry = entryCount, r = colour.r, g = colour.g, b = colour.b }
+	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
 end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
 -- Log Line entry that each Hit got, by the Hit's entry (false for none).
--- colours defaults to grey; false gives no colours, so every colour pairs.
-local function pair(records, colours)
+local function pair(records)
 	local decided = {}
 	local pairing = Pairing.New({
-		colours = colours == nil and { GREY } or colours,
 		onDecision = function(decidedHit, decidedLine)
 			assert(decided[decidedHit.entry] == nil, "a Hit was decided twice")
 			decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
@@ -111,14 +107,43 @@ describe("Pairing", function()
 		assert.is_false(decided[second.entry])
 	end)
 
-	it("ignores a Log Line in a colour that is not yours, such as a white killing blow", function()
-		local kill, swing = line(1, WHITE), hit(1.5, "nameplate1", 1)
-		assert.is_false(pair({ kill, swing })[swing.entry])
+	it("ignores a killing blow line, which comes with no Hit of its own", function()
+		local kill, swing = line(1, "kill"), hit(1.5, "nameplate1", 1)
+		local killInFrame, bolt, boltLine = line(3, "kill"), hit(3), line(3, "direct")
+		local decided = pair({ kill, swing, killInFrame, bolt, boltLine })
+		assert.is_false(decided[swing.entry])
+		assert.are.equal(boltLine.entry, decided[bolt.entry])
 	end)
 
-	it("pairs lines of every colour when the Log Filter's colours are unknown", function()
-		local kill, swing = line(1, WHITE), hit(1.5, "nameplate1", 1)
-		assert.are.equal(kill.entry, pair({ kill, swing }, false)[swing.entry])
+	it("gives a damage line only to a wound, a miss line only to an avoid, and a heal line only to a heal", function()
+		local resist, tick, tickLine, resistLine = hit(1, "nameplate1", 32, "RESIST"), hit(1), line(1, "tick"),
+			line(1, "directMiss")
+		local wound, healLine, woundLine = hit(3, "player"), line(3, "heal"), line(3, "tick")
+		local decided = pair({ resist, tick, tickLine, resistLine, wound, healLine, woundLine })
+		assert.are.same({ resistLine.entry, tickLine.entry, woundLine.entry },
+			{ decided[resist.entry], decided[tick.entry], decided[wound.entry] })
+	end)
+
+	it("gives the melee window only to a melee line, and a melee line only to a physical Hit", function()
+		local spellLine, physicalSpell = line(1, "direct"), hit(1.5, "nameplate1", 1)
+		local swingLine, swingInFrame, tick = line(3, "swing"), hit(3, "nameplate1", 32), hit(3.5, "nameplate1", 1)
+		local dodgeLine, dodge = line(5, "swingMiss"), hit(5.5, "nameplate1", 1, "DODGE")
+		local decided = pair({ spellLine, physicalSpell, swingLine, swingInFrame, tick, dodgeLine, dodge })
+		assert.are.same({ false, false, swingLine.entry, dodgeLine.entry },
+			{ decided[physicalSpell.entry], decided[swingInFrame.entry], decided[tick.entry], decided[dodge.entry] })
+	end)
+
+	it("gives a held Hit only a late Log Line whose kind suits it", function()
+		local resist, tickLine, missLine = hit(1, "nameplate1", 32, "RESIST"), line(1.05, "tick"), line(1.1, "directMiss")
+		local decided = pair({ resist, tickLine, missLine })
+		assert.are.equal(missLine.entry, decided[resist.entry])
+	end)
+
+	it("pairs a line of unknown kind with any Hit, as under a Log Filter not yet fixed", function()
+		local unknown, swing = line(1), hit(1.5, "nameplate1", 1)
+		local other, resist = line(3), hit(3, "nameplate1", 32, "RESIST")
+		local decided = pair({ unknown, swing, other, resist })
+		assert.are.same({ unknown.entry, other.entry }, { decided[swing.entry], decided[resist.entry] })
 	end)
 
 	it("holds a Hit up to 0.15 s for a late Log Line", function()
@@ -139,7 +164,6 @@ describe("Pairing", function()
 		-- The same with a tick between the end of the hold and the newer Hit.
 		local decided = {}
 		local pairing = Pairing.New({
-			colours = { GREY },
 			onDecision = function(decidedHit, decidedLine)
 				decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
 			end,
@@ -165,7 +189,6 @@ describe("Pairing", function()
 	it("tells how it paired each Hit, so the renderer can give melee its own animation", function()
 		local how = {}
 		local pairing = Pairing.New({
-			colours = { GREY },
 			onDecision = function(decidedHit, _, decidedHow)
 				how[decidedHit.entry] = decidedHow or false
 			end,
@@ -195,7 +218,6 @@ describe("Pairing", function()
 	it("decides no Hit twice when onDecision errors, as the renderer can", function()
 		local calls, failed = {}, false
 		local pairing = Pairing.New({
-			colours = { GREY },
 			onDecision = function(decidedHit, decidedLine)
 				calls[#calls + 1] = decidedHit.entry .. ":" .. tostring(decidedLine and decidedLine.entry)
 				if not failed then
@@ -216,32 +238,6 @@ describe("Pairing", function()
 		assert.are.same({ first.entry .. ":" .. firstLine.entry }, calls)
 	end)
 
-	it("pairs Log Lines that come after a colour change by the new colours", function()
-		local decided = {}
-		local pairing = Pairing.New({
-			colours = { GREY },
-			onDecision = function(decidedHit, decidedLine)
-				decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
-			end,
-		})
-		local grey, greyLine = hit(1), line(1)
-		pairing.Push(grey)
-		pairing.Push(greyLine)
-		pairing.SetColours({ WHITE })
-		local white, whiteLine, stale, staleLine = hit(2), line(2, WHITE), hit(3), line(3)
-		for _, record in ipairs({ white, whiteLine, stale, staleLine }) do
-			pairing.Push(record)
-		end
-		pairing.Tick(math.huge)
-		assert.are.same({ greyLine.entry, whiteLine.entry, false },
-			{ decided[grey.entry], decided[white.entry], decided[stale.entry] })
-	end)
-
-	it("keeps a Log Line whose colour is secret, since it cannot be compared", function()
-		local secret, tick = line(1, { r = "<secret>", g = "<secret>", b = "<secret>" }), hit(1)
-		assert.are.equal(secret.entry, pair({ secret, tick })[tick.entry])
-	end)
-
 	it("lets a later Hit take its own early Log Line before a held Hit can", function()
 		local theirs, early, mine = hit(1), line(1.05), hit(1.08)
 		local decided = pair({ theirs, early, mine })
@@ -252,7 +248,6 @@ describe("Pairing", function()
 	it("decides a held Hit on a tick after the hold, with no later event", function()
 		local decided = {}
 		local pairing = Pairing.New({
-			colours = { GREY },
 			onDecision = function(decidedHit, decidedLine)
 				decided[decidedHit.entry] = decidedLine or false
 			end,
@@ -322,32 +317,13 @@ describe("Pairing", function()
 		assert.are.equal(tickLine.entry, pair({ tickLine, tick })[tick.entry])
 	end)
 
-	describe("colours from the Log Filter", function()
-		local function filter(priority)
-			return {
-				colors = { unitColoring = { [0x4511] = GREY, [0x3111] = WHITE, [0x3222] = { r = 1, g = 0, b = 0 } } },
-				settings = { lineColoring = true, lineColorPriority = priority },
-			}
-		end
-
-		it("are the player's and the pet's unit colours when lines take their source's colour", function()
-			assert.are.same({ GREY, WHITE }, Pairing.ColoursOf(filter(1)))
-		end)
-
-		it("are unknown when lines take another colour, so every colour pairs", function()
-			assert.is_nil(Pairing.ColoursOf(filter(3)))
-			assert.is_nil(Pairing.ColoursOf(nil))
-		end)
-	end)
-
 	describe("on the Warlock Traces", function()
-		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text" }) do
+		for _, name in ipairs({ "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind" }) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
 				local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 				local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
 				local decided, timeOf = {}, {}
 				local pairing = Pairing.New({
-					colours = Pairing.ColoursOf(trace.header.logFilter.filter),
 					onDecision = function(decidedHit, decidedLine)
 						decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
 					end,
@@ -364,8 +340,9 @@ describe("Pairing", function()
 				end
 				adapter.Tick(math.huge)
 				pairing.Tick(math.huge)
-				-- Pairing reads only a Log Line's time and colour, so any line of
-				-- the player's colour from the Label line's frame is equal.
+				-- Pairing reads only a Log Line's time and Line Kind, and these
+				-- Traces have no Line Kinds, so any line from the Label line's
+				-- frame is equal.
 				local wrong = {}
 				for _, row in ipairs(labels) do
 					local got = decided[row.hit]

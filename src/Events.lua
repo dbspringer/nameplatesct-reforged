@@ -25,7 +25,13 @@ local CAST_EVENTS = {
 	"UNIT_SPELLCAST_START",
 	"UNIT_SPELLCAST_SUCCEEDED",
 	"UNIT_SPELLCAST_INTERRUPTED",
+	"UNIT_SPELLCAST_CHANNEL_START",
+	"UNIT_SPELLCAST_CHANNEL_STOP",
 }
+local IS_CAST_EVENT = {}
+for _, event in ipairs(CAST_EVENTS) do
+	IS_CAST_EVENT[event] = true
+end
 
 local keepTicker, flow
 local frame = CreateFrame("Frame")
@@ -70,18 +76,6 @@ local function ownerOf(unit)
 	end
 end
 
--- The colours of the player's and the pet's Log Lines under the Log Filter
--- that is on. nil, which makes Pairing accept lines of every colour, when the
--- game has not loaded its Log Filters or when lines do not take their
--- source's colour (see Pairing.ColoursOf).
-local function logLineColours()
-	local saved = Blizzard_CombatLog_Filters
-	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
-		return nil
-	end
-	return ns.Pairing.ColoursOf(saved.filters[saved.currentFilter])
-end
-
 local function onEvent(_, event, ...)
 	local now = GetTime()
 	-- The first argument of the nameplate events and UNIT_COMBAT.
@@ -100,6 +94,10 @@ local function onEvent(_, event, ...)
 		if not entry.own then
 			entry.plate = plateFor(unit)
 		end
+	elseif IS_CAST_EVENT[event] and unit == "player" then
+		-- The Nameplate the player's cast aims at, when it is the target. Spell
+		-- Identity does not use it yet; it is here so Traces have it.
+		entry.target = plateFor("target")
 	end
 
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
@@ -109,6 +107,8 @@ local function onEvent(_, event, ...)
 			extra = { guid = UnitGUID(unit) }
 		elseif event == "UNIT_COMBAT" then
 			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
+		elseif entry.target then
+			extra = { target = entry.target }
 		end
 		ns.Recorder.Record(now, event, extra, ...)
 	end
@@ -124,7 +124,7 @@ end
 -- show(hit, how) gets Your Hits on an enemy Nameplate, and noPlate(hit, how)
 -- Your Hits on target or a soft target with no Nameplate (see Flow.New).
 function Events.Start(show, noPlate)
-	flow = ns.Flow.New({ readColours = logLineColours, show = show, noPlate = noPlate })
+	flow = ns.Flow.New({ show = show, noPlate = noPlate })
 	frame:SetScript("OnUpdate", onUpdate)
 
 	keepFilteredEvents()

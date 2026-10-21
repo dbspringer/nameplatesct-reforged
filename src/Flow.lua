@@ -13,11 +13,8 @@ ns.Flow = Flow
 -- heals and self-damage. A Hit decided after its Nameplate hid goes nowhere
 -- too: the renderer finds a Nameplate by its token, and by then the token can
 -- name another unit, or none.
--- readColours() gives the colours of Pairing.ColoursOf
--- at each Log Line: the player can change or switch the Log Filter at any
--- time, and the game can load the filters after login.
 function Flow.New(options)
-	local show, noPlate, readColours = options.show, options.noPlate, options.readColours
+	local show, noPlate = options.show, options.noPlate
 	-- The adapter's entry number at which each token's Nameplate last hid.
 	-- Entry order, not time, so a Hit on a new unit in the same frame stays.
 	local hiddenAt = {}
@@ -53,11 +50,6 @@ function Flow.New(options)
 			tick(entry[1])
 			hiddenAt[entry[3]] = adapter.Push(entry)
 			return
-		elseif entry[2] == "COMBAT_LOG_MESSAGE" then
-			-- The adapter holds a frame's lines until a later event closes the
-			-- frame. Close it now, so its lines meet the colours they came under.
-			adapter.Tick(entry[1])
-			pairing.SetColours(readColours())
 		end
 		adapter.Push(entry)
 	end

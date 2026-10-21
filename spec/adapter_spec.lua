@@ -17,6 +17,7 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
+assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 local Adapter = ns.Adapter
 local Trace = assert(loadfile("tools/trace.lua"))()
@@ -211,6 +212,14 @@ describe("Adapter", function()
 			assert.are.same({ kind = "line", time = 1, entry = 1, r = 1, g = 0.5, b = 0.25 }, records[1])
 		end)
 
+		it("reads each Log Line's Line Kind from its colour", function()
+			local records = run({
+				{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.74902, 0.54902, 1, 0 },
+				{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.70196, 0.70196, 0.70196, 0 },
+			})
+			assert.are.same({ "tick" }, { records[1].lineKind, records[2].lineKind })
+		end)
+
 		it("drops the old lines that the game sends again to fill a new chat frame", function()
 			local records = run({ logLine(1, Enum.CombatLogMessageOrder.Oldest), logLine(1) })
 			assert.are.equal(1, #records)
@@ -243,6 +252,16 @@ describe("Adapter", function()
 				castGUID = "Cast-1", spellID = 707 }, records[1])
 			assert.are.same({ "START", "SUCCEEDED", "INTERRUPTED" }, { records[2].stage, records[3].stage, records[4].stage })
 			assert.are.same({ "pet", "Cast-2", 3716 }, { records[4].unit, records[4].castGUID, records[4].spellID })
+		end)
+
+		it("makes a Cast for a channel's start and stop, and keeps the Nameplate the player targeted", function()
+			local records = run({
+				{ 1, "UNIT_SPELLCAST_CHANNEL_START", "player", "Cast-3", 689, target = "nameplate2" },
+				{ 2, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "Cast-3", 689 },
+			})
+			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "CHANNEL_START", unit = "player",
+				castGUID = "Cast-3", spellID = 689, target = "nameplate2" }, records[1])
+			assert.are.same({ "CHANNEL_STOP", "Cast-3", 689 }, { records[2].stage, records[2].castGUID, records[2].spellID })
 		end)
 
 		it("makes a Swing from a swing timer start", function()

@@ -1,7 +1,11 @@
+_G.issecretvalue = function(value)
+	return value == "<secret>"
+end
+
 local ns = {}
-assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
+assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/LogFilter.lua"))("NameplateSCT_Reforged", ns)
-local LogFilter = ns.LogFilter
+local LogFilter, LineKind = ns.LogFilter, ns.LineKind
 
 local MY_ACTIONS = "My actions"
 local ME, MY_PET, PARTY = 0x4511, 0x3111, 0x0518
@@ -61,37 +65,65 @@ describe("LogFilter", function()
 		assert.are.same({ destFlags = { [ME] = false, [MY_PET] = false }, eventList = {} }, saved.filters[1].filters[2])
 	end)
 
-	-- A picked filter that sends everything, named "Raid", with the given
-	-- Done By sources and line colours by source when byColour is set.
-	local function raidFilter(sources, byColour)
-		local saved = savedFilters()
-		local events = {}
-		for _, event in ipairs({ "SWING_DAMAGE", "RANGE_DAMAGE", "SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE",
-			"SWING_MISSED", "RANGE_MISSED", "SPELL_MISSED", "SPELL_PERIODIC_MISSED" }) do
-			events[event] = true
-		end
-		saved.filters[3] = {
-			name = "Raid",
-			filters = { { sourceFlags = sources, eventList = events } },
-			settings = { lineColoring = byColour, lineColorPriority = 1 },
-			colors = { unitColoring = { [ME] = { r = 0.7, g = 0.7, b = 0.7 }, [MY_PET] = { r = 0.7, g = 0.7, b = 0.7 } } },
-		}
-		saved.currentFilter = 3
-		return saved
-	end
-
-	it("accepts a picked filter of any name that sends everything and only your lines", function()
+	it("accepts a picked filter of any name once it is fixed", function()
 		local renamed = savedFilters()
 		LogFilter.Fix(renamed, MY_ACTIONS)
 		renamed.filters[1].name = "Mine"
 		assert.are.equal("ok", LogFilter.Check(renamed, MY_ACTIONS))
-		assert.are.equal("ok", LogFilter.Check(raidFilter({ [ME] = true, [MY_PET] = true }, false), MY_ACTIONS))
 	end)
 
-	it("accepts other players' lines only when their colour tells them apart", function()
-		local sources = { [ME] = true, [MY_PET] = true, [PARTY] = true }
-		assert.are.equal("ok", LogFilter.Check(raidFilter(sources, true), MY_ACTIONS))
-		assert.are.equal("fixable", LogFilter.Check(raidFilter(sources, false), MY_ACTIONS))
+	it("finds a filter that sends other players' lines fixable, since they would look like yours", function()
+		local saved = savedFilters()
+		LogFilter.Fix(saved, MY_ACTIONS)
+		saved.filters[1].filters[1].sourceFlags[PARTY] = true
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	-- A colour as it reaches an addon: 8 bits a channel.
+	local function arrived(colour)
+		local function channel(value)
+			return math.floor(value * 255 + 0.5) / 255
+		end
+		return channel(colour.r), channel(colour.g), channel(colour.b)
+	end
+
+	it("finds a filter that does not colour lines by kind fixable, and the fix colours each line so its kind reads back", function()
+		local saved = savedFilters()
+		LogFilter.Fix(saved, MY_ACTIONS)
+		saved.filters[1].settings.lineColorPriority = 1
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+
+		local colouring = saved.filters[1].colors.eventColoring
+		local expected = {
+			SPELL_DAMAGE = "direct", SPELL_PERIODIC_DAMAGE = "tick", SWING_DAMAGE = "swing", RANGE_DAMAGE = "shot",
+			SPELL_MISSED_RESIST = "directMiss", SPELL_PERIODIC_MISSED_IMMUNE = "tickMiss", SWING_MISSED = "swingMiss",
+			SWING_MISSED_DODGE = "swingMiss", RANGE_MISSED = "shotMiss", SPELL_HEAL = "heal",
+			SPELL_PERIODIC_HEAL = "hot", PARTY_KILL = "kill",
+		}
+		for event, kind in pairs(expected) do
+			assert.are.equal(kind, LineKind.Of(arrived(colouring[event])), event)
+		end
+	end)
+
+	it("finds a filter whose lines of yours are brightened by highlighting fixable", function()
+		local saved = savedFilters()
+		LogFilter.Fix(saved, MY_ACTIONS)
+		saved.filters[1].settings.lineHighlighting = true
+		saved.filters[1].colors.highlightedEvents.SPELL_DAMAGE = true
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("keeps the colours and highlights of events it does not colour", function()
+		local saved = savedFilters()
+		local blue = { r = 0, g = 0, b = 1, a = 1 }
+		saved.filters[1].colors = { eventColoring = { UNIT_DIED = blue }, highlightedEvents = { UNIT_DIED = true } }
+		LogFilter.Fix(saved, MY_ACTIONS)
+		assert.are.same(blue, saved.filters[1].colors.eventColoring.UNIT_DIED)
+		assert.is_true(saved.filters[1].colors.highlightedEvents.UNIT_DIED)
 	end)
 
 	it("cannot fix a combat log that has no My actions filter, and changes nothing", function()
