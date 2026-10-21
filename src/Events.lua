@@ -38,6 +38,9 @@ local frame = CreateFrame("Frame")
 
 -- Nameplate tokens that are shown now.
 local plates = {}
+-- The Nameplate frame of each shown token, taken when it shows, as the
+-- renderer takes it, so a late Hit can use it after the token moves on.
+local plateFrames = {}
 
 local function keepFilteredEvents()
 	local enabled = C_CombatLog.AreFilteredEventsEnabled()
@@ -99,7 +102,20 @@ local function onEvent(_, event, ...)
 	-- live as in the specs. The adapter names a report by its owner first, so
 	-- the plate search is needed only for other units.
 	local entry = { now, event, ... }
-	if event == "UNIT_COMBAT" then
+	if event == "NAME_PLATE_UNIT_ADDED" then
+		plateFrames[unit] = C_NamePlate.GetNamePlateForUnit(unit)
+		entry.frame = plateFrames[unit]
+	elseif event == "NAME_PLATE_UNIT_REMOVED" then
+		-- The Nameplate as it hid, for a late Hit on it (see Flow.New). The
+		-- token still names the leaving unit here (unverified on Forever; the
+		-- Traces' GUIDs at this event say so).
+		entry.frame = plateFrames[unit]
+		plateFrames[unit] = nil
+		entry.wasTarget = isTrue(UnitIsUnit(unit, "target"))
+		entry.classification = UnitClassification(unit)
+		entry.isBoss = UnitIsBossMob(unit)
+		entry.isPlayer = UnitIsPlayer(unit)
+	elseif event == "UNIT_COMBAT" then
 		entry.own = ownerOf(unit)
 		if not entry.own then
 			entry.plate = plateFor(unit)
@@ -111,7 +127,11 @@ local function onEvent(_, event, ...)
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
 	if ns.Recorder.IsRecording() then
 		local extra
-		if isPlateEvent then
+		if event == "NAME_PLATE_UNIT_REMOVED" then
+			-- No frame: a Trace cannot keep one.
+			extra = { guid = UnitGUID(unit), wasTarget = entry.wasTarget, classification = entry.classification,
+				isBoss = entry.isBoss, isPlayer = entry.isPlayer }
+		elseif isPlateEvent then
 			extra = { guid = UnitGUID(unit) }
 		elseif event == "UNIT_COMBAT" then
 			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
@@ -133,7 +153,7 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how, spellID, lineKind) gets Your Hits on an enemy Nameplate, and
+-- show(hit, how, spellID, lineKind, late) gets Your Hits on an enemy Nameplate, and
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)
@@ -148,6 +168,7 @@ function Events.Start(show, noPlate, spellFacts)
 	for i = 1, MAX_NAMEPLATES do
 		local unit = "nameplate" .. i
 		plates[unit] = isTrue(UnitExists(unit)) or nil
+		plateFrames[unit] = plates[unit] and C_NamePlate.GetNamePlateForUnit(unit) or nil
 	end
 	for _, event in ipairs(GAME_EVENTS) do
 		frame:RegisterEvent(event)
@@ -166,4 +187,5 @@ function Events.Stop()
 	frame:SetScript("OnUpdate", nil)
 	flow = nil
 	wipe(plates)
+	wipe(plateFrames)
 end

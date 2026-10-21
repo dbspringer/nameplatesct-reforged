@@ -25,7 +25,7 @@ The one kind an enemy NPC has, by which the player can hide or show its Plate Te
 _Avoid_: Classification, mob type, NPC filter list
 
 **Grace Period**:
-The short time after a Nameplate hides in which its Plate Text still shows, so a killing blow is not lost.
+The short time after a Nameplate hides in which its Plate Text still shows, and in which Plate Text for a Hit that the game reports just after the hide can still start, so a killing blow is not lost.
 _Avoid_: Orphan time, linger
 
 ## Combat data

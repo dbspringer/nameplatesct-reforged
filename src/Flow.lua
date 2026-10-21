@@ -6,17 +6,21 @@ ns.Flow = Flow
 -- Connects the adapter, Pairing and Spell Identity, and sends on Your Hits
 -- on enemies. Raw events go in through Push, in the shape of Trace entries.
 -- Tick(now) closes the open frame and ends the holds that are over; call it
--- once each frame. show(hit, how, spellID, lineKind) gets Your Hit on an
--- enemy Nameplate, with the spell that made it or nil (see Identity.New),
+-- once each frame. show(hit, how, spellID, lineKind, late) gets Your Hit on
+-- an enemy Nameplate, with the spell that made it or nil (see Identity.New),
 -- and the Line Kind of its Log Line, or nil when the colour told none;
 -- noPlate(hit, how), which is optional, gets Your Hit on target or a soft
 -- target that has no Nameplate. how is the rule that paired the Hit (see
 -- Pairing.New). spellFacts, which is required, holds the Spell Facts, which
 -- Identity changes in place. Hits on the player or the pet go nowhere: they
--- are there to use up the Log Lines of heals and self-damage. A Hit decided
--- after its Nameplate hid is not shown, as the renderer finds a Nameplate by
--- its token, and by then the token can name another unit, or none; it still
--- goes to Spell Identity, so its cast is used up.
+-- are there to use up the Log Lines of heals and self-damage.
+-- A Hit decided after its Nameplate hid, such as a killing blow whose Log
+-- Line came late, is a late Hit: its token can by then name another unit, or
+-- none. show gets it with late, the Nameplate as it hid: { frame, wasTarget,
+-- classification, isBoss, isPlayer }, from the NAME_PLATE_UNIT_REMOVED entry
+-- (Events.lua), which the adapter keeps on the Hit's plate life. A late Hit
+-- whose frame the game gave to a new unit since the hide is not shown, as
+-- its text would show where that unit is or was.
 function Flow.New(options)
 	local show, noPlate = options.show, options.noPlate
 	local identity = ns.Identity.New(options.spellFacts)
@@ -26,9 +30,6 @@ function Flow.New(options)
 	-- Pairing returns, so an error in them cannot drop the rest of Pairing's
 	-- frame; it drops the rest of the queue.
 	local pending = {}
-	-- The adapter's entry number at which each token's Nameplate last hid.
-	-- Entry order, not time, so a Hit on a new unit in the same frame stays.
-	local hiddenAt = {}
 
 	local pairing = ns.Pairing.New({
 		onDecision = function(hit, line, how)
@@ -49,18 +50,15 @@ function Flow.New(options)
 		if #decisions == 0 then
 			return
 		end
-		for _, decision in ipairs(decisions) do
-			decision.hidden = (hiddenAt[decision.hit.unit] or 0) > decision.hit.entry
-		end
 		local spellIDs = identity.OfAll(decisions)
 		for i, decision in ipairs(decisions) do
-			local hit = decision.hit
-			if not decision.hidden then
-				if hit.unit:match("^nameplate%d+$") then
-					show(hit, decision.how, spellIDs[i], decision.line.lineKind)
-				elseif noPlate then
+			local hit, life = decision.hit, decision.hit.life
+			if not life then
+				if noPlate then
 					noPlate(hit, decision.how)
 				end
+			elseif not life.reused then
+				show(hit, decision.how, spellIDs[i], decision.line.lineKind, life.hid)
 			end
 		end
 	end
@@ -97,9 +95,6 @@ function Flow.New(options)
 			-- Decide the Hits from before this moment first, as the live Tick of
 			-- each frame does, so the result is the same at any tick rate.
 			tick(entry[1])
-			hiddenAt[entry[3]] = adapter.Push(entry)
-			identity.PlateHidden(entry[3])
-			return
 		end
 		adapter.Push(entry)
 		flush()
