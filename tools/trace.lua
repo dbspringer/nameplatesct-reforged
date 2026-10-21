@@ -9,7 +9,8 @@ Trace.COMBATLOG_OBJECT_TYPE_PET = 0x1000
 Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN = 0x2000
 
 -- The Traces in spec/traces/ that have checked Labels.
-Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind" }
+Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind",
+	"warlock-spells" }
 
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111

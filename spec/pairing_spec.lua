@@ -141,6 +141,15 @@ describe("Pairing", function()
 			{ decided[physicalSpell.entry], decided[swingInFrame.entry], decided[tick.entry], decided[dodge.entry] })
 	end)
 
+	it("leaves a melee line in a mob's swing frame for your or your pet's swing one Swing Delay later", function()
+		-- The player and the pet never swing at themselves.
+		local petSwingLine, onPet, petSwing = line(1, "swing"), hit(1, "pet", 1), hit(1.567, "nameplate1", 1)
+		local swingLine, onPlayer, swing = line(3, "swing"), hit(3, "player", 1), hit(3.368, "nameplate1", 1)
+		local decided = pair({ petSwingLine, onPet, petSwing, swingLine, onPlayer, swing })
+		assert.are.same({ false, petSwingLine.entry, false, swingLine.entry },
+			{ decided[onPet.entry], decided[petSwing.entry], decided[onPlayer.entry], decided[swing.entry] })
+	end)
+
 	it("gives a held Hit only a late Log Line whose kind suits it", function()
 		local resist, tickLine, missLine = hit(1, "nameplate1", 32, "RESIST"), line(1.05, "tick"), line(1.1, "directMiss")
 		local decided = pair({ resist, tickLine, missLine })
@@ -346,7 +355,8 @@ describe("Pairing", function()
 				-- The adapter feeds Pairing as the live addon will.
 				local adapter = Adapter.New(function(record)
 					if record.kind == "line" then
-						lineOf[record.entry] = record.time .. "/" .. tostring(record.lineKind)
+						local melee = record.lineKind and ns.LineKind.IsMelee(record.lineKind)
+						lineOf[record.entry] = (melee and "" or record.time .. "/") .. tostring(record.lineKind)
 					end
 					pairing.Push(record)
 				end)
@@ -356,7 +366,10 @@ describe("Pairing", function()
 				adapter.Tick(math.huge)
 				pairing.Tick(math.huge)
 				-- Pairing reads only a Log Line's time and Line Kind, so any line
-				-- of the Label line's kind from its frame is equal.
+				-- of the Label line's kind from its frame is equal. It cannot tell
+				-- the player's melee line from the pet's, and a melee line has no
+				-- spell, so any melee line of that kind is equal; a line taken
+				-- from the wrong Hit still leaves that Hit wrong.
 				local wrong = {}
 				for _, row in ipairs(labels) do
 					local got = decided[row.hit]

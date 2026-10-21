@@ -40,6 +40,24 @@ describe("the checked Labels", function()
 					end
 				end
 			end)
+
+			-- A row whose line a person corrected must get that line's spell.
+			it("give each row with a Log Line the spell of that line's file event", function()
+				local lines = {}
+				for line in io.lines("spec/traces/" .. name .. ".combatlog.txt") do
+					lines[#lines + 1] = line
+				end
+				local _, _, eventAt = Label.Make(assert(Trace.Load("spec/traces/" .. name .. ".lua")), lines)
+				for _, row in ipairs(labels) do
+					if row.line then
+						local spell = eventAt[row.line] and Label.SpellOf(eventAt[row.line])
+						assert.is_not_nil(spell, ("line %d has no spell ID in the file"):format(row.line))
+						assert.are.equal(spell, row.spell, ("hit %d has the wrong spell"):format(row.hit))
+					else
+						assert.is_nil(row.spell, ("hit %d has a spell but no line"):format(row.hit))
+					end
+				end
+			end)
 		end)
 	end
 end)
