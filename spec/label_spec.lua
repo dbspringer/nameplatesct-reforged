@@ -153,6 +153,7 @@ describe("Labels", function()
 			damage(102, OTHER, MOB_A, 40, "Fireball"),
 		})
 		assert.are.same({ false, nil }, { rows[3].line, rows[3].unsure })
+		assert.is_nil(rows[3].spell)
 	end)
 
 	it("gives no Log Line to your miss, which the Log Filter leaves out", function()

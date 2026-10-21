@@ -386,8 +386,11 @@ function Label.Make(trace, lines)
 		end
 		-- Only your events and your pet's have a Log Line in lineOf.
 		local line = event and lineOf[event] and lineOf[event].entry or false
-		local spell = line and Label.SpellOf(event)
-		if not unsure and spell == nil then
+		local spell
+		if line then
+			spell = Label.SpellOf(event)
+		end
+		if line and not unsure and spell == nil then
 			unsure = "no spell ID"
 		end
 		rows[#rows + 1] = { hit = hit, line = line, spell = spell, event = event, unsure = unsure }

@@ -50,14 +50,18 @@ local function reportOf(hit)
 end
 
 -- Whether a Log Line can be the Hit's by its Line Kind: a line reports the
--- same sort of Hit, and a melee line only a physical Hit. A line whose colour
--- tells nothing (see LineKind.Of) can be any Hit's.
+-- same sort of Hit, and a melee line only a physical Hit on an enemy, as the
+-- player and the pet never swing at themselves. A mob's swing at either can
+-- come in the frame of their own swing's line, whose Hit comes one Swing
+-- Delay later. A line whose colour tells nothing (see LineKind.Of) can be any
+-- Hit's.
 local function suits(hit, line)
 	local lineKind = line.lineKind
 	if not lineKind then
 		return true
 	end
-	return ns.LineKind.Reports(lineKind) == reportOf(hit) and (not ns.LineKind.IsMelee(lineKind) or isPhysical(hit))
+	return ns.LineKind.Reports(lineKind) == reportOf(hit)
+		and (not ns.LineKind.IsMelee(lineKind) or (isPhysical(hit) and not OWN_UNITS[hit.unit]))
 end
 
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
