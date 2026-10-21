@@ -24,12 +24,20 @@ local function base(event, source, dest)
 	return { event, source[1], '""', source[2], "0x0", dest[1], '""', dest[2], "0x0" }
 end
 
+-- Spell IDs and schools, as the file writes them.
+local SPELLS = {
+	Immolate = { "707", "0x4" },
+	Corruption = { "6222", "0x20" },
+	Fireball = { "133", "0x4" },
+	["Drain Soul"] = { "1120", "0x20" },
+}
+
 -- A damage event in the advanced format: a spell, or a melee swing when the
 -- spell is nil.
 local function damage(time, source, dest, amount, spell)
 	local fields = base(spell and "SPELL_DAMAGE" or "SWING_DAMAGE", source, dest)
 	if spell then
-		for _, field in ipairs({ "707", '"' .. spell .. '"', "0x4" }) do
+		for _, field in ipairs({ SPELLS[spell][1], '"' .. spell .. '"', SPELLS[spell][2] }) do
 			fields[#fields + 1] = field
 		end
 	end
@@ -50,17 +58,18 @@ local function missed(time, source, dest, missType)
 	return fileLine(time, fields)
 end
 
-local function report(time, unit, plate, action, amount)
-	return { time, "UNIT_COMBAT", unit, action, "", amount, 1, plate = plate, guid = "<secret>" }
+-- A report with no school fits a file event of any school.
+local function report(time, unit, plate, action, amount, school)
+	return { time, "UNIT_COMBAT", unit, action, "", amount, school, plate = plate, guid = "<secret>" }
 end
 
-local function logLine(time)
-	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 }
+local function logLine(time, grey)
+	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", grey or 0.7, grey or 0.7, grey or 0.7, 0 }
 end
 
 -- Labels the Trace entries against the file lines, and returns the rows by
--- the entry number of their Hit.
-local function label(entries, fileLines, withPet)
+-- the entry number of their Hit. filter adds to the Trace's Log Filter.
+local function label(entries, fileLines, withPet, filter)
 	local trace = {
 		header = {
 			started = "2026-10-20 10:00:00",
@@ -78,6 +87,9 @@ local function label(entries, fileLines, withPet)
 		},
 		entries = entries,
 	}
+	for key, value in pairs(filter or {}) do
+		trace.header.logFilter.filter[key] = value
+	end
 	local lines = { FORMAT }
 	for _, line in ipairs(fileLines) do
 		lines[#lines + 1] = line
@@ -99,7 +111,36 @@ describe("Labels", function()
 		}, {
 			damage(101, ME, MOB_A, 29, "Immolate"),
 		})
-		assert.are.same({ 1, nil }, { rows[2].line, rows[2].unsure })
+		assert.are.same({ 1, 707, nil }, { rows[2].line, rows[2].spell, rows[2].unsure })
+	end)
+
+	it("gives each Log Line of a frame the file event of its colour", function()
+		-- Under colours by source the killing blow line is highlighted white, and
+		-- it can come before the line of the hit that killed.
+		local rows = label({
+			logLine(101, 1),
+			report(101, "nameplate1", "nameplate1", "WOUND", 26),
+			logLine(101),
+		}, {
+			damage(101, ME, MOB_A, 26, "Drain Soul"),
+			fileLine(101, base("PARTY_KILL", ME, MOB_A)),
+		}, false, {
+			settings = { lineColoring = true, lineColorPriority = 1, lineHighlighting = true },
+			colors = { highlightedEvents = { PARTY_KILL = true } },
+		})
+		assert.are.same({ 3, 1120 }, { rows[2].line, rows[2].spell })
+	end)
+
+	it("lets the school of a Hit choose between two file events", function()
+		local rows = label({
+			logLine(105),
+			logLine(105),
+			report(105, "target", nil, "WOUND", 12, 32),
+		}, {
+			damage(105, ME, MOB_A, 12, "Immolate"),
+			damage(105, ME, MOB_A, 12, "Corruption"),
+		})
+		assert.are.same({ 2, 6222, nil }, { rows[3].line, rows[3].spell, rows[3].unsure })
 	end)
 
 	it("gives no Log Line to a Hit that another player made", function()
@@ -136,7 +177,7 @@ describe("Labels", function()
 			damage(101, PET, MOB_A, 14),
 			damage(103, PET, MOB_A, 15),
 		}, true)
-		assert.are.same({ 1, nil }, { rows[2].line, rows[2].unsure })
+		assert.are.same({ 1, false, nil }, { rows[2].line, rows[2].spell, rows[2].unsure })
 		assert.are.equal(3, rows[4].line)
 		assert.matches("^late", rows[4].unsure)
 	end)

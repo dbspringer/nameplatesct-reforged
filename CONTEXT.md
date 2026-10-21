@@ -65,7 +65,7 @@ A recording of the raw game events from a real fight (Hits, Log Lines, casts, sw
 _Avoid_: Log, replay, recording
 
 **Label**:
-The known Pairing of one Hit in a Trace: its Log Line, or no Log Line. It comes from the Combat Log File, and a person checks each Label before tests use it.
+The known Pairing of one Hit in a Trace: its Log Line, or no Log Line, and for Your Hit the spell that made it. It comes from the Combat Log File, and a person checks each Label before tests use it.
 _Avoid_: Expected result, ground truth, annotation
 
 **Combat Log File**:
