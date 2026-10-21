@@ -207,11 +207,11 @@ describe("Spell Identity", function()
 		end)
 
 		it("starts a school again when a Hit disagrees with it", function()
-			local saved = { [SHOOT] = { shot = { school = FIRE, hits = 2 } } }
+			local saved = { [SHOOT] = { school = FIRE, hits = 2 } }
 			local identity = Identity.New(saved)
 			cast(identity, 1, SHOOT)
 			assert.is_nil(of(identity, 1.3, "shot", SHADOW))
-			assert.are.same({ school = SHADOW, hits = 1 }, saved[SHOOT].shot)
+			assert.are.same({ school = SHADOW, hits = 1 }, saved[SHOOT])
 		end)
 
 		it("checks the school of a lone cast's spell from the table", function()
@@ -242,12 +242,17 @@ describe("Spell Identity", function()
 		end)
 
 		it("drops saved Spell Facts of the wrong shape, or of a spell that does not learn, and still learns", function()
-			local saved = { [SHOOT] = { shot = { school = FIRE } }, [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } },
-				[FIREBOLT] = true }
+			local saved = { [SHOOT] = { school = FIRE }, [SHADOW_BOLT] = { school = SHADOW, hits = 2 }, [FIREBOLT] = true }
 			local identity = Identity.New(saved)
 			cast(identity, 1, SHOOT)
 			of(identity, 1.3, "shot", FIRE)
-			assert.are.same({ [SHOOT] = { shot = { school = FIRE, hits = 1 } } }, saved)
+			assert.are.same({ [SHOOT] = { school = FIRE, hits = 1 } }, saved)
+		end)
+
+		it("drops Spell Facts saved by group, as before release 1", function()
+			local saved = { [SHOOT] = { shot = { school = FIRE, hits = 2 } } }
+			Identity.New(saved)
+			assert.are.same({}, saved)
 		end)
 
 		it("gives a miss the spell whose school counts, and learns nothing from it", function()

@@ -52,19 +52,15 @@ local function isMiss(lineKind)
 end
 
 -- Drops saved Spell Facts of spells that do not learn their school, and
--- facts that do not have the shape below, such as ones edited by hand, so
--- that a bad entry costs its icon and nothing more.
+-- facts that do not have the shape below, such as ones edited by hand or
+-- kept by group before release 1, so that a bad entry costs its icon and
+-- nothing more.
 local function clean(saved)
-	for spellID, groups in pairs(saved) do
+	for spellID, facts in pairs(saved) do
 		local direct = ns.DirectSpells[spellID]
-		if type(groups) ~= "table" or not (direct and direct.learns) then
+		if not (direct and direct.learns) or type(facts) ~= "table" or type(facts.school) ~= "number"
+			or type(facts.hits) ~= "number" then
 			saved[spellID] = nil
-		else
-			for group, facts in pairs(groups) do
-				if type(facts) ~= "table" or type(facts.school) ~= "number" or type(facts.hits) ~= "number" then
-					groups[group] = nil
-				end
-			end
 		end
 	end
 end
@@ -87,8 +83,8 @@ local function sameTick(a, b)
 end
 
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
--- caller can keep it in SavedVariables: { [spellID] = { [group] = { school,
--- hits } } }. Cast(record) takes the adapter's cast records. Of(hit, line,
+-- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
+-- Only a ranged attack learns, so its facts are always for shots. Cast(record) takes the adapter's cast records. Of(hit, line,
 -- crowded, hidden) gives the spell ID of Your Hit on an enemy, or nil; Hits
 -- come in about the order of their time, a held Hit up to DECIDE_LATE late.
 -- crowded says that another tick that could be the same spell's came at the
@@ -106,25 +102,24 @@ function Identity.New(saved)
 	-- tick (none yet after a landing), and ends when its duration ends.
 	local rhythms = {}
 
-	-- The school of the spell's hits in a group, from a table or from the
-	-- Spell Facts that count, or nil while it is not known.
-	local function schoolOf(spellID, group)
+	-- The school of the spell's hits, from a table or from the Spell Facts
+	-- that count, or nil while it is not known.
+	local function schoolOf(spellID)
 		local spell = ns.TickSpells[spellID] or ns.DirectSpells[spellID]
 		if spell and not spell.learns then
 			return spell.school
 		end
-		local facts = saved[spellID] and saved[spellID][group]
+		local facts = saved[spellID]
 		return facts and facts.hits >= AGREEING_HITS and facts.school or nil
 	end
 
 	-- A Hit teaches its spell's school; one that disagrees starts it again.
-	local function teach(spellID, group, school)
-		saved[spellID] = saved[spellID] or {}
-		local facts = saved[spellID][group]
+	local function teach(spellID, school)
+		local facts = saved[spellID]
 		if facts and facts.school == school then
 			facts.hits = facts.hits + 1
 		else
-			saved[spellID][group] = { school = school, hits = 1 }
+			saved[spellID] = { school = school, hits = 1 }
 		end
 	end
 
@@ -168,7 +163,7 @@ function Identity.New(saved)
 			local age = hit.time - cast.time
 			if not cast.used and age >= 0 and age <= DIRECT_WINDOW and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
-				local known = not cast.secret and schoolOf(cast.spellID, group)
+				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
 					fitting, lastFitting = fitting + 1, cast
 				end
@@ -196,7 +191,7 @@ function Identity.New(saved)
 		end
 		local spellID = found.spellID
 		if school and learns(found) then
-			teach(spellID, group, school)
+			teach(spellID, school)
 		end
 		local ticking = ns.TickSpells[spellID]
 		if ticking and miss then
@@ -209,7 +204,7 @@ function Identity.New(saved)
 			rhythms[hit.unit] = rhythms[hit.unit] or {}
 			rhythms[hit.unit][spellID] = { source = hit.time }
 		end
-		local known = schoolOf(spellID, group)
+		local known = schoolOf(spellID)
 		return known and (not school or known == school) and spellID or nil
 	end
 
