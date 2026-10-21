@@ -11,10 +11,11 @@ ns.Flow = Flow
 -- noPlate(hit, how), which is optional, gets Your Hit on target or a soft
 -- target that has no Nameplate. how is the rule that paired the Hit (see
 -- Pairing.New). spellFacts, which is required, holds the Spell Facts, which
--- Identity changes in place. Hits on the player or the pet go nowhere: they are there to use up
--- the Log Lines of heals and self-damage. A Hit decided after its Nameplate
--- hid goes nowhere too: the renderer finds a Nameplate by its token, and by
--- then the token can name another unit, or none.
+-- Identity changes in place. Hits on the player or the pet go nowhere: they
+-- are there to use up the Log Lines of heals and self-damage. A Hit decided
+-- after its Nameplate hid is not shown, as the renderer finds a Nameplate by
+-- its token, and by then the token can name another unit, or none; it still
+-- goes to Spell Identity, so its cast is used up.
 function Flow.New(options)
 	local show, noPlate = options.show, options.noPlate
 	local identity = ns.Identity.New(options.spellFacts)
@@ -43,20 +44,22 @@ function Flow.New(options)
 		end
 	end)
 
-	-- A Hit decided after its Nameplate hid still goes to Identity, so its
-	-- cast is used up, but not to show.
 	local function send(decisions)
 		if #decisions == 0 then
 			return
 		end
+		for _, decision in ipairs(decisions) do
+			decision.hidden = (hiddenAt[decision.hit.unit] or 0) > decision.hit.entry
+		end
 		local spellIDs = identity.OfAll(decisions)
 		for i, decision in ipairs(decisions) do
 			local hit = decision.hit
-			local hidden = (hiddenAt[hit.unit] or 0) > hit.entry
-			if not hidden and hit.unit:match("^nameplate%d+$") then
-				show(hit, decision.how, spellIDs[i])
-			elseif not hidden and noPlate then
-				noPlate(hit, decision.how)
+			if not decision.hidden then
+				if hit.unit:match("^nameplate%d+$") then
+					show(hit, decision.how, spellIDs[i])
+				elseif noPlate then
+					noPlate(hit, decision.how)
+				end
 			end
 		end
 	end

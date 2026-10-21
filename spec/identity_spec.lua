@@ -13,8 +13,8 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 local SHADOW_BOLT, SHOOT, FIREBOLT = 705, 5019, 3110
 local IMMOLATE, CORRUPTION, AGONY, DRAIN_LIFE, FIREBALL, MIND_FLAY, SERPENT_STING = 707, 6222, 1014, 689, 133, 15407, 1978
-local NATURE = 8
-local FIRE, SHADOW = 4, 32
+local AUTO_SHOT = 75
+local PHYSICAL, FIRE, NATURE, SHADOW = 1, 4, 8, 32
 
 local function cast(identity, time, spellID, unit)
 	identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = time, spellID = spellID, unit = unit or "player" })
@@ -137,21 +137,68 @@ describe("Spell Identity", function()
 			assert.are.equal(SHADOW_BOLT, of(identity, 1.5, "direct", SHADOW))
 		end)
 
-		it("lets a DoT that only ticks compete for a miss, as its application can miss", function()
+		it("lets a DoT that only ticks compete for a miss at its cast, as its application can miss", function()
 			local identity = Identity.New({})
 			cast(identity, 1, SHADOW_BOLT)
 			cast(identity, 1.05, CORRUPTION)
-			assert.is_nil(of(identity, 1.5, "directMiss", 1))
+			assert.is_nil(of(identity, 1.05, "directMiss", 1))
+		end)
+
+		it("gives another source's later miss to no DoT, which keeps its ticks", function()
+			local RUPTURE = 1943
+			local identity = Identity.New({})
+			cast(identity, 0, RUPTURE)
+			local poisonResist = of(identity, 0.2, "directMiss", 1)
+			assert.are.same({ nil, RUPTURE, RUPTURE }, { poisonResist, of(identity, 2, "tick", PHYSICAL), of(identity, 4, "tick", PHYSICAL) })
+		end)
+
+		it("gives a lone cast whose school is fixed no Hit of another school, and keeps it for its own", function()
+			local LIGHTNING_BOLT, FIRE_PROC = 403, FIRE
+			local identity = Identity.New({})
+			cast(identity, 0, LIGHTNING_BOLT)
+			local proc = of(identity, 0.4, "direct", FIRE_PROC)
+			assert.are.same({ nil, LIGHTNING_BOLT }, { proc, of(identity, 0.9, "direct", NATURE) })
+		end)
+
+		it("keeps shots and direct hits apart: Shoot takes no direct hit, a direct spell no shot", function()
+			local MULTI_SHOT = 2643
+			local saved = {}
+			local identity = Identity.New(saved)
+			cast(identity, 0, SHOOT)
+			local proc = of(identity, 0.2, "direct", SHADOW)
+			cast(identity, 3, AUTO_SHOT)
+			cast(identity, 3.2, MULTI_SHOT)
+			-- The shot comes first, so Multi-Shot's cast is still there to compete.
+			local shot = of(identity, 3.3, "shot", PHYSICAL)
+			local spells = { proc, shot, of(identity, 3.5, "direct", PHYSICAL) }
+			assert.are.same({ nil, AUTO_SHOT, MULTI_SHOT }, spells)
+			assert.are.same({}, saved)
+		end)
+
+		it("gives a shot no ticking spell, and a miss of a spell that travels its spell after its flight", function()
+			local identity = Identity.New({})
+			cast(identity, 0, SERPENT_STING)
+			cast(identity, 0.5, AUTO_SHOT)
+			local dodged = of(identity, 0.6, "shotMiss", 1)
+			cast(identity, 5, FIREBALL)
+			assert.are.same({ AUTO_SHOT, SERPENT_STING, FIREBALL },
+				{ dodged, of(identity, 3.5, "tick", NATURE), of(identity, 5.8, "directMiss", 1) })
+		end)
+
+		it("gives no spell to a cast after the Hit's time", function()
+			local identity = Identity.New({})
+			cast(identity, 2, SHADOW_BOLT)
+			assert.are.same({ nil, SHADOW_BOLT }, { of(identity, 1.9, "direct", SHADOW), of(identity, 2.4, "direct", SHADOW) })
 		end)
 
 		it("gives each cast to one Hit only", function()
-			local identity = Identity.New({ [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } } })
+			local identity = Identity.New({})
 			cast(identity, 1, SHADOW_BOLT)
 			assert.are.same({ SHADOW_BOLT, nil }, { of(identity, 1.5, "direct", SHADOW), of(identity, 1.8, "direct", SHADOW) })
 		end)
 
 		it("rules out a cast whose spell has another school, and gives none for a cast more than 1.5 s ago", function()
-			local identity = Identity.New({ [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } } })
+			local identity = Identity.New({})
 			cast(identity, 1, IMMOLATE)
 			cast(identity, 1.2, SHADOW_BOLT)
 			local fire = of(identity, 1.3, "direct", FIRE)
@@ -176,8 +223,8 @@ describe("Spell Identity", function()
 		it("learns nothing from a Hit whose school is secret, and gives its tick the spell all the same", function()
 			local saved = {}
 			local identity = Identity.New(saved)
-			cast(identity, 1, SHADOW_BOLT)
-			of(identity, 1.5, "direct", "<secret>")
+			cast(identity, 1, SHOOT)
+			of(identity, 1.3, "shot", "<secret>")
 			cast(identity, 2, CORRUPTION)
 			assert.are.same({}, saved)
 			assert.are.equal(CORRUPTION, of(identity, 5, "tick", "<secret>"))
@@ -204,7 +251,7 @@ describe("Spell Identity", function()
 		end)
 
 		it("gives a miss the spell whose school counts, and learns nothing from it", function()
-			local saved = { [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } } }
+			local saved = {}
 			local identity = Identity.New(saved)
 			cast(identity, 1, SHADOW_BOLT)
 			local dodged = of(identity, 1.4, "directMiss", 1)
@@ -288,11 +335,55 @@ describe("Spell Identity", function()
 		end)
 
 		it("counts only real ticks in a crowd: not a resisted tick, nor a direct hit", function()
-			local identity = Identity.New({ [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } } })
+			local REND = 772
+			local identity = Identity.New({})
 			cast(identity, 1, CORRUPTION)
 			cast(identity, 3.5, SHADOW_BOLT)
-			local spells = together(identity, 4, { { SHADOW, "direct" }, SHADOW, { 1, "tickMiss" } })
+			local spells = together(identity, 4, { { SHADOW, "direct" }, SHADOW })
+			cast(identity, 10, REND)
+			assert.are.same({ CORRUPTION, REND }, { spells[2], together(identity, 13, { PHYSICAL, { 1, "tickMiss" } })[1] })
+		end)
+
+		it("does not crowd a tick with one whose Nameplate hid, which was another unit's", function()
+			local identity = Identity.New({})
+			cast(identity, 0, CORRUPTION)
+			local spells = identity.OfAll({
+				{ hit = { time = 3, unit = "nameplate1", school = SHADOW }, line = { lineKind = "tick" }, hidden = true },
+				{ hit = { time = 3, unit = "nameplate1", school = SHADOW }, line = { lineKind = "tick" } },
+			})
 			assert.are.equal(CORRUPTION, spells[2])
+		end)
+
+		it("does not crowd ticks at once on two Nameplates", function()
+			local identity = Identity.New({})
+			cast(identity, 1, CORRUPTION)
+			cast(identity, 1, CORRUPTION)
+			local spells = identity.OfAll({
+				{ hit = { time = 4, unit = "nameplate1", school = SHADOW }, line = { lineKind = "tick" } },
+				{ hit = { time = 4, unit = "nameplate2", school = SHADOW }, line = { lineKind = "tick" } },
+			})
+			assert.are.same({ CORRUPTION, CORRUPTION }, spells)
+		end)
+
+		it("gives a landing one first tick", function()
+			local identity = Identity.New({})
+			cast(identity, 1, FIREBALL)
+			of(identity, 1.8, "direct", FIRE)
+			assert.are.same({ FIREBALL, nil }, { of(identity, 3.8, "tick", FIRE), of(identity, 3.85, "tick", FIRE) })
+		end)
+
+		it("keeps a cast for a held tick after a newer cast", function()
+			local identity = Identity.New({})
+			cast(identity, 0, SERPENT_STING)
+			cast(identity, 4.95, SHADOW_BOLT)
+			assert.are.equal(SERPENT_STING, of(identity, 4.55, "tick", NATURE))
+		end)
+
+		it("gives no ticks to an Immolate whose hit missed", function()
+			local identity = Identity.New({})
+			cast(identity, 1, IMMOLATE)
+			of(identity, 1, "directMiss", 1)
+			assert.is_nil(of(identity, 4, "tick", FIRE))
 		end)
 
 		it("counts ticks with a secret school in every crowd at their time", function()
@@ -370,12 +461,33 @@ describe("Spell Identity", function()
 			assert.are.same({ FIREBALL, "none", "none" }, spells)
 		end)
 
+		it("uses up the cast of a Hit whose Nameplate hid, but leaves the next unit on its token no Tick Rhythm", function()
+			local spells = shownSpells({
+				castEntry(0, FIREBALL),
+				hitEntry(0.8, "nameplate1", FIRE), lineEntry(0.8, "direct"),
+				{ 0.8, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+				hitEntry(1.2, "nameplate2", FIRE), lineEntry(1.2, "direct"),
+				hitEntry(2.82, "nameplate1", FIRE), lineEntry(2.82, "tick"),
+			})
+			assert.are.same({ "none", "none" }, spells)
+		end)
+
+		it("leaves no Tick Rhythm from a tick whose Nameplate hid to the next unit on its token", function()
+			local spells = shownSpells({
+				castEntry(0, CORRUPTION),
+				hitEntry(3, "nameplate1", SHADOW), lineEntry(3, "tick"),
+				{ 3, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+				hitEntry(6, "nameplate1", SHADOW), lineEntry(6, "tick"),
+			})
+			assert.are.same({ "none" }, spells)
+		end)
+
 		it("uses up the cast of Your Hit on a unit with no Nameplate", function()
 			local spells = shownSpells({
 				castEntry(1, SHADOW_BOLT),
 				hitEntry(1.4, "target", SHADOW), lineEntry(1.4, "direct"),
 				hitEntry(1.6, "nameplate1", SHADOW), lineEntry(1.6, "direct"),
-			}, { [SHADOW_BOLT] = { direct = { school = SHADOW, hits = 2 } } })
+			})
 			assert.are.same({ "none" }, spells)
 		end)
 	end)

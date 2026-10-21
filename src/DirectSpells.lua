@@ -1,22 +1,25 @@
 local _, ns = ...
 
 -- The spells that hit directly, by the spell ID of their cast: a direct hit,
--- a shot, a weapon strike, or a leech such as Death Coil. For each, the school
--- its Hit reports, or that it learns its school from its Hits, as a wand sets
--- Shoot's. Only a cast of a spell in this table, or of one in TickSpells.lua
--- whose cast also hits, can be the spell of a direct hit or a shot; a cast
--- of any other spell, such as a buff or a Voidwalker's Torment, is never one
--- (ADR 0004). The pets' spells are here so that they compete with the
--- player's, though they never win. Spells that also tick are in
--- TickSpells.lua.
+-- a weapon strike, a leech such as Death Coil, or a ranged attack, whose Hits
+-- come with shot Log Lines. For each, the school its Hit reports, or that it
+-- learns its school from its Hits, as a wand sets Shoot's. Which casts can
+-- be a Hit's spell is decided in Identity's canHit (ADR 0004); a cast of a
+-- spell in neither table, such as a buff or a Voidwalker's Torment, is never
+-- one. The pets' spells are here so that they compete with the player's,
+-- though they never win. Spells that also tick are in TickSpells.lua.
 --
 -- From the Classic Era spell data (wago.tools DB2: SpellEffect school damage,
 -- health leech and weapon damage effects, SpellMisc school), for every rank
 -- that Forever's trainers teach (WhatsTraining's Camelot tables), the later
--- ranks of 1.10 to 1.12, and the ranged attacks; Forever's own spells take
--- their school from their description on the Forever client. Left out:
--- spells whose damage comes from another spell or a script (Arcane Missiles,
--- Hellfire, Execute, Judgement), and Mana Burn.
+-- ranks of 1.10 to 1.12, and the ranged attacks; added by hand from the same
+-- data, the spells that Forever's trainers do not teach (Raptor Strike's and
+-- Claw's first ranks, Multi-Shot's later ranks, Hemorrhage, Stormstrike);
+-- Forever's own spells take their school from their description on the
+-- Forever client. Left out, among others: spells whose damage comes from
+-- another spell or a script (Arcane Missiles, Hellfire, Execute, Judgement,
+-- Holy Shock's trainer ranks), procs (poisons, weapon enchants, seals),
+-- totems, and Mana Burn.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 
@@ -29,22 +32,24 @@ local function hits(school, ids)
 	end
 end
 
-local function learns(ids)
+-- A ranged attack: its Hits come with shot Log Lines, not direct ones.
+local function shoots(school, ids)
 	for _, id in ipairs(ids) do
-		spells[id] = { learns = true }
+		spells[id] = { school = school, shot = true }
 	end
 end
 
 do
 	-- Ranged attacks
-	learns({ 5019 }) -- Shoot, whose school its wand sets
-	hits(PHYSICAL, { 75 }) -- Auto Shot
-	hits(PHYSICAL, { 2480, 7918, 7919 }) -- Shoot Bow, Shoot Gun, Shoot Crossbow
-	hits(PHYSICAL, { 2764 }) -- Throw
+	spells[5019] = { learns = true, shot = true } -- Shoot, whose school its wand sets
+	shoots(PHYSICAL, { 75 }) -- Auto Shot
+	shoots(PHYSICAL, { 2480, 7918, 7919 }) -- Shoot Bow, Shoot Gun, Shoot Crossbow
+	shoots(PHYSICAL, { 2764 }) -- Throw
 	-- Druid
 	hits(PHYSICAL, { 769, 779, 780, 9754, 9908 }) -- Swipe
 	hits(ARCANE, { 2912, 8949, 8950, 8951, 9875, 9876, 25298 }) -- Starfire
-	hits(PHYSICAL, { 3029, 5201, 9849, 9850 }) -- Claw
+	hits(PHYSICAL, { 1082, 3029, 5201, 9849, 9850 }) -- Claw
+	hits(PHYSICAL, { 16942 }) -- Claw, Forever's first rank (a talent; untested)
 	hits(NATURE, { 5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912 }) -- Wrath
 	hits(PHYSICAL, { 5221, 6800, 8992, 9829, 9830 }) -- Shred
 	hits(PHYSICAL, { 6785, 6787, 9866, 9867 }) -- Ravage
@@ -55,10 +60,10 @@ do
 
 	-- Hunter
 	hits(PHYSICAL, { 1495, 14269, 14270, 14271 }) -- Mongoose Bite
-	hits(PHYSICAL, { 2643, 25294 }) -- Multi-Shot
+	hits(PHYSICAL, { 2643, 14288, 14289, 14290, 25294 }) -- Multi-Shot
 	hits(PHYSICAL, { 2974, 14267, 14268, 27633 }) -- Wing Clip
 	hits(ARCANE, { 3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287 }) -- Arcane Shot
-	hits(PHYSICAL, { 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
+	hits(PHYSICAL, { 2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
 	hits(PHYSICAL, { 19306, 20909, 20910 }) -- Counterattack
 	hits(PHYSICAL, { 19434, 20900, 20901, 20902, 20903, 20904, 27632 }) -- Aimed Shot
 	hits(PHYSICAL, { 1242634 }) -- Counterattack, Forever's rank
@@ -101,6 +106,7 @@ do
 	hits(PHYSICAL, { 1776, 1777, 8629, 11285, 11286 }) -- Gouge
 	hits(PHYSICAL, { 2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300 }) -- Eviscerate
 	hits(PHYSICAL, { 8676, 8724, 8725, 11267, 11268, 11269 }) -- Ambush
+	hits(PHYSICAL, { 16511, 17347, 17348 }) -- Hemorrhage
 	hits(PHYSICAL, { 1241582, 1241584, 1310706 }) -- Mutilate, Forever only
 
 	-- Shaman
@@ -108,6 +114,7 @@ do
 	hits(NATURE, { 421, 930, 2860, 10605 }) -- Chain Lightning
 	hits(NATURE, { 8042, 8044, 8045, 8046, 10412, 10413, 10414 }) -- Earth Shock
 	hits(FROST, { 8056, 8058, 10472, 10473 }) -- Frost Shock
+	hits(PHYSICAL, { 17364 }) -- Stormstrike
 	hits(FIRE, { 408490 }) -- Lava Burst
 	hits(FIRE, { 1238299, 1238300, 1326047 }) -- Lava Burst, Forever's ranks
 
@@ -143,7 +150,7 @@ do
 	-- Pets
 	hits(FIRE, { 3110, 7799, 7800, 7801, 7802, 9057, 11762, 11763, 15598, 18187 }) -- Firebolt, the Imp's
 	hits(SHADOW, { 7814, 7815, 7816, 11778, 11779, 11780 }) -- Lash of Pain, the Succubus's
-	hits(PHYSICAL, { 1082, 3009, 3010, 16827, 16828, 16829, 16830, 16831, 16832 }) -- Claw
+	hits(PHYSICAL, { 3009, 3010, 16827, 16828, 16829, 16830, 16831, 16832 }) -- Claw
 	hits(PHYSICAL, { 17253, 17255, 17256, 17257, 17258, 17259, 17260, 17261 }) -- Bite
 	hits(NATURE, { 24844, 25008, 25009, 25010, 25011, 25012 }) -- Lightning Breath
 	hits(PHYSICAL, { 24423, 24577, 24578, 24579 }) -- Screech

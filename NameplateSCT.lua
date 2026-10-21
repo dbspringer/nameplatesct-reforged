@@ -460,8 +460,8 @@ function NameplateSCT:ConvertDB()
 			end
 		end
 	end
-	-- Before a Disable in OnInitialize, which skips OnEnable: /nsctr forget
-	-- needs the table.
+	-- Made here, not in OnEnable: OnInitialize can Disable the addon, which
+	-- skips OnEnable, and /nsctr forget still wipes this table.
 	if type(NameplateSCT.db.global.spellFacts) ~= "table" then
 		NameplateSCT.db.global.spellFacts = {}
 	end
@@ -1025,7 +1025,7 @@ end
 -- Clears the Spell Facts in place, as Spell Identity holds the same table.
 function NameplateSCT:ForgetSpellFacts()
 	wipe(self.db.global.spellFacts)
-	ns.Say(L["Forgot your wand's school. Shoot's icon comes back after your next two shots."])
+	ns.Say(L["Forgot your wand's school. Shoot's icon comes back from your second hit with it."])
 end
 
 -- The text takes its colour from SetTextColor, not from a colour code joined
@@ -1632,7 +1632,7 @@ local menu = {
 						forgetSpellFacts = {
 							type = 'execute',
 							name = L["Forget learned spells"],
-							desc = L["Forget the school the addon learned for your wand's Shoot, and learn it again from your next shots. Use it if Shoot shows a wrong icon."],
+							desc = L["Forget the school the addon learned for your wand's Shoot. It learns it again from your next shots."],
 							func = function() NameplateSCT:ForgetSpellFacts() end,
 							order = 9,
 						},

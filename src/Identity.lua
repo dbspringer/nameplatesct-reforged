@@ -7,10 +7,11 @@ ns.Identity = Identity
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
 -- from the table of spells that tick (TickSpells.lua): one interval after the
 -- spell's cast or landing, then on its Tick Rhythm on that Nameplate. A direct
--- hit or a shot takes the one cast that fits it, of a spell in that table or
--- the table of spells that hit (DirectSpells.lua), with the school the table
--- gives or, for a wand's Shoot, that Spell Facts have learned (ADR 0004).
--- When it is not sure, it gives none.
+-- hit or a shot takes the one cast that fits it of a spell that can make it
+-- (see canHit), from that table or the table of spells that hit
+-- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
+-- that Spell Facts have learned (ADR 0004). When it is not sure, it gives
+-- none.
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -28,6 +29,10 @@ local DECIDE_LATE = 0.5
 local TICK_TOLERANCE = 0.1
 -- A school counts once this many Hits agree on it.
 local AGREEING_HITS = 2
+-- How long after its cast the miss of a spell's application can come, for
+-- a spell that does not travel: the Warlock Traces show these misses at the
+-- cast's own time.
+local MISS_WINDOW = 0.1
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a
 -- first tick until one interval after it lands.
@@ -36,9 +41,9 @@ for _, spell in pairs(ns.TickSpells) do
 	CAST_AGE = math.max(CAST_AGE, spell.interval + DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE)
 end
 
--- A direct hit and a shot learn their school separately, as a spell's shot
--- and hit need not share one. A miss reports school 1 whatever the spell, so
--- it teaches nothing and uses the school of its spell's hits.
+-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
+-- a known spell's cast is in one group only. A miss reports school 1 whatever
+-- the spell, so it teaches nothing and uses the school of its spell's hits.
 local GROUPS = { direct = "direct", directMiss = "direct", shot = "shot", shotMiss = "shot" }
 local IS_TICK = { tick = true, tickMiss = true }
 
@@ -46,9 +51,9 @@ local function isMiss(lineKind)
 	return ns.LineKind.Reports(lineKind) == "miss"
 end
 
--- Drops saved Spell Facts that do not have the shape below, such as ones
--- edited by hand, so that a bad entry costs its icon and nothing more, and
--- the facts of spells that no longer learn their school.
+-- Drops saved Spell Facts of spells that do not learn their school, and
+-- facts that do not have the shape below, such as ones edited by hand, so
+-- that a bad entry costs its icon and nothing more.
 local function clean(saved)
 	for spellID, groups in pairs(saved) do
 		local direct = ns.DirectSpells[spellID]
@@ -84,11 +89,12 @@ end
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { [group] = { school,
 -- hits } } }. Cast(record) takes the adapter's cast records. Of(hit, line,
--- crowded) gives the spell ID of Your Hit on an enemy, or nil; Hits come in
--- about the order of their time, a held Hit up to DECIDE_LATE late. crowded
--- says that another tick that could be the same spell's came at the same
--- time on the same unit. PlateHidden(unit) ends the Tick Rhythms of a
--- Nameplate that hid, as its token can then show another unit.
+-- crowded, hidden) gives the spell ID of Your Hit on an enemy, or nil; Hits
+-- come in about the order of their time, a held Hit up to DECIDE_LATE late.
+-- crowded says that another tick that could be the same spell's came at the
+-- same time on the same unit; hidden that the Hit's Nameplate hid before its
+-- decision. PlateHidden(unit) ends the Tick Rhythms of a Nameplate that hid,
+-- as its token can then show another unit.
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
@@ -122,27 +128,45 @@ function Identity.New(saved)
 		end
 	end
 
-	-- Whether a cast can be the spell of a direct hit or a shot: a spell that
-	-- hits, or a ticking spell whose cast hits, or for a miss any ticking
-	-- spell, as its application can miss. A cast whose spell ID is secret could
-	-- be any spell.
-	local function canHit(cast, miss)
-		if cast.secret or ns.DirectSpells[cast.spellID] then
+	-- Whether a cast can be the spell of a direct hit or a shot: a spell of
+	-- that group in the table of spells that hit (a ranged attack only for a
+	-- shot), or, for a direct hit only, a ticking spell whose cast hits. For a
+	-- direct miss, any ticking spell, as its application can miss, but within
+	-- MISS_WINDOW of its cast unless it travels. A cast whose spell ID is
+	-- secret could be any spell.
+	local function canHit(cast, group, miss, age)
+		if cast.secret then
 			return true
 		end
+		local direct = ns.DirectSpells[cast.spellID]
+		if direct then
+			return (direct.shot == true) == (group == "shot")
+		end
 		local ticking = ns.TickSpells[cast.spellID]
-		return ticking ~= nil and (ticking.hits or miss)
+		if not ticking or group == "shot" then
+			return false
+		end
+		if miss then
+			return ticking.travels or age <= MISS_WINDOW
+		end
+		return ticking.hits
 	end
 
-	-- The one cast that fits a direct hit or a shot by time, or else the one
-	-- of those whose school is not known to differ from the Hit's. A cast
-	-- that fits alone by time is the only one that can explain the Hit, even
-	-- with another school, as a new wand changes Shoot's.
+	-- Whether the cast's spell learns its school, as a wand sets Shoot's.
+	local function learns(cast)
+		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+		return direct and direct.learns
+	end
+
+	-- The one cast that fits a direct hit or a shot by time and whose school
+	-- is not known to differ from the Hit's. A cast of a spell that learns its
+	-- school and that fits alone by time is taken even with another school, as
+	-- a new wand changes Shoot's.
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
-			if not cast.used and age >= 0 and age <= DIRECT_WINDOW and canHit(cast, miss) then
+			if not cast.used and age >= 0 and age <= DIRECT_WINDOW and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID, group)
 				if not (school and known and known ~= school) then
@@ -150,39 +174,40 @@ function Identity.New(saved)
 				end
 			end
 		end
-		if timely == 1 then
+		if timely == 1 and learns(lastTimely) then
 			return lastTimely
 		end
 		return fitting == 1 and lastFitting or nil
 	end
 
-	local function ofDirect(hit, group, school, miss)
+	-- hidden says that the Hit's Nameplate hid before its decision: the Hit
+	-- uses up its cast, but leaves no landing on the unit, as its token can
+	-- now show another unit.
+	local function ofDirect(hit, group, school, miss, hidden)
 		local found = castOf(hit, group, school, miss)
 		if not found then
 			return nil
 		end
 		found.used = true
 		-- The pet's casts, and casts whose spell ID is secret, compete but
-		-- never win (ADR 0004).
+		-- never win.
 		if found.unit ~= "player" or found.secret then
 			return nil
 		end
 		local spellID = found.spellID
-		local direct = ns.DirectSpells[spellID]
-		local ticking = ns.TickSpells[spellID]
-		if ticking then
-			if miss then
-				-- A missed application gives no ticks.
-				found.missed = true
-			elseif ticking.travels and ticking.hits then
-				-- The new landing replaces the spell's DoT on this unit, so its
-				-- old Tick Rhythm ends; another tick on it, such as an Ignite's,
-				-- must not take the spell.
-				rhythms[hit.unit] = rhythms[hit.unit] or {}
-				rhythms[hit.unit][spellID] = { source = hit.time }
-			end
-		elseif school and direct.learns then
+		if school and learns(found) then
 			teach(spellID, group, school)
+		end
+		local ticking = ns.TickSpells[spellID]
+		if ticking and miss then
+			-- A missed application gives no ticks.
+			found.missed = true
+		elseif ticking and ticking.travels and ticking.hits and not hidden then
+			-- The new landing replaces the spell's DoT on this unit, so its old
+			-- Tick Rhythm ends; another tick on it, such as an Ignite's, must
+			-- not take the spell.
+			rhythms[hit.unit] = rhythms[hit.unit] or {}
+			rhythms[hit.unit][spellID] = { source = hit.time }
 		end
 		local known = schoolOf(spellID, group)
 		return known and (not school or known == school) and spellID or nil
@@ -209,10 +234,11 @@ function Identity.New(saved)
 	end
 
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
-	-- fit. A refresh that comes on the old rhythm starts the duration again.
-	-- A rhythm fits only one interval after its last tick, and only until its
-	-- duration ends, so one with a missed tick, or one that ran out, fits no
-	-- more.
+	-- fit. A tick that fits a cast's or landing's first tick starts a new
+	-- rhythm and duration, as a refresh does, even on the old rhythm. A rhythm
+	-- fits only one interval after its last tick, and only until its duration
+	-- ends, so one whose tick did not come, or one that ran out, fits no more;
+	-- a resisted tick keeps it.
 	local function rhythmOf(hit, spellID, spell, rhythm)
 		local source = firstTickSource(hit, spellID, spell, rhythm)
 		if source then
@@ -224,7 +250,12 @@ function Identity.New(saved)
 		end
 	end
 
-	local function ofTick(hit, school, crowded)
+	local function ofTick(hit, school, crowded, hidden)
+		-- A tick decided after its Nameplate hid leaves no Tick Rhythm, as its
+		-- token can now show another unit.
+		if hidden then
+			return nil
+		end
 		local plate = rhythms[hit.unit] or {}
 		rhythms[hit.unit] = plate
 		local tried, fits, found = {}, 0, nil
@@ -269,32 +300,33 @@ function Identity.New(saved)
 			secret = secret or nil }
 	end
 
-	function identity.Of(hit, line, crowded)
+	function identity.Of(hit, line, crowded, hidden)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
 		if IS_TICK[line.lineKind] then
-			return ofTick(hit, school, crowded)
+			return ofTick(hit, school, crowded, hidden)
 		end
 		local group = GROUPS[line.lineKind]
-		return group and ofDirect(hit, group, school, miss) or nil
+		return group and ofDirect(hit, group, school, miss, hidden) or nil
 	end
 
-	-- Of for each { hit, line } of decisions that came together, with whether
-	-- each tick is crowded. A resisted tick reports school 1 whatever its
-	-- spell, so only real ticks crowd.
+	-- Of for each { hit, line, hidden } of decisions that came together, with
+	-- whether each tick is crowded. A resisted tick reports school 1 whatever
+	-- its spell, so only real ticks crowd.
 	function identity.OfAll(decisions)
 		local spellIDs = {}
 		for i, decision in ipairs(decisions) do
 			local crowded = false
 			if decision.line.lineKind == "tick" then
 				for j, other in ipairs(decisions) do
-					if j ~= i and other.line.lineKind == "tick" and sameTick(decision, other) then
+					-- A hidden tick is another unit's, as its token has moved on.
+					if j ~= i and not other.hidden and other.line.lineKind == "tick" and sameTick(decision, other) then
 						crowded = true
 						break
 					end
 				end
 			end
-			spellIDs[i] = identity.Of(decision.hit, decision.line, crowded)
+			spellIDs[i] = identity.Of(decision.hit, decision.line, crowded, decision.hidden)
 		end
 		return spellIDs
 	end
