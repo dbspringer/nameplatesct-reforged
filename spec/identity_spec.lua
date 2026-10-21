@@ -487,6 +487,26 @@ describe("Spell Identity", function()
 			assert.are.same({ "none" }, spells)
 		end)
 
+		it("keeps the cast of a tick that Pairing holds for a late line while a newer cast comes", function()
+			local spells = shownSpells({
+				castEntry(0, SERPENT_STING),
+				hitEntry(4.55, "nameplate1", NATURE),
+				castEntry(4.65, SHADOW_BOLT),
+				lineEntry(4.68, "tick"),
+			})
+			assert.are.same({ SERPENT_STING }, spells)
+		end)
+
+		it("ends the Tick Rhythm of a Nameplate that hid after its tick was decided", function()
+			local spells = shownSpells({
+				castEntry(0, CORRUPTION),
+				hitEntry(3, "nameplate1", SHADOW), lineEntry(3, "tick"),
+				{ 4, "NAME_PLATE_UNIT_REMOVED", "nameplate1" },
+				hitEntry(6, "nameplate1", SHADOW), lineEntry(6, "tick"),
+			})
+			assert.are.same({ CORRUPTION, "none" }, spells)
+		end)
+
 		it("uses up the cast of Your Hit on a unit with no Nameplate", function()
 			local spells = shownSpells({
 				castEntry(1, SHADOW_BOLT),
