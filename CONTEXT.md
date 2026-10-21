@@ -16,6 +16,14 @@ _Avoid_: Blizzard SCT, Blizzard FCT, world text
 The health bar the game shows above a unit in the world. Plate Text exists only on a Nameplate.
 _Avoid_: Plate, enemy health bar
 
+**Spell Filter**:
+The player's list of spells, by name or ID, and of the key words `melee`, `missed`, and `unknown`. Plate Text for a Hit that the list matches hides, or, with the list inverted, only that Plate Text shows. A spell in the list means all of its ranks. A Hit with no Spell Identity matches only a key word.
+_Avoid_: Spell blacklist, spell whitelist
+
+**NPC Type**:
+The one kind an enemy NPC has, for the NPC filter: Boss, Rare, Elite, Normal, or Minor. A boss is a Boss even when it is also elite. The game hides which NPC a unit is in instances, but not its NPC Type.
+_Avoid_: Classification, mob type, NPC filter list
+
 **Grace Period**:
 The short time after a Nameplate hides in which its Plate Text still shows, so a killing blow is not lost.
 _Avoid_: Orphan time, linger

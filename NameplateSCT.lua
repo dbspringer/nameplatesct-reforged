@@ -187,21 +187,20 @@ local defaults = {
 			alpha = 0.5,
 		},
 		filterEnabled = false,
+	},
+	-- A spell list is for one class, so each character has its own.
+	char = {
+		spellFilter = "",
 		inverseSpellFilter = false,
-		inverseNPCFilter = false,
-		filter = "",
-		npcFilter = "",
 	},
 }
 
--- The filters are saved for the Pairing data path to read again; nothing has
--- read them since the combat log path was removed.
-function NameplateSCT:updateFilterTable(filterData)
-	NameplateSCT.db.global.filter = filterData
-end
+-- The Spell Filter, read from the character's text (see Filter.ReadSpells).
+local spellFilter
 
-function NameplateSCT:updateNPCFilterTable(npcFilterData)
-	NameplateSCT.db.global.npcFilter = npcFilterData
+function NameplateSCT:SetSpellFilter(text)
+	self.db.char.spellFilter = text
+	spellFilter = ns.Filter.ReadSpells(text, C_Spell.GetSpellName)
 end
 
 ---------------------
@@ -465,6 +464,10 @@ function NameplateSCT:ConvertDB()
 	if type(NameplateSCT.db.global.spellFacts) ~= "table" then
 		NameplateSCT.db.global.spellFacts = {}
 	end
+	-- The spell list moved to each character, and the NPC list went, since
+	-- the game hides NPC IDs in instances.
+	local global = NameplateSCT.db.global
+	global.filter, global.inverseSpellFilter, global.npcFilter, global.inverseNPCFilter = nil, nil, nil, nil
 end
 
 function NameplateSCT:OnInitialize()
@@ -480,9 +483,7 @@ function NameplateSCT:OnInitialize()
 	-- setup menu
 	self:RegisterMenu()
 
-	-- Update Filters
-	self:updateFilterTable(self.db.global.filter)
-	self:updateNPCFilterTable(self.db.global.npcFilter)
+	self:SetSpellFilter(self.db.char.spellFilter)
 
 	-- if the addon is turned off in db, turn it off
 	if (self.db.global.enabled == false) then
@@ -533,8 +534,8 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
-	ns.Events.Start(function(hit, how, spellID)
-		self:ShowHit(hit, how, spellID)
+	ns.Events.Start(function(hit, how, spellID, lineKind)
+		self:ShowHit(hit, how, spellID, lineKind)
 	end, function()
 		self:NoPlate()
 	end, self.db.global.spellFacts)
@@ -1010,8 +1011,19 @@ end
 -- Swing Delay before its Hit, so a Hit that paired that way is treated as an
 -- autoattack; a swing whose line comes in its own frame gets the ability
 -- animation. spellID, from Spell Identity, gives the icon, and is nil when
--- the spell is not known.
-function NameplateSCT:ShowHit(hit, how, spellID)
+-- the spell is not known. lineKind is the Line Kind of the Hit's Log Line,
+-- or nil when its colour told none.
+function NameplateSCT:ShowHit(hit, how, spellID, lineKind)
+	if self.db.global.filterEnabled then
+		-- With no Line Kind, a Hit that paired as melee is the best sign of a
+		-- swing.
+		local swing = how == "melee" or (lineKind ~= nil and ns.LineKind.IsMelee(lineKind))
+		local miss = MISS_EVENT_STRINGS[hit.action] ~= nil
+		local name = spellID and C_Spell.GetSpellName(spellID)
+		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, miss, swing) then
+			return
+		end
+	end
 	local spellName = how == "melee" and "melee" or nil
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
@@ -1858,11 +1870,6 @@ local menu = {
 	},
 }
 
--- The Filters panel stays hidden until spell filters have Spell Identity and
--- the NPC filter has a new design, since NPC GUIDs are secret in dungeons.
--- Nothing reads the filters until then.
-local SHOW_FILTERS = false
-
 local filters = {
 	name = L["Filters"],
 	handler = NameplateSCT,
@@ -1881,17 +1888,8 @@ local filters = {
 			type = "toggle",
 			name = L["Inverse Spell Filter"],
 			desc = L["Inverse the logic and only show the spells in the list instead of filtering them away."],
-			get = function() return NameplateSCT.db.global.inverseSpellFilter end,
-			set = function(_, newValue) NameplateSCT.db.global.inverseSpellFilter = newValue end,
-			order = 1.5,
-			width = 1,
-		},
-		inverseFilter = {
-			type = "toggle",
-			name = L["Inverse NPC Filter"],
-			desc = L["Inverse the logic and only show npc's in the list instead of filtering them away."],
-			get = function() return NameplateSCT.db.global.inverseNPCFilter end,
-			set = function(_, newValue) NameplateSCT.db.global.inverseNPCFilter = newValue end,
+			get = function() return NameplateSCT.db.char.inverseSpellFilter end,
+			set = function(_, newValue) NameplateSCT.db.char.inverseSpellFilter = newValue end,
 			order = 1.5,
 			width = 1,
 		},
@@ -1904,22 +1902,12 @@ local filters = {
 			type = "input",
 			name = L["Spells"],
 			multiline = 20,
-			desc = L["Spellid/Spellname seperated by line\n\nWhite hits/melee = melee\nMiss/Parry/Dodge/etc = missed"],
+			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells"],
 			order = 3,
 			width = 1,
-			get = function() return NameplateSCT.db.global.filter end,
-			set = function(_, newValue) NameplateSCT:updateFilterTable(newValue) end,
+			get = function() return NameplateSCT.db.char.spellFilter end,
+			set = function(_, newValue) NameplateSCT:SetSpellFilter(newValue) end,
 		},
-		npcList = {
-			type = "input",
-			name = L["NPCs"],
-			multiline = 20,
-			desc = L["NPC id (eg: 23682) seperated by line\n\n The example is the Headless Horseman."],
-			order = 4,
-			width = 1,
-			get = function() return NameplateSCT.db.global.npcFilter end,
-			set = function(_, newValue) NameplateSCT:updateNPCFilterTable(newValue) end,
-		}
 	},
 }
 
@@ -1952,8 +1940,6 @@ end
 function NameplateSCT:RegisterMenu()
 	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged", menu)
 	_, optionsMenuName = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged", L["NameplateSCT Reforged"])
-	if SHOW_FILTERS then
-		LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged_Filters", filters)
-		LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged_Filters", L["Filters"], L["NameplateSCT Reforged"])
-	end
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable("NameplateSCT_Reforged_Filters", filters)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("NameplateSCT_Reforged_Filters", L["Filters"], L["NameplateSCT Reforged"])
 end
