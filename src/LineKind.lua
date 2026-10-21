@@ -120,8 +120,10 @@ function LineKind.Reports(kind)
 end
 
 -- Whether a line of this kind is melee, so it comes one Swing Delay early.
+-- A kind that tells nothing (nil) or no Hit ("other") is not.
 function LineKind.IsMelee(kind)
-	return KINDS[kind].melee == true
+	local known = KINDS[kind]
+	return known ~= nil and known.melee == true
 end
 
 -- Every event the Log Filter colours, with its kind's colour as

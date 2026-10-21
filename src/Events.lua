@@ -133,7 +133,7 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how, spellID) gets Your Hits on an enemy Nameplate, and
+-- show(hit, how, spellID, lineKind) gets Your Hits on an enemy Nameplate, and
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)

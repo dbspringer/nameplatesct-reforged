@@ -17,11 +17,11 @@ The health bar the game shows above a unit in the world. Plate Text exists only 
 _Avoid_: Plate, enemy health bar
 
 **Spell Filter**:
-The player's list of spells, by name or ID, and of the key words `melee`, `missed`, and `unknown`. Plate Text for a Hit that the list matches hides, or, with the list inverted, only that Plate Text shows. A spell in the list means all of its ranks. A Hit with no Spell Identity matches only a key word.
+The player's list of spells, by name or ID, and of key words. Plate Text for a Hit that the list matches hides, or, with the list inverted, only that Plate Text shows. A spell in the list means all of its ranks. The key word `melee` matches swings and their misses, the pet's too; `missed` matches every miss; `unknown` matches a Hit that is not a swing and has no Spell Identity. An empty list hides nothing.
 _Avoid_: Spell blacklist, spell whitelist
 
 **NPC Type**:
-The one kind an enemy NPC has, for the NPC filter: Boss, Rare, Elite, Normal, or Minor. A boss is a Boss even when it is also elite. The game hides which NPC a unit is in instances, but not its NPC Type.
+The one kind an enemy NPC has, by which the player can hide or show its Plate Text: Boss, Rare, Elite, Normal, or Minor. A boss is a Boss even when it is also elite, and a rare elite is Rare. Minor covers totems, critters, and other trivial units. The game hides which NPC a unit is in instances, but not its NPC Type.
 _Avoid_: Classification, mob type, NPC filter list
 
 **Grace Period**:

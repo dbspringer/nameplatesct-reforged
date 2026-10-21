@@ -17,6 +17,7 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -------------------
 
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- Forever has only the _v2 names of the Blizzard Target Text CVars.
 local blizzardCvar = "floatingCombatTextCombatDamage_v2"
 
@@ -196,11 +197,13 @@ local defaults = {
 }
 
 -- The Spell Filter, read from the character's text (see Filter.ReadSpells).
-local spellFilter
+-- It starts empty, so Plate Text still shows if OnInitialize fails before it
+-- reads the saved text.
+local spellFilter = ns.Filter.ReadSpells("", GetSpellName)
 
 function NameplateSCT:SetSpellFilter(text)
 	self.db.char.spellFilter = text
-	spellFilter = ns.Filter.ReadSpells(text, C_Spell.GetSpellName)
+	spellFilter = ns.Filter.ReadSpells(text, GetSpellName)
 end
 
 ---------------------
@@ -464,8 +467,9 @@ function NameplateSCT:ConvertDB()
 	if type(NameplateSCT.db.global.spellFacts) ~= "table" then
 		NameplateSCT.db.global.spellFacts = {}
 	end
-	-- The spell list moved to each character, and the NPC list went, since
-	-- the game hides NPC IDs in instances.
+	-- The spell list is per character now, and the NPC list went, since the
+	-- game hides NPC IDs in instances. No release showed the Filters panel,
+	-- so no player has a list to keep.
 	local global = NameplateSCT.db.global
 	global.filter, global.inverseSpellFilter, global.npcFilter, global.inverseNPCFilter = nil, nil, nil, nil
 end
@@ -1015,12 +1019,8 @@ end
 -- or nil when its colour told none.
 function NameplateSCT:ShowHit(hit, how, spellID, lineKind)
 	if self.db.global.filterEnabled then
-		-- With no Line Kind, a Hit that paired as melee is the best sign of a
-		-- swing.
-		local swing = how == "melee" or (lineKind ~= nil and ns.LineKind.IsMelee(lineKind))
-		local miss = MISS_EVENT_STRINGS[hit.action] ~= nil
-		local name = spellID and C_Spell.GetSpellName(spellID)
-		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, miss, swing) then
+		local name = spellID and GetSpellName(spellID)
+		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, how, lineKind) then
 			return
 		end
 	end
@@ -1872,7 +1872,6 @@ local menu = {
 
 local filters = {
 	name = L["Filters"],
-	handler = NameplateSCT,
 	type = 'group',
 	args = {
 		enable = {
