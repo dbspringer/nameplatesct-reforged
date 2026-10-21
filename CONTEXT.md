@@ -54,6 +54,14 @@ _Avoid_: Melee lag, offset
 Which spell made Your Hit. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
 
+**Spell Facts**:
+What the addon has learned about a spell whose school is not fixed, such as a wand's Shoot, from Your Hits: the school of its shots. A fact counts only once enough Hits agree on it. Other spells are known from the start, so they need none. Text for players calls them learned spells.
+_Avoid_: Spell data, spell profile
+
+**Tick Rhythm**:
+The times at which one spell's ticks come on one Nameplate. A tick that comes on a spell's Tick Rhythm can be that spell's.
+_Avoid_: DoT timer, tick schedule
+
 **Secret Amount**:
 An amount that the game lets the addon show but not compare or calculate with.
 _Avoid_: Hidden value, protected number

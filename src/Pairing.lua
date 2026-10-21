@@ -186,8 +186,9 @@ function Pairing.New(options)
 
 	local pairing = {}
 
-	-- Casts and Swings pass by: no rule uses them yet, and they do not open a
-	-- frame.
+	-- Casts and Swings pass by: no Pairing rule uses them (Flow gives casts to
+	-- Spell Identity), and they do not open a frame, though a later one closes
+	-- the open frame, which Flow relies on.
 	function pairing.Push(record)
 		if frameTime and record.time ~= frameTime then
 			endFrame()

@@ -4,7 +4,7 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
-for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/Flow.lua" }) do
+for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua", "src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
 end
 local Flow = ns.Flow
@@ -16,6 +16,7 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
+		spellFacts = {},
 		show = function(hit, how)
 			shown[#shown + 1] = { hit = hit, how = how }
 		end,
@@ -52,6 +53,7 @@ describe("Flow", function()
 	it("works with no noPlate, and passes how to show", function()
 		local shown = {}
 		local flow = Flow.New({
+			spellFacts = {},
 			show = function(hit, how)
 				shown[#shown + 1] = hit.entry .. ":" .. how
 			end,
