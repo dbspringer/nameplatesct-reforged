@@ -1,4 +1,5 @@
 local ns = {}
+assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/LogFilter.lua"))("NameplateSCT_Reforged", ns)
 local LogFilter = ns.LogFilter
 
@@ -49,31 +50,48 @@ describe("LogFilter", function()
 		assert.is_true(saved.filters[1].filters[1].sourceFlags[MY_PET])
 	end)
 
-	it("only adds, so the player's other choices stay", function()
+	it("keeps the player's other message types, and leaves only you and your pet under Done By", function()
 		local saved = savedFilters()
 		local part = saved.filters[1].filters[1]
 		part.sourceFlags[PARTY] = true
 		LogFilter.Fix(saved, MY_ACTIONS)
-		assert.is_true(part.sourceFlags[PARTY])
+		assert.are.same({ [ME] = true, [MY_PET] = true }, saved.filters[1].filters[1].sourceFlags)
 		assert.is_true(part.eventList.SPELL_HEAL)
 		assert.is_false(part.eventList.UNIT_DIED)
 		assert.are.same({ destFlags = { [ME] = false, [MY_PET] = false }, eventList = {} }, saved.filters[1].filters[2])
 	end)
 
-	it("accepts a picked filter of any name that sends everything", function()
+	-- A picked filter that sends everything, named "Raid", with the given
+	-- Done By sources and line colours by source when byColour is set.
+	local function raidFilter(sources, byColour)
+		local saved = savedFilters()
+		local events = {}
+		for _, event in ipairs({ "SWING_DAMAGE", "RANGE_DAMAGE", "SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE",
+			"SWING_MISSED", "RANGE_MISSED", "SPELL_MISSED", "SPELL_PERIODIC_MISSED" }) do
+			events[event] = true
+		end
+		saved.filters[3] = {
+			name = "Raid",
+			filters = { { sourceFlags = sources, eventList = events } },
+			settings = { lineColoring = byColour, lineColorPriority = 1 },
+			colors = { unitColoring = { [ME] = { r = 0.7, g = 0.7, b = 0.7 }, [MY_PET] = { r = 0.7, g = 0.7, b = 0.7 } } },
+		}
+		saved.currentFilter = 3
+		return saved
+	end
+
+	it("accepts a picked filter of any name that sends everything and only your lines", function()
 		local renamed = savedFilters()
 		LogFilter.Fix(renamed, MY_ACTIONS)
 		renamed.filters[1].name = "Mine"
 		assert.are.equal("ok", LogFilter.Check(renamed, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(raidFilter({ [ME] = true, [MY_PET] = true }, false), MY_ACTIONS))
+	end)
 
-		local custom = savedFilters()
-		custom.filters[3] = { name = "Raid", filters = { {
-			sourceFlags = { [ME] = true, [MY_PET] = true, [PARTY] = true },
-			eventList = { SWING_DAMAGE = true, RANGE_DAMAGE = true, SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true,
-				SWING_MISSED = true, RANGE_MISSED = true, SPELL_MISSED = true, SPELL_PERIODIC_MISSED = true },
-		} } }
-		custom.currentFilter = 3
-		assert.are.equal("ok", LogFilter.Check(custom, MY_ACTIONS))
+	it("accepts other players' lines only when their colour tells them apart", function()
+		local sources = { [ME] = true, [MY_PET] = true, [PARTY] = true }
+		assert.are.equal("ok", LogFilter.Check(raidFilter(sources, true), MY_ACTIONS))
+		assert.are.equal("fixable", LogFilter.Check(raidFilter(sources, false), MY_ACTIONS))
 	end)
 
 	it("cannot fix a combat log that has no My actions filter, and changes nothing", function()
