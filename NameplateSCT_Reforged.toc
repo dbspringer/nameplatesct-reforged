@@ -3,6 +3,7 @@
 ## Notes: Combat text above enemy nameplates for WoW: Forever.
 ## Author: KidMoxie
 ## Version: @project-version@
+## IconTexture: Interface\Icons\Trade_BlackSmithing
 ## Category: Combat
 ## Category-enUS: Combat
 ## Category-deDE: Kampf
