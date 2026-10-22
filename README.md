@@ -23,6 +23,12 @@ Enemy nameplates need to be on (press V), since the numbers draw on them.
 - `/nsctr record` records your combat events, and typing it again stops. If something looks wrong, attach the recording to an [issue](https://github.com/dbspringer/nameplatesct-reforged/issues).
 - `/nsctr forget` clears what the addon learned about your wand.
 
+## Develop
+
+Run `./fetch-libs.sh` to fetch the libraries into `Libs/`, then link the repo as `NameplateSCT_Reforged` into your Forever client's `Interface/AddOns` folder. Lint with `luacheck .` and run the specs with `busted` (on Lua 5.1, since that's what WoW runs).
+
+Releases are plain numbers that go up by one each time (`1`, `2`, `3`), and pushing that number as a tag cuts the release. If the CurseForge upload fails, `./export.sh <version> [destination]` builds the zip by hand, for example `./export.sh 1 ~/Desktop`. It ships exactly the files the game loads, plus the licenses. Run `./fetch-libs.sh` first, so the libraries match what the packager fetches.
+
 ## Credits and license
 
 Based on [NameplateSCT](https://github.com/Justw8/NameplateSCT) by mpstark and Justwait, which did all the hard work on how the text looks and moves.
