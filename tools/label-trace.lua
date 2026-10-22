@@ -17,6 +17,12 @@ local MIN_ALIGNED = 0.9
 -- A Hit's file event comes from this long before it to this long after it.
 local EARLIEST = 1.5
 local LATEST = 0.1
+-- The cast of each damage spell ID that differs from its cast's, so that a
+-- Label names the cast that made the Hit, as Spell Identity does. On Forever
+-- an area spell's damage comes with a spell ID other than its cast's. Only
+-- Rain of Fire's ranks are here (from the DB2; 1282380 is in a Trace); add a
+-- spell when a Trace has its damage.
+local CAST_OF = { [1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678 }
 -- A delay past this is longer than any seen in the Warlock Traces.
 local LATE = 1.0
 -- Log Line colours arrive as 8-bit floats (see LineKind.lua).
@@ -292,11 +298,12 @@ local function sameSchool(hit, events)
 	return (#same > 0 and #same < #events) and same or events
 end
 
--- The spell that made a file event: its spell ID, false for a melee swing,
--- which has no spell, or nil when the file event names none.
+-- The spell that made a file event: its spell ID, or the cast's from
+-- CAST_OF, false for a melee swing, which has no spell, or nil when the file
+-- event names none.
 function Label.SpellOf(event)
 	if event.spellID then
-		return event.spellID
+		return CAST_OF[event.spellID] or event.spellID
 	end
 	if event.name:find("^SWING_") then
 		return false

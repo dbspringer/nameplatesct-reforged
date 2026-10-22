@@ -13,11 +13,11 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 local SHADOW_BOLT, SHOOT, FIREBOLT = 705, 5019, 3110
 local IMMOLATE, CORRUPTION, AGONY, DRAIN_LIFE, FIREBALL, MIND_FLAY, SERPENT_STING = 707, 6222, 1014, 689, 133, 15407, 1978
-local AUTO_SHOT = 75
-local PHYSICAL, FIRE, NATURE, SHADOW = 1, 4, 8, 32
+local AUTO_SHOT, RAIN_OF_FIRE, RAIN_OF_FIRE_2, VOLLEY, CONSECRATION = 75, 5740, 6219, 1510, 20116
+local PHYSICAL, HOLY, FIRE, NATURE, SHADOW, ARCANE = 1, 2, 4, 8, 32, 64
 
-local function cast(identity, time, spellID, unit)
-	identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = time, spellID = spellID, unit = unit or "player" })
+local function cast(identity, time, spellID, unit, stage)
+	identity.Cast({ kind = "cast", stage = stage or "SUCCEEDED", time = time, spellID = spellID, unit = unit or "player" })
 end
 
 -- The spell of a Hit on nameplate1, or the given plate, with a line of this
@@ -263,6 +263,109 @@ describe("Spell Identity", function()
 			cast(identity, 3, SHOOT)
 			assert.are.same({ SHADOW_BOLT, nil }, { dodged, of(identity, 3.2, "shotMiss", 1) })
 			assert.is_nil(saved[SHOOT])
+		end)
+	end)
+
+	-- On Forever an area spell's ticks come as direct Log Lines.
+	describe("of an area spell's tick", function()
+		it("gives the area spell to direct hits each interval after its cast, on every Nameplate, until its duration ends", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.same({ RAIN_OF_FIRE, RAIN_OF_FIRE, RAIN_OF_FIRE, nil }, {
+				of(identity, 2, "direct", FIRE),
+				of(identity, 2, "direct", FIRE, "nameplate2"),
+				of(identity, 4, "direct", FIRE),
+				of(identity, 10, "direct", FIRE),
+			})
+		end)
+
+		it("keeps to the area's last tick, so ticks that come later each time still fit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.same({ RAIN_OF_FIRE, RAIN_OF_FIRE, RAIN_OF_FIRE }, {
+				of(identity, 2.06, "direct", FIRE),
+				of(identity, 4.12, "direct", FIRE),
+				of(identity, 6.18, "direct", FIRE),
+			})
+		end)
+
+		it("gives none when a cast that hits fits the same direct hit, and leaves that cast for its own hit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1, IMMOLATE)
+			assert.is_nil(of(identity, 2, "direct", FIRE))
+			assert.are.equal(IMMOLATE, of(identity, 2.3, "direct", FIRE))
+		end)
+
+		it("gives none when two casts that hit fit the same direct hit, even if one is the pet's", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1, IMMOLATE)
+			cast(identity, 1.2, FIREBOLT, "pet")
+			assert.is_nil(of(identity, 2, "direct", FIRE))
+		end)
+
+		it("gives none when two area spells fit, and leaves a cast that hits for its own hit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 0, RAIN_OF_FIRE_2)
+			cast(identity, 1, IMMOLATE)
+			assert.are.same({ nil, IMMOLATE }, { of(identity, 2, "direct", FIRE), of(identity, 2.3, "direct", FIRE) })
+		end)
+
+		it("leaves a direct hit of another school to its own cast", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1.6, SHADOW_BOLT)
+			assert.are.equal(SHADOW_BOLT, of(identity, 2, "direct", SHADOW))
+		end)
+
+		it("keeps the area's cast for its whole duration, though later casts prune old ones", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 5.5, CORRUPTION)
+			assert.are.same({ RAIN_OF_FIRE, RAIN_OF_FIRE }, { of(identity, 6, "direct", FIRE), of(identity, 8, "direct", FIRE) })
+		end)
+
+		it("ends a channelled area spell's ticks when its channel stops", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.equal(RAIN_OF_FIRE, of(identity, 2, "direct", FIRE))
+			cast(identity, 2.5, RAIN_OF_FIRE, "player", "CHANNEL_STOP")
+			assert.is_nil(of(identity, 4, "direct", FIRE))
+		end)
+
+		it("gives a recast its own ticks when its cast comes before the old channel's stop", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 3, RAIN_OF_FIRE)
+			cast(identity, 3, RAIN_OF_FIRE, "player", "CHANNEL_STOP")
+			assert.are.equal(RAIN_OF_FIRE, of(identity, 5, "direct", FIRE))
+		end)
+
+		it("lets the first tick of an area spell that travels come up to its flight later", function()
+			local identity = Identity.New({})
+			cast(identity, 0, VOLLEY)
+			assert.are.same({ VOLLEY, VOLLEY }, { of(identity, 1.3, "direct", ARCANE), of(identity, 2.3, "direct", ARCANE) })
+		end)
+
+		it("gives a resisted tick of an area spell that travels its spell, though its cast could have missed", function()
+			local identity = Identity.New({})
+			cast(identity, 0, VOLLEY)
+			assert.are.equal(VOLLEY, of(identity, 1.3, "directMiss", 1))
+		end)
+
+		it("gives an area spell that is not a channel to no direct hit, as a seal's proc could land on its grid", function()
+			local identity = Identity.New({})
+			cast(identity, 0, CONSECRATION)
+			assert.is_nil(of(identity, 1, "direct", HOLY))
+		end)
+
+		it("never takes a tick Log Line, so it does not tie with another spell's tick", function()
+			local identity = Identity.New({})
+			cast(identity, 0, IMMOLATE)
+			cast(identity, 1, RAIN_OF_FIRE)
+			assert.are.equal(IMMOLATE, of(identity, 3, "tick", FIRE))
 		end)
 	end)
 
@@ -552,7 +655,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 23
+		local UNKNOWN_FLOOR = 24
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

@@ -10,8 +10,10 @@ ns.Identity = Identity
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
--- that Spell Facts have learned (ADR 0004). When it is not sure, it gives
--- none.
+-- that Spell Facts have learned (ADR 0004). On Forever an area spell's ticks
+-- come as direct hits, so a direct hit can also take an area spell, each
+-- interval after its cast, the first up to DIRECT_WINDOW later for one that
+-- travels (see areaOf). When it is not sure, it gives none.
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -35,10 +37,12 @@ local AGREEING_HITS = 2
 local MISS_WINDOW = 0.1
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a
--- first tick until one interval after it lands.
+-- first tick until one interval after it lands, an area spell's ticks until
+-- its duration ends.
 local CAST_AGE = DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE
 for _, spell in pairs(ns.TickSpells) do
-	CAST_AGE = math.max(CAST_AGE, spell.interval + DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE)
+	local lasts = spell.area and spell.duration or spell.interval + DIRECT_WINDOW
+	CAST_AGE = math.max(CAST_AGE, lasts + DECIDE_LATE + TICK_TOLERANCE)
 end
 
 -- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
@@ -99,8 +103,9 @@ end
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret }. A cast whose spell ID is secret still competes, but
-	-- never wins.
+	-- missed, secret, lastTick, stopped }. A cast whose spell ID is secret
+	-- still competes, but never wins. lastTick is an area spell's last tick
+	-- on any unit, and stopped when its channel stopped.
 	local casts = {}
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
@@ -133,8 +138,9 @@ function Identity.New(saved)
 	-- that group in the table of spells that hit (a ranged attack only for a
 	-- shot), or, for a direct hit only, a ticking spell whose cast hits. For a
 	-- direct miss, any ticking spell, as its application can miss, but within
-	-- MISS_WINDOW of its cast unless it travels. A cast whose spell ID is
-	-- secret could be any spell.
+	-- MISS_WINDOW of its cast unless it travels; an area spell's cast puts
+	-- nothing on a target to miss, so its flight does not count (its resisted
+	-- ticks are areaOf's). A cast whose spell ID is secret could be any spell.
 	local function canHit(cast, group, miss, age)
 		if cast.secret then
 			return true
@@ -148,7 +154,7 @@ function Identity.New(saved)
 			return false
 		end
 		if miss then
-			return ticking.travels or age <= MISS_WINDOW
+			return (ticking.travels and not ticking.area) or age <= MISS_WINDOW
 		end
 		return ticking.hits
 	end
@@ -160,9 +166,9 @@ function Identity.New(saved)
 	end
 
 	-- The one cast that fits a direct hit or a shot by time and whose school
-	-- is not known to differ from the Hit's. A cast of a spell that learns its
-	-- school and that fits alone by time is taken even with another school, as
-	-- a new wand changes Shoot's.
+	-- is not known to differ from the Hit's, and how many casts fit. A cast of
+	-- a spell that learns its school and that fits alone by time is taken even
+	-- with another school, as a new wand changes Shoot's.
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
 		for _, cast in ipairs(casts) do
@@ -176,12 +182,65 @@ function Identity.New(saved)
 			end
 		end
 		if timely == 1 and learns(lastTimely) then
-			return lastTimely
+			return lastTimely, fitting
 		end
-		return fitting == 1 and lastFitting or nil
+		return fitting == 1 and lastFitting or nil, fitting
+	end
+
+	-- The casts of the area spell whose tick this direct hit is, nil when none
+	-- fits, or false when two area spells fit: one whose tick is due a whole
+	-- number of
+	-- intervals after the cast's last tick on any unit (zero for the same tick
+	-- on another unit), or after the cast before its first, until its
+	-- duration ends or its channel stops. Keeping to the last tick is meant
+	-- for ticks that drift; the Rain of Fire Trace has two ticks on one unit,
+	-- so drift and ticks on several units are untested.
+	local function areaOf(hit, school)
+		local fitting
+		for _, cast in ipairs(casts) do
+			local spell = cast.unit == "player" and not cast.secret and ns.TickSpells[cast.spellID]
+			if spell and spell.area and (not school or spell.school == school)
+				and hit.time - cast.time <= spell.duration + TICK_TOLERANCE
+				and not (cast.stopped and hit.time > cast.stopped + TICK_TOLERANCE) then
+				local from = cast.lastTick or cast.time
+				local steps = math.floor((hit.time - from) / spell.interval + 0.5)
+				local fits = (steps >= 1 or (steps == 0 and cast.lastTick))
+					and math.abs(hit.time - from - steps * spell.interval) <= TICK_TOLERANCE
+				-- One that travels lands up to DIRECT_WINDOW later, so its first
+				-- tick can too; later ticks, and a tick still in flight when the
+				-- channel stops, get no such allowance.
+				if not fits and not cast.lastTick and spell.travels then
+					fits = firstTickFits(hit, spell, cast.time, DIRECT_WINDOW)
+				end
+				if fits then
+					if fitting and fitting[1].spellID ~= cast.spellID then
+						return false
+					end
+					fitting = fitting or {}
+					fitting[#fitting + 1] = cast
+				end
+			end
+		end
+		return fitting
 	end
 
 	local function ofDirect(hit, group, school, miss, plate)
+		local areaCasts
+		if group == "direct" then
+			areaCasts = areaOf(hit, school)
+		end
+		if areaCasts == false then
+			return nil
+		elseif areaCasts then
+			for _, cast in ipairs(areaCasts) do
+				cast.lastTick = hit.time
+			end
+			-- Another cast that fits, such as one that hits or a DoT whose
+			-- application can miss, could have made the Hit too, so it gets
+			-- none, and that cast stays for its own Hit.
+			local _, fitting = castOf(hit, group, school, miss)
+			return fitting == 0 and areaCasts[1].spellID or nil
+		end
 		local found = castOf(hit, group, school, miss)
 		if not found then
 			return nil
@@ -254,7 +313,8 @@ function Identity.New(saved)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
-			if tried[spellID] or not spell or (school and spell.school ~= school) then
+			-- An area spell's ticks come as direct hits.
+			if tried[spellID] or not spell or spell.area or (school and spell.school ~= school) then
 				return
 			end
 			tried[spellID] = true
@@ -282,6 +342,18 @@ function Identity.New(saved)
 	local identity = {}
 
 	function identity.Cast(record)
+		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
+			-- A channelled area spell's ticks end with its channel. The stop
+			-- marks the oldest open cast of the spell, so a recast whose cast
+			-- comes before the old channel's stop keeps its own ticks.
+			for _, cast in ipairs(casts) do
+				if cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped then
+					cast.stopped = record.time
+					break
+				end
+			end
+			return
+		end
 		if record.stage ~= "SUCCEEDED" or (record.unit ~= "player" and record.unit ~= "pet") then
 			return
 		end
