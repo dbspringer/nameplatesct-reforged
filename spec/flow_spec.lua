@@ -13,13 +13,13 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 -- Pushes the entries through a new Flow, ends every hold, and returns the
 -- Hits that went to show and to noPlate, each with its how, and for show
--- the Line Kind, and for a late Hit its Nameplate as it hid.
+-- the Line Kind, pet, and for a late Hit its Nameplate as it hid.
 local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
 		spellFacts = {},
-		show = function(hit, how, _, lineKind, late)
-			shown[#shown + 1] = { hit = hit, how = how, lineKind = lineKind, late = late }
+		show = function(hit, how, _, lineKind, late, pet)
+			shown[#shown + 1] = { hit = hit, how = how, lineKind = lineKind, late = late, pet = pet }
 		end,
 		noPlate = function(hit, how)
 			plateless[#plateless + 1] = { hit = hit, how = how }
@@ -218,5 +218,33 @@ describe("Flow", function()
 				assert.are.same(noPlate, platelessEntries)
 			end)
 		end
+
+		-- Pairing gives a melee Hit the oldest melee line that fits, so when the
+		-- player's and the pet's swing lines wait at once, their Hits can swap
+		-- them: once in the Traces, the two wrong owners expected here.
+		it("tells the player's swings from the pet's, as the Combat Log File does", function()
+			local seen, wrong = { you = 0, pet = 0 }, {}
+			for _, name in ipairs(Trace.NAMES) do
+				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
+				local _, _, eventAt = Label.Make(trace, Trace.LoadLog(name))
+				local lineOf = {}
+				for _, row in ipairs(labels) do
+					lineOf[row.hit] = row.line
+				end
+				for _, result in ipairs((run(trace.entries))) do
+					if ns.LineKind.IsMelee(result.lineKind) then
+						local who = eventAt[lineOf[result.hit.entry]].srcWho
+						seen[who] = seen[who] + 1
+						if (who == "pet") ~= result.pet then
+							wrong[#wrong + 1] = ("%s hit %d"):format(name, result.hit.entry)
+						end
+					else
+						assert.is_false(result.pet, ("%s hit %d"):format(name, result.hit.entry))
+					end
+				end
+			end
+			assert.is_true(seen.you > 0 and seen.pet > 0)
+			assert.are.same({ "warlock-spells hit 243", "warlock-spells hit 245" }, wrong)
+		end)
 	end)
 end)

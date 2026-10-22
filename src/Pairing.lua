@@ -144,6 +144,10 @@ function Pairing.New(options)
 		else
 			local found, how = takeSuited(hit, lines), "frame"
 			if not found then
+				-- The oldest line that fits. When the player's and the pet's swing
+				-- lines wait at once, a Hit can take the other's: the Swing Delay
+				-- of each varies too much to tell them apart, and a line's pet
+				-- mark (see Adapter.New) then goes with the wrong Hit.
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line)
 					if how then

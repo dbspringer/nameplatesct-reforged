@@ -122,6 +122,7 @@ local function onEvent(_, event, ...)
 		end
 	elseif event == "COMBAT_LOG_MESSAGE" then
 		entry.colouring = lineColouring()
+		entry.hasPet = isTrue(UnitExists("pet"))
 	end
 
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
@@ -136,7 +137,7 @@ local function onEvent(_, event, ...)
 		elseif event == "UNIT_COMBAT" then
 			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
 		elseif event == "COMBAT_LOG_MESSAGE" then
-			extra = { colouring = entry.colouring }
+			extra = { colouring = entry.colouring, hasPet = entry.hasPet }
 		elseif IS_CAST_EVENT[event] and unit == "player" then
 			-- The Nameplate of the player's target at this cast event, which the
 			-- cast need not aim at. No rule reads it yet; Traces keep it.
@@ -153,7 +154,7 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how, spellID, lineKind, late) gets Your Hits on an enemy Nameplate, and
+-- show(hit, how, spellID, lineKind, late, pet) gets Your Hits on an enemy Nameplate, and
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)
