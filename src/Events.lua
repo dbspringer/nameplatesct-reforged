@@ -119,6 +119,12 @@ local function onEvent(_, event, ...)
 		entry.own = ownerOf(unit)
 		if not entry.own then
 			entry.plate = plateFor(unit)
+			-- Checked at each report, since a duel can make a unit attackable
+			-- mid-fight. A secret answer is left out, so the Hit stays.
+			local canAttack = UnitCanAttack("player", unit)
+			if not issecretvalue(canAttack) then
+				entry.canAttack = canAttack and true or false
+			end
 		end
 	elseif event == "COMBAT_LOG_MESSAGE" then
 		entry.colouring = lineColouring()
@@ -135,7 +141,7 @@ local function onEvent(_, event, ...)
 		elseif isPlateEvent then
 			extra = { guid = UnitGUID(unit) }
 		elseif event == "UNIT_COMBAT" then
-			extra = { plate = entry.plate, own = entry.own, guid = UnitGUID(unit) }
+			extra = { plate = entry.plate, own = entry.own, canAttack = entry.canAttack, guid = UnitGUID(unit) }
 		elseif event == "COMBAT_LOG_MESSAGE" then
 			extra = { colouring = entry.colouring, hasPet = entry.hasPet }
 		elseif IS_CAST_EVENT[event] and unit == "player" then
