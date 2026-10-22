@@ -17,6 +17,10 @@ local MIN_ALIGNED = 0.9
 -- A Hit's file event comes from this long before it to this long after it.
 local EARLIEST = 1.5
 local LATEST = 0.1
+-- The spell that a Label names is the cast that made the Hit. On Forever an
+-- area spell's damage comes with another spell ID than its cast's: here, the
+-- cast of each damage spell ID (Rain of Fire's ranks, from the DB2).
+local CAST_OF = { [1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678 }
 -- A delay past this is longer than any seen in the Warlock Traces.
 local LATE = 1.0
 -- Log Line colours arrive as 8-bit floats (see LineKind.lua).
@@ -296,7 +300,7 @@ end
 -- which has no spell, or nil when the file event names none.
 function Label.SpellOf(event)
 	if event.spellID then
-		return event.spellID
+		return CAST_OF[event.spellID] or event.spellID
 	end
 	if event.name:find("^SWING_") then
 		return false

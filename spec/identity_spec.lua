@@ -13,7 +13,7 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 local SHADOW_BOLT, SHOOT, FIREBOLT = 705, 5019, 3110
 local IMMOLATE, CORRUPTION, AGONY, DRAIN_LIFE, FIREBALL, MIND_FLAY, SERPENT_STING = 707, 6222, 1014, 689, 133, 15407, 1978
-local AUTO_SHOT = 75
+local AUTO_SHOT, RAIN_OF_FIRE = 75, 5740
 local PHYSICAL, FIRE, NATURE, SHADOW = 1, 4, 8, 32
 
 local function cast(identity, time, spellID, unit)
@@ -263,6 +263,45 @@ describe("Spell Identity", function()
 			cast(identity, 3, SHOOT)
 			assert.are.same({ SHADOW_BOLT, nil }, { dodged, of(identity, 3.2, "shotMiss", 1) })
 			assert.is_nil(saved[SHOOT])
+		end)
+	end)
+
+	-- On Forever an area spell's ticks come as direct Log Lines.
+	describe("of an area spell's tick", function()
+		it("gives the area spell to direct hits each interval after its cast, on every Nameplate, until its duration ends", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.same({ RAIN_OF_FIRE, RAIN_OF_FIRE, RAIN_OF_FIRE, nil }, {
+				of(identity, 2, "direct", FIRE),
+				of(identity, 2, "direct", FIRE, "nameplate2"),
+				of(identity, 4, "direct", FIRE),
+				of(identity, 10, "direct", FIRE),
+			})
+		end)
+
+		it("keeps to the area's last tick, so ticks that come later each time still fit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.same({ RAIN_OF_FIRE, RAIN_OF_FIRE, RAIN_OF_FIRE }, {
+				of(identity, 2.06, "direct", FIRE),
+				of(identity, 4.12, "direct", FIRE),
+				of(identity, 6.18, "direct", FIRE),
+			})
+		end)
+
+		it("gives none when a cast that hits fits the same direct hit, and leaves that cast for its own hit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1, IMMOLATE)
+			assert.is_nil(of(identity, 2, "direct", FIRE))
+			assert.are.equal(IMMOLATE, of(identity, 2.3, "direct", FIRE))
+		end)
+
+		it("never takes a tick Log Line, so it does not crowd another spell's tick", function()
+			local identity = Identity.New({})
+			cast(identity, 0, IMMOLATE)
+			cast(identity, 1, RAIN_OF_FIRE)
+			assert.are.equal(IMMOLATE, of(identity, 3, "tick", FIRE))
 		end)
 	end)
 
@@ -552,7 +591,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 23
+		local UNKNOWN_FLOOR = 24
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

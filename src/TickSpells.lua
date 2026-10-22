@@ -4,8 +4,9 @@ local _, ns = ...
 -- time between ticks, and the longest time any rank ticks for with its
 -- talents, in seconds; the school of its ticks, which is also the school of
 -- its direct hit (a spell in this table needs no Spell Facts); whether its
--- cast also hits; and whether it travels to its target first. Spell Identity
--- reads ticks only from this table (ADR 0004).
+-- cast also hits; whether it travels to its target first; and whether it is
+-- an area spell, whose ticks come as direct Log Lines. Spell Identity reads
+-- ticks only from this table (ADR 0004).
 --
 -- From Forever's spell data (wago.tools DB2, build 1.60.1.70532: SpellEffect
 -- periodic damage and leech auras and school damage effects, SpellMisc school
@@ -21,8 +22,8 @@ local _, ns = ...
 --
 -- On Forever the area spells (Blizzard, Consecration, Flamestrike's DoT,
 -- Hurricane, Rain of Fire, Volley) tick from an area trigger, not Classic's
--- area aura, at the same interval; that their damage still comes as tick
--- Log Lines is untested.
+-- area aura, at the same interval, and each tick is a direct hit of another
+-- spell ID: Rain of Fire's in the Rain of Fire Trace, the others untested.
 --
 -- Ticks come only from the player's casts. The pets' spells are here so that
 -- a pet's missed application competes with the player's casts, as in
@@ -41,6 +42,7 @@ local function ticks(interval, school, duration, kind, ids)
 			duration = duration,
 			hits = kind.hits == true,
 			travels = kind.travels == true,
+			area = kind.area == true,
 		}
 	end
 end
@@ -52,27 +54,27 @@ do
 	ticks(3, PHYSICAL, 9, { hits = true }, { 1822, 1823, 1824, 9904 }) -- Rake
 	ticks(2, NATURE, 12, {}, { 5570, 24974, 24975, 24976, 24977 }) -- Insect Swarm
 	ticks(3, ARCANE, 12, { hits = true }, { 8921, 8924, 8925, 8926, 8927, 8928, 8929, 9833, 9834, 9835 }) -- Moonfire
-	ticks(1, NATURE, 10, {}, { 16914, 17401, 17402 }) -- Hurricane
+	ticks(1, NATURE, 10, { area = true }, { 16914, 17401, 17402 }) -- Hurricane
 	ticks(3, PHYSICAL, 15, {}, { 414644 }) -- Lacerate
 	ticks(3, PHYSICAL, 18, {}, { 9005, 9823, 9827 }) -- Pounce; its ticks are Pounce Bleed's
 	ticks(3, PHYSICAL, 15, {}, { 1235826, 1235827 }) -- Lacerate, Forever's ranks (interval untested)
 
 	-- Hunter
-	ticks(1, ARCANE, 6, { travels = true }, { 1510, 14294, 14295 }) -- Volley
+	ticks(1, ARCANE, 6, { travels = true, area = true }, { 1510, 14294, 14295 }) -- Volley
 	ticks(3, NATURE, 15, { travels = true }, { 1978, 13549, 13550, 13551, 13552, 13553, 13554, 13555, 25295 }) -- Serpent Sting
 	ticks(2, SHADOW, 30, { travels = true }, { 3674, 14296 }) -- Black Arrow
 	ticks(3, PHYSICAL, 21, {}, { 24118, 24119, 24120, 1299332 }) -- Lacerate, the Hunter's
 
 	-- Mage
-	ticks(1, FROST, 8, {}, { 10, 6141, 8427, 10185, 10186, 10187 }) -- Blizzard
+	ticks(1, FROST, 8, { area = true }, { 10, 6141, 8427, 10185, 10186, 10187 }) -- Blizzard
 	ticks(2, FIRE, 8, { hits = true, travels = true }, { 133, 143, 145, 3140, 8400, 8401, 8402, 10148, 10149, 10150, 10151, 25306 }) -- Fireball
-	ticks(2, FIRE, 8, { hits = true }, { 2120, 2121, 8422, 8423, 10215, 10216 }) -- Flamestrike
+	ticks(2, FIRE, 8, { hits = true, area = true }, { 2120, 2121, 8422, 8423, 10215, 10216 }) -- Flamestrike
 	ticks(3, FIRE, 12, { hits = true, travels = true }, { 11366, 12505, 12522, 12523, 12524, 12525, 12526, 18809 }) -- Pyroblast
 	ticks(3, FIRE + FROST, 9, { hits = true, travels = true }, { 401502 }) -- Frostfire Bolt
 	ticks(3, FIRE + FROST, 9, { hits = true, travels = true }, { 1237312, 1237313 }) -- Frostfire Bolt, Forever's ranks (interval untested)
 
 	-- Paladin
-	ticks(1, HOLY, 8, {}, { 20116, 20922, 20923, 20924, 26573 }) -- Consecration
+	ticks(1, HOLY, 8, { area = true }, { 20116, 20922, 20923, 20924, 26573 }) -- Consecration
 
 	-- Priest
 	-- Shadow Word: Pain lasts 18 s, and Improved Shadow Word: Pain adds 6.
@@ -96,7 +98,7 @@ do
 	ticks(1, SHADOW, 5, {}, { 689, 699, 709, 7651, 11699, 11700 }) -- Drain Life
 	ticks(2, SHADOW, 24, {}, { 980, 1014, 6217, 11711, 11712, 11713 }) -- Curse of Agony; Bane of Agony on Forever
 	ticks(3, SHADOW, 15, {}, { 1120, 8288, 8289, 11675 }) -- Drain Soul
-	ticks(2, FIRE, 8, {}, { 5740, 6219, 11677, 11678 }) -- Rain of Fire
+	ticks(2, FIRE, 8, { area = true }, { 5740, 6219, 11677, 11678 }) -- Rain of Fire
 	ticks(3, SHADOW, 30, {}, { 18265, 18879, 18880, 18881 }) -- Siphon Life
 	ticks(1, SHADOW, 6, {}, { 1316697 }) -- Wrack, Forever only (a channel)
 

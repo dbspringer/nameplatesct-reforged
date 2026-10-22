@@ -10,8 +10,9 @@ ns.Identity = Identity
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
--- that Spell Facts have learned (ADR 0004). When it is not sure, it gives
--- none.
+-- that Spell Facts have learned (ADR 0004). On Forever an area spell's ticks
+-- come as direct hits, so a direct hit can also take an area spell, each
+-- interval after its cast (see areaOf). When it is not sure, it gives none.
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -35,10 +36,12 @@ local AGREEING_HITS = 2
 local MISS_WINDOW = 0.1
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a
--- first tick until one interval after it lands.
+-- first tick until one interval after it lands, an area spell's ticks until
+-- its duration ends.
 local CAST_AGE = DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE
 for _, spell in pairs(ns.TickSpells) do
-	CAST_AGE = math.max(CAST_AGE, spell.interval + DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE)
+	local lasts = spell.area and spell.duration or spell.interval + DIRECT_WINDOW
+	CAST_AGE = math.max(CAST_AGE, lasts + DECIDE_LATE + TICK_TOLERANCE)
 end
 
 -- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
@@ -99,8 +102,9 @@ end
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret }. A cast whose spell ID is secret still competes, but
-	-- never wins.
+	-- missed, secret, lastTick }. A cast whose spell ID is secret still
+	-- competes, but never wins. lastTick is an area spell's last tick on any
+	-- unit.
 	local casts = {}
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
@@ -181,8 +185,46 @@ function Identity.New(saved)
 		return fitting == 1 and lastFitting or nil
 	end
 
+	-- The area spell whose tick this direct hit is, and its casts that fit:
+	-- one whose tick is due a whole number of intervals after the cast's last
+	-- tick on any unit, or after the cast before its first, until its
+	-- duration ends. Keeping to the last tick lets ticks that each come a
+	-- little late still fit. Two area spells that fit give none.
+	local function areaOf(hit, school)
+		local spellID, fitting = nil, {}
+		for _, cast in ipairs(casts) do
+			local spell = cast.unit == "player" and not cast.secret and ns.TickSpells[cast.spellID]
+			if spell and spell.area and (not school or spell.school == school)
+				and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
+				local from = cast.lastTick or cast.time
+				local steps = math.floor((hit.time - from) / spell.interval + 0.5)
+				if (steps >= 1 or (steps == 0 and cast.lastTick))
+					and math.abs(hit.time - from - steps * spell.interval) <= TICK_TOLERANCE then
+					if spellID and spellID ~= cast.spellID then
+						return nil
+					end
+					spellID = cast.spellID
+					fitting[#fitting + 1] = cast
+				end
+			end
+		end
+		return spellID, fitting
+	end
+
 	local function ofDirect(hit, group, school, miss, plate)
+		local area, areaCasts
+		if group == "direct" then
+			area, areaCasts = areaOf(hit, school)
+		end
 		local found = castOf(hit, group, school, miss)
+		if area then
+			for _, cast in ipairs(areaCasts) do
+				cast.lastTick = hit.time
+			end
+			-- A cast that hits fits too, so either could have made the Hit;
+			-- that cast stays for its own hit.
+			return not found and area or nil
+		end
 		if not found then
 			return nil
 		end
@@ -254,7 +296,8 @@ function Identity.New(saved)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
-			if tried[spellID] or not spell or (school and spell.school ~= school) then
+			-- An area spell's ticks come as direct hits.
+			if tried[spellID] or not spell or spell.area or (school and spell.school ~= school) then
 				return
 			end
 			tried[spellID] = true
