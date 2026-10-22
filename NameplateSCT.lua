@@ -1900,6 +1900,13 @@ local menu = {
 				},
 			},
 		},
+
+		credits = {
+			type = 'description',
+			name = L["Based on NameplateSCT by mpstark and Justwait. MIT License."],
+			order = 200,
+			width = "full",
+		},
 	},
 }
 
