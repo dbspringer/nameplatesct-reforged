@@ -16,14 +16,18 @@ local _, ns = ...
 -- Classic Era data. Left out: ticks with no cast of their own (Ignite, Deep
 -- Wounds, Deadly Poison), traps, totems (the totem is the source), Hellfire
 -- and Arcane Missiles (their damage hits rather than ticks), Wyvern Sting,
--- and Curse of Doom (Bane of Doom on Forever; one tick at 60 s). Corruption,
+-- Curse of Doom (Bane of Doom on Forever; one tick at 60 s), and the area
+-- spells that are not channels (Consecration, Flamestrike's DoT). Corruption,
 -- Bane of Agony, Immolate, Drain Life and Drain Soul are checked against the
 -- Warlock Traces.
 --
--- On Forever the area spells (Blizzard, Consecration, Flamestrike's DoT,
--- Hurricane, Rain of Fire, Volley) tick from an area trigger, not Classic's
--- area aura, at the same interval, and each tick is a direct hit of another
--- spell ID: Rain of Fire's in the Rain of Fire Trace, the others untested.
+-- On Forever the area spells tick from an area trigger, not Classic's area
+-- aura, at the same interval, and each tick is a direct hit of another spell
+-- ID: Rain of Fire's in the Rain of Fire Trace, the others untested. Only the
+-- channelled ones are here (Blizzard, Hurricane, Rain of Fire, Volley): the
+-- player can neither swing nor cast while channelling, and the channel's stop
+-- ends the ticks, so a proc with no cast, such as a seal's, seldom lands on
+-- the tick grid. During Consecration such procs would take its icon.
 --
 -- Ticks come only from the player's casts. The pets' spells are here so that
 -- a pet's missed application competes with the player's casts, as in
@@ -68,13 +72,9 @@ do
 	-- Mage
 	ticks(1, FROST, 8, { area = true }, { 10, 6141, 8427, 10185, 10186, 10187 }) -- Blizzard
 	ticks(2, FIRE, 8, { hits = true, travels = true }, { 133, 143, 145, 3140, 8400, 8401, 8402, 10148, 10149, 10150, 10151, 25306 }) -- Fireball
-	ticks(2, FIRE, 8, { hits = true, area = true }, { 2120, 2121, 8422, 8423, 10215, 10216 }) -- Flamestrike
 	ticks(3, FIRE, 12, { hits = true, travels = true }, { 11366, 12505, 12522, 12523, 12524, 12525, 12526, 18809 }) -- Pyroblast
 	ticks(3, FIRE + FROST, 9, { hits = true, travels = true }, { 401502 }) -- Frostfire Bolt
 	ticks(3, FIRE + FROST, 9, { hits = true, travels = true }, { 1237312, 1237313 }) -- Frostfire Bolt, Forever's ranks (interval untested)
-
-	-- Paladin
-	ticks(1, HOLY, 8, { area = true }, { 20116, 20922, 20923, 20924, 26573 }) -- Consecration
 
 	-- Priest
 	-- Shadow Word: Pain lasts 18 s, and Improved Shadow Word: Pain adds 6.

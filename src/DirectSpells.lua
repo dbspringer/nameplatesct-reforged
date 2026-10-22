@@ -17,8 +17,9 @@ local _, ns = ...
 -- Era data. Left out, among others: spells whose damage comes from another
 -- spell (Arcane Missiles, Hellfire, Execute, Judgement), procs (poisons,
 -- weapon enchants, seals), totems, and Mana Burn. Holy Shock, whose damage a
--- script makes, is in: its cast on a friend heals, and then it competes with
--- the casts that could have made a Holy Hit.
+-- script makes, is in, so that its Hit on an enemy gets its icon; the cost is
+-- that its cast on a friend, which heals, competes with the casts that could
+-- have made a Holy Hit.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 
@@ -78,6 +79,7 @@ do
 	hits(FIRE, { 2136, 2137, 2138, 8412, 8413, 10197, 10199 }) -- Fire Blast
 	hits(FIRE, { 2948, 8444, 8445, 8446, 10205, 10206, 10207 }) -- Scorch
 	hits(FIRE, { 11113, 13018, 13019, 13020, 13021 }) -- Blast Wave
+	hits(FIRE, { 2120, 2121, 8422, 8423, 10215, 10216 }) -- Flamestrike; its DoT is left out (TickSpells.lua)
 	hits(FIRE, { 24530 }) -- Felfire
 	hits(ARCANE, { 400574 }) -- Arcane Blast
 	hits(FROST, { 400640 }) -- Ice Lance
@@ -112,7 +114,9 @@ do
 	hits(PHYSICAL, { 14251 }) -- Riposte
 	hits(PHYSICAL, { 14278 }) -- Ghostly Strike
 	hits(PHYSICAL, { 16511 }) -- Hemorrhage
-	-- The casts; each one makes two Hits, a main-hand and an off-hand strike.
+	-- The casts. Each one makes two Hits, a main-hand and an off-hand strike
+	-- (untested), and a cast gives its spell to one Hit, so only the first
+	-- gets the icon.
 	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }) -- Mutilate, Forever only
 
 	-- Shaman
