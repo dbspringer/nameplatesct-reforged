@@ -9,17 +9,16 @@ local _, ns = ...
 -- one. The pets' spells are here so that they compete with the player's,
 -- though they never win. Spells that also tick are in TickSpells.lua.
 --
--- From the Classic Era spell data (wago.tools DB2: SpellEffect school damage,
--- health leech and weapon damage effects, SpellMisc school), for every rank
--- that Forever's trainers teach (WhatsTraining's Camelot tables), the later
--- ranks of 1.10 to 1.12, and the ranged attacks; added by hand from the same
--- data, the spells that Forever's trainers do not teach (Raptor Strike's and
--- Claw's first ranks, Multi-Shot's later ranks, Hemorrhage, Stormstrike);
--- Forever's own spells take their school from their description on the
--- Forever client. Left out, among others: spells whose damage comes from
--- another spell or a script (Arcane Missiles, Hellfire, Execute, Judgement,
--- Holy Shock's trainer ranks), procs (poisons, weapon enchants, seals),
--- totems, and Mana Burn.
+-- From Forever's spell data (wago.tools DB2, build 1.60.1.70532: SpellEffect
+-- school damage, health leech and weapon damage effects, SpellMisc school),
+-- for the cast of every spell in a class or pet skill line or a talent
+-- (TraitDefinition), also where no trainer or talent is known to teach it,
+-- and the ranged attacks; the Classic spells' schools agree with the Classic
+-- Era data. Left out, among others: spells whose damage comes from another
+-- spell (Arcane Missiles, Hellfire, Execute, Judgement), procs (poisons,
+-- weapon enchants, seals), totems, and Mana Burn. Holy Shock, whose damage a
+-- script makes, is in: its cast on a friend heals, and then it competes with
+-- the casts that could have made a Holy Hit.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 
@@ -49,25 +48,27 @@ do
 	hits(PHYSICAL, { 769, 779, 780, 9754, 9908 }) -- Swipe
 	hits(ARCANE, { 2912, 8949, 8950, 8951, 9875, 9876, 25298 }) -- Starfire
 	hits(PHYSICAL, { 1082, 3029, 5201, 9849, 9850 }) -- Claw
-	hits(PHYSICAL, { 16942 }) -- Claw, Forever's first rank (a talent; untested)
 	hits(NATURE, { 5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912 }) -- Wrath
 	hits(PHYSICAL, { 5221, 6800, 8992, 9829, 9830 }) -- Shred
 	hits(PHYSICAL, { 6785, 6787, 9866, 9867 }) -- Ravage
 	hits(PHYSICAL, { 6807, 6808, 6809, 8972, 9745, 9880, 9881 }) -- Maul
-	hits(PHYSICAL, { 22568, 22827, 22828, 22829 }) -- Ferocious Bite
-	hits(PHYSICAL, { 407995 }) -- Mangle
-	hits(PHYSICAL, { 1238069, 1238070, 1238073 }) -- Primal Bite, Forever only
+	hits(PHYSICAL, { 22568, 22827, 22828, 22829, 31018 }) -- Ferocious Bite
+	hits(PHYSICAL, { 407995, 1238069, 1238070, 1238073 }) -- Primal Bite, Forever only (the first rank is Mangle's ID)
 
 	-- Hunter
 	hits(PHYSICAL, { 1495, 14269, 14270, 14271 }) -- Mongoose Bite
-	hits(PHYSICAL, { 2643, 14288, 14289, 14290, 25294 }) -- Multi-Shot
+	hits(PHYSICAL, { 2643 }) -- Multi-Shot
 	hits(PHYSICAL, { 2974, 14267, 14268, 27633 }) -- Wing Clip
 	hits(ARCANE, { 3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287 }) -- Arcane Shot
 	hits(PHYSICAL, { 2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
 	hits(PHYSICAL, { 19306, 20909, 20910 }) -- Counterattack
 	hits(PHYSICAL, { 19434, 20900, 20901, 20902, 20903, 20904, 27632 }) -- Aimed Shot
+	hits(PHYSICAL, { 19503 }) -- Scatter Shot
 	hits(PHYSICAL, { 1242634 }) -- Counterattack, Forever's rank
 	hits(PHYSICAL, { 1310687, 1310785, 1310786 }) -- Sniper Shot, Forever only
+	hits(PHYSICAL, { 1317257 }) -- Strider Kick, Forever only
+	-- The cast's own hit; the hawk's attacks after it are not the player's.
+	hits(PHYSICAL, { 1293241, 1293525, 1293526, 1293527 }) -- Summon Hawk, Forever only
 
 	-- Mage
 	hits(FROST, { 116, 205, 837, 7322, 8406, 8407, 8408, 10179, 10180, 10181, 25304 }) -- Frostbolt
@@ -77,6 +78,7 @@ do
 	hits(FIRE, { 2136, 2137, 2138, 8412, 8413, 10197, 10199 }) -- Fire Blast
 	hits(FIRE, { 2948, 8444, 8445, 8446, 10205, 10206, 10207 }) -- Scorch
 	hits(FIRE, { 11113, 13018, 13019, 13020, 13021 }) -- Blast Wave
+	hits(FIRE, { 24530 }) -- Felfire
 	hits(ARCANE, { 400574 }) -- Arcane Blast
 	hits(FROST, { 400640 }) -- Ice Lance
 	hits(ARCANE, { 1239696, 1239697, 1239699, 1239700 }) -- Arcane Blast, Forever's ranks
@@ -90,7 +92,8 @@ do
 	hits(HOLY, { 24239, 24274, 24275 }) -- Hammer of Wrath
 	-- Weapon damage plus Holy damage; which school the Hit reports is untested.
 	hits(HOLY, { 678, 679, 680, 1866, 2495, 5569, 10332, 10333 }) -- Holy Strike, Forever only
-	hits(HOLY, { 1311606 }) -- Holy Shock, Forever's rank
+	hits(HOLY, { 1311606, 20473, 20929, 20930 }) -- Holy Shock; Forever's first rank, then the Classic ranks
+	hits(HOLY, { 407632 }) -- Hammer of the Righteous
 
 	-- Priest
 	hits(HOLY, { 585, 591, 598, 984, 1004, 6060, 10933, 10934 }) -- Smite
@@ -104,10 +107,13 @@ do
 	hits(PHYSICAL, { 1752, 1757, 1758, 1759, 1760, 8621, 11293, 11294 }) -- Sinister Strike
 	hits(PHYSICAL, { 1766, 1767, 1768, 1769 }) -- Kick
 	hits(PHYSICAL, { 1776, 1777, 8629, 11285, 11286 }) -- Gouge
-	hits(PHYSICAL, { 2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300 }) -- Eviscerate
+	hits(PHYSICAL, { 2098, 6760, 6761, 6762, 8623, 8624, 11299, 11300, 31016 }) -- Eviscerate
 	hits(PHYSICAL, { 8676, 8724, 8725, 11267, 11268, 11269 }) -- Ambush
-	hits(PHYSICAL, { 16511, 17347, 17348 }) -- Hemorrhage
-	hits(PHYSICAL, { 1241582, 1241584, 1310706 }) -- Mutilate, Forever only
+	hits(PHYSICAL, { 14251 }) -- Riposte
+	hits(PHYSICAL, { 14278 }) -- Ghostly Strike
+	hits(PHYSICAL, { 16511 }) -- Hemorrhage
+	-- The casts; each one makes two Hits, a main-hand and an off-hand strike.
+	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }) -- Mutilate, Forever only
 
 	-- Shaman
 	hits(NATURE, { 403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208 }) -- Lightning Bolt
@@ -146,6 +152,7 @@ do
 	hits(PHYSICAL, { 23922, 23923, 23924, 23925 }) -- Shield Slam
 	hits(PHYSICAL, { 402927 }) -- Victory Rush
 	hits(PHYSICAL, { 1240193 }) -- Slam, Forever's rank
+	hits(PHYSICAL, { 1310222 }) -- Spearing Strike, Forever only
 
 	-- Pets
 	hits(FIRE, { 3110, 7799, 7800, 7801, 7802, 9057, 11762, 11763, 15598, 18187 }) -- Firebolt, the Imp's
@@ -153,5 +160,12 @@ do
 	hits(PHYSICAL, { 3009, 3010, 16827, 16828, 16829, 16830, 16831, 16832 }) -- Claw
 	hits(PHYSICAL, { 17253, 17255, 17256, 17257, 17258, 17259, 17260, 17261 }) -- Bite
 	hits(NATURE, { 24844, 25008, 25009, 25010, 25011, 25012 }) -- Lightning Breath
-	hits(PHYSICAL, { 24423, 24577, 24578, 24579 }) -- Screech
+	hits(PHYSICAL, { 24423, 24577, 24578, 24579 }) -- Demoralizing Screech (Screech in Classic)
+	hits(NATURE, { 26090, 26187, 26188, 1264455 }) -- Thunderstomp
+	hits(FIRE, { 444678, 444681 }) -- Lava Breath
+	hits(NATURE, { 1264478, 1264479, 1264480, 1264481, 1264482 }) -- Sonic Blast, Forever only
+	hits(PHYSICAL, { 1264494, 1264497, 1264498, 1264501, 1264502 }) -- Swipe, Forever only
+	hits(PHYSICAL, { 1264735, 1264736, 1264739, 1264741, 1264742 }) -- Pinch, Forever only
+	hits(PHYSICAL, { 1264758, 1264927, 1264929, 1264930, 1264933 }) -- Dismember, Forever only
+	hits(PHYSICAL, { 1265054, 1265055, 1265056, 1265057, 1265058 }) -- Mine!, Forever only
 end

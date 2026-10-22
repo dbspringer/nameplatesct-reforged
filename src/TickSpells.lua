@@ -7,16 +7,26 @@ local _, ns = ...
 -- cast also hits; and whether it travels to its target first. Spell Identity
 -- reads ticks only from this table (ADR 0004).
 --
--- From the Classic Era spell data (wago.tools DB2: SpellEffect periodic
--- damage and leech auras and school damage effects, SpellMisc school and
--- missile speed, SpellDuration), for every rank that Forever's trainers teach
--- (WhatsTraining's Camelot tables) and the later ranks of 1.11, each name
--- checked on the Forever client. Left out: ticks with no cast of their own
--- (Ignite, Deep Wounds, Deadly Poison), traps, totems (the totem is the
--- source), Hellfire and Arcane Missiles (their damage hits rather than
--- ticks), Wyvern Sting, and Curse of Doom (one tick at 60 s). Corruption,
+-- From Forever's spell data (wago.tools DB2, build 1.60.1.70532: SpellEffect
+-- periodic damage and leech auras and school damage effects, SpellMisc school
+-- and missile speed, SpellDuration), for the cast of every spell in a class
+-- or pet skill line or a talent (TraitDefinition), also where no trainer or
+-- talent is known to teach it; the Classic spells' values agree with the
+-- Classic Era data. Left out: ticks with no cast of their own (Ignite, Deep
+-- Wounds, Deadly Poison), traps, totems (the totem is the source), Hellfire
+-- and Arcane Missiles (their damage hits rather than ticks), Wyvern Sting,
+-- and Curse of Doom (Bane of Doom on Forever; one tick at 60 s). Corruption,
 -- Bane of Agony, Immolate, Drain Life and Drain Soul are checked against the
 -- Warlock Traces.
+--
+-- On Forever the area spells (Blizzard, Consecration, Flamestrike's DoT,
+-- Hurricane, Rain of Fire, Volley) tick from an area trigger, not Classic's
+-- area aura, at the same interval; that their damage still comes as tick
+-- Log Lines is untested.
+--
+-- Ticks come only from the player's casts. The pets' spells are here so that
+-- a pet's missed application competes with the player's casts, as in
+-- DirectSpells.lua.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 
@@ -50,6 +60,8 @@ do
 	-- Hunter
 	ticks(1, ARCANE, 6, { travels = true }, { 1510, 14294, 14295 }) -- Volley
 	ticks(3, NATURE, 15, { travels = true }, { 1978, 13549, 13550, 13551, 13552, 13553, 13554, 13555, 25295 }) -- Serpent Sting
+	ticks(2, SHADOW, 30, { travels = true }, { 3674, 14296 }) -- Black Arrow
+	ticks(3, PHYSICAL, 21, {}, { 24118, 24119, 24120, 1299332 }) -- Lacerate, the Hunter's
 
 	-- Mage
 	ticks(1, FROST, 8, {}, { 10, 6141, 8427, 10185, 10186, 10187 }) -- Blizzard
@@ -69,7 +81,7 @@ do
 	ticks(1, ARCANE, 6, {}, { 10797, 19296, 19299, 19302, 19303, 19304, 19305 }) -- Starshards
 	ticks(2, HOLY, 10, { hits = true }, { 14914, 15261, 15262, 15263, 15264, 15265, 15266, 15267 }) -- Holy Fire
 	ticks(1, SHADOW, 3, {}, { 15407, 17311, 17312, 17313, 17314, 18807 }) -- Mind Flay
-	ticks(1, HOLY, 2, { hits = true }, { 1240720, 1240721, 1316995 }) -- Penance, Forever only (untested; may hit, not tick)
+	ticks(1, HOLY, 2, { hits = true }, { 402174, 1240720, 1240721, 1316995 }) -- Penance, Forever only (untested; may hit, not tick)
 
 	-- Rogue
 	ticks(3, PHYSICAL, 18, {}, { 703, 8631, 8632, 8633, 11289, 11290 }) -- Garrote
@@ -86,7 +98,14 @@ do
 	ticks(3, SHADOW, 15, {}, { 1120, 8288, 8289, 11675 }) -- Drain Soul
 	ticks(2, FIRE, 8, {}, { 5740, 6219, 11677, 11678 }) -- Rain of Fire
 	ticks(3, SHADOW, 30, {}, { 18265, 18879, 18880, 18881 }) -- Siphon Life
+	ticks(1, SHADOW, 6, {}, { 1316697 }) -- Wrack, Forever only (a channel)
 
 	-- Warrior
 	ticks(3, PHYSICAL, 21, {}, { 772, 6546, 6547, 6548, 11572, 11573, 11574 }) -- Rend
+
+	-- Pets
+	ticks(2, NATURE, 10, {}, { 24583, 24586, 24587, 24640 }) -- Scorpid Poison
+	ticks(3, PHYSICAL, 9, {}, { 1265038, 1265039, 1265040, 1265041, 1265042 }) -- Tendon Rip, Forever only
+	ticks(3, PHYSICAL, 18, {}, { 1265065, 1265066, 1265067, 1265068, 1265069 }) -- Savage Rend, Forever only
+	ticks(1, NATURE, 4, {}, { 1265843, 1265878, 1265880, 1265881, 1265883 }) -- Web, Forever only
 end
