@@ -1,5 +1,9 @@
 # Changelog
 
+## 2
+
+- The AddOns list now shows an icon for the addon, the Blacksmithing hammer and anvil.
+
 ## 1
 
 - This is a work in progress. In groups and busy fights, the addon can still mistake other players' hits for yours, so some of your numbers can be wrong or missing, mostly melee hits and misses. If you see it happen, a recording of that fight (`/nsctr record`) helps a lot.
