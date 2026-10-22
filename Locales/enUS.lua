@@ -9,6 +9,7 @@ L["Appearance/Offsets"] = true
 L["Auto attacks that are critical hits"] = true
 L["Auto Attacks"] = true
 L["Background"] = true
+L["Based on NameplateSCT by mpstark and Justwait. MIT License."] = true
 L["Blocked"] = true
 L["Boss"] = true
 L["Bottom Left"] = true
