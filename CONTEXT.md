@@ -58,6 +58,10 @@ _Avoid_: My hit, own damage, player damage
 The time by which a melee Log Line comes before its Hit. It changes with the weapon.
 _Avoid_: Melee lag, offset
 
+**Pet Swing**:
+Your Hit from the pet's melee swing, not the player's. A swing Log Line is the pet's when the player's own swing did not start in the same moment. Its Plate Text has the pet's colour and icon. When the player and the pet swing at once, the addon can give each one's mark to the other's Hit.
+_Avoid_: Pet melee, pet auto attack
+
 **Spell Identity**:
 Which spell made Your Hit. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match

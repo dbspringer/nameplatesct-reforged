@@ -56,6 +56,27 @@ local function byEntry(a, b)
 	return a.entry < b.entry
 end
 
+local RANGED_SWING = 2 -- Enum.PlayerSwingType.Ranged
+
+-- PLAYER_SWING comes for the player's own swings only, in the frame of the
+-- swing's Log Line (all 25 player swings in the Warlock Traces; none of the
+-- pet's 141). So a melee Log Line in a frame with no main-hand or off-hand
+-- swing is the pet's, and gets pet. A wand's swing does not count, as a pet
+-- swing can come in its frame. When the player and the pet swing in one
+-- frame, which line is whose is not known, so all of them stay the player's.
+local function markPetSwings(records)
+	for _, record in ipairs(records) do
+		if record.kind == "swing" and record.swingType ~= RANGED_SWING then
+			return
+		end
+	end
+	for _, record in ipairs(records) do
+		if record.kind == "line" and ns.LineKind.IsMelee(record.lineKind) then
+			record.pet = true
+		end
+	end
+end
+
 -- The game sends one report of a Hit for each token that names the unit. So,
 -- for one unit and action in a frame, the token with the most reports gives
 -- the number of Hits, and the Nth report of each token is a repeat of the Nth
@@ -119,10 +140,10 @@ local function addHits(reports, records)
 end
 
 -- Turns raw events, in the shape of Trace entries, into Hits, Log Lines (with
--- their Line Kind, read by the colouring that Events.lua records), casts, and
--- swings. All events of one frame share a GetTime(), so a frame's records
--- leave together through onRecord, in entry order, once a later event or
--- tick shows that the frame is over.
+-- their Line Kind, read by the colouring that Events.lua records, and pet on
+-- the pet's swing lines), casts, and swings. All events of one frame share a
+-- GetTime(), so a frame's records leave together through onRecord, in entry
+-- order, once a later event or tick shows that the frame is over.
 function Adapter.New(onRecord)
 	local count = 0
 	local frameTime
@@ -134,6 +155,7 @@ function Adapter.New(onRecord)
 			addHits(reports, records)
 			table.sort(records, byEntry)
 		end
+		markPetSwings(records)
 		local closed = records
 		records, reports, frameTime = {}, {}, nil
 		for _, record in ipairs(closed) do

@@ -283,6 +283,51 @@ describe("Adapter", function()
 			local records = run({ { 1, "PLAYER_SWING", 1.7, 2 } })
 			assert.are.same({ kind = "swing", time = 1, entry = 1, duration = 1.7, swingType = 2 }, records[1])
 		end)
+
+		describe("gives pet to a swing line", function()
+			local function swingLine(time)
+				return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.85, 0.85, 0.85, 0, colouring = "kind" }
+			end
+			local function swingMissLine(time)
+				return { time, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.6, 0.6, 0.6, 0, colouring = "kind" }
+			end
+			local function pets(records)
+				local result = {}
+				for _, record in ipairs(records) do
+					if record.kind == "line" then
+						result[#result + 1] = record.pet == true
+					end
+				end
+				return result
+			end
+
+			it("with no player swing in its frame, and not to another kind of line", function()
+				local records = run({
+					swingLine(1),
+					swingMissLine(1),
+					{ 1, "COMBAT_LOG_MESSAGE", "|Ky3|k", 1, 0.85, 0.25, 0, colouring = "kind" },
+				})
+				assert.are.same({ true, true, false }, pets(records))
+			end)
+
+			it("only when the player's swing in its frame is a wand's", function()
+				local records = run({
+					{ 1, "PLAYER_SWING", 1.7, 2 }, swingLine(1),
+					{ 2, "PLAYER_SWING", 1.5, 0 }, swingLine(2),
+					{ 3, "PLAYER_SWING", 1.5, 1 }, swingMissLine(3),
+				})
+				assert.are.same({ true, false, false }, pets(records))
+			end)
+
+			it("not when the player swings in the same frame, as which line is whose is not known", function()
+				local records = run({ swingLine(1), { 1, "PLAYER_SWING", 1.5, 0 }, swingLine(1) })
+				assert.are.same({ false, false }, pets(records))
+			end)
+
+			it("not when the line's colour tells no kind", function()
+				assert.are.same({ false }, pets(run({ logLine(1) })))
+			end)
+		end)
 	end)
 
 	-- The Hit counts come from the Trace's part of the Combat Log File: one Hit

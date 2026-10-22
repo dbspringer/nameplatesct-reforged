@@ -18,7 +18,8 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
--- The spell whose icon a swing shows.
+-- The spell whose icon the player's swing shows. The pet's swing shows the
+-- pet Attack button's icon, PET_ATTACK_TEXTURE.
 local AUTO_ATTACK = 6603
 -- Forever has only the _v2 names of the Blizzard Target Text CVars.
 local blizzardCvar = "floatingCombatTextCombatDamage_v2"
@@ -243,8 +244,9 @@ if not SCHOOL_MASK_PHYSICAL then -- XXX 9.1 PTR Support
 	SCHOOL_MASK_ARCANE = Enum.Damageclass.MaskArcane
 end
 
--- With damage colours on, a swing is white, not its school's colour.
-local SWING_COLOR = "FFFFFF"
+-- With damage colours on, a swing takes the colour of who swung, not its
+-- school's: white for the player, NameplateSCT's pet orange for the pet.
+local SWING_COLORS = { player = "FFFFFF", pet = "CC8400" }
 
 local DAMAGE_TYPE_COLORS = {
 	[SCHOOL_MASK_PHYSICAL] = "FFFF00",
@@ -547,8 +549,8 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
-	ns.Events.Start(function(hit, how, spellID, lineKind, late)
-		self:ShowHit(hit, how, spellID, lineKind, late)
+	ns.Events.Start(function(hit, how, spellID, lineKind, late, pet)
+		self:ShowHit(hit, how, spellID, lineKind, late, pet)
 	end, function()
 		self:NoPlate()
 	end, self.db.global.spellFacts)
@@ -872,7 +874,10 @@ end
 local numDamageEvents = 0
 local lastDamageEventTime
 local runningAverageDamageEvents = 0
-function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spellId)
+
+-- swinger is who swung, "player" or "pet", or nil for a Hit that is no
+-- swing. texture is the icon's texture, or nil for none.
+function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
 	-- A Secret Amount can only be shown, so the options that compare an
 	-- amount pass it by.
 	local secret = issecretvalue(amount)
@@ -889,9 +894,9 @@ function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spell
 	local pow = crit
 
 	-- select an animation
-	if (autoattack and crit) then
+	if (swinger and crit) then
 		animation = self.db.global.animations.autoattackcrit
-	elseif (autoattack) then
+	elseif (swinger) then
 		animation = self.db.global.animations.autoattack
 	elseif (crit) then
 		animation = self.db.global.animations.crit
@@ -913,14 +918,12 @@ function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spell
 	local size = formattingFor(isTarget).size
 
 	-- Icon only draws just the icon, so a Hit shows its number when it would
-	-- have no icon: icons are off, or its spell or the spell's texture is not
-	-- known.
-	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and spellId ~= nil
-		and GetSpellTexture(spellId) ~= nil
+	-- have no icon: icons are off, or its texture is not known.
+	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and texture ~= nil
     if not iconOnly then
         -- truncate
         text = self:truncateText(amount)
-        color = self:TextColor(school, autoattack, crit)
+        color = self:TextColor(school, swinger, crit)
     end
 
 	-- shrink small hits
@@ -947,7 +950,7 @@ function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spell
 
 	-- embiggen crit's size
 	if (self.db.global.sizing.crits and crit) then
-		if (autoattack and not self.db.global.sizing.autoattackcritsizing) then
+		if (swinger and not self.db.global.sizing.autoattackcritsizing) then
 			-- don't embiggen autoattacks
 			pow = false
 		else
@@ -961,13 +964,13 @@ function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spell
 	end
 
     if iconOnly then
-        self:DisplayIconWithoutText(where, size, animation, spellId, pow)
+        self:DisplayIconWithoutText(where, size, animation, texture, pow)
     else
-        self:DisplayText(where, text, color, size, animation, spellId, pow)
+        self:DisplayText(where, text, color, size, animation, texture, pow)
     end
 end
 
-function NameplateSCT:MissEvent(where, missType, spellId)
+function NameplateSCT:MissEvent(where, missType, texture)
 	local animation = self.db.global.animations.miss
 	local color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
 
@@ -981,16 +984,16 @@ function NameplateSCT:MissEvent(where, missType, spellId)
 		size = size * self.db.global.sizing.missScale
 	end
 
-	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, spellId, true)
+	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, texture, true)
 end
 
--- Plate Text for Your Hit on an enemy Nameplate. A swing (see Filter.IsSwing),
--- the player's or the pet's, gets the autoattack animation and colour and
--- Auto Attack's icon, as the log makes the two look the same. spellID, from
--- Spell Identity, gives the icon, and is nil when the spell is not known.
--- lineKind is the Line Kind of the Hit's Log Line, or nil when its colour
--- told none. late is the Nameplate as it hid, for a late Hit (see Flow.New).
-function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
+-- Plate Text for Your Hit on an enemy Nameplate. A swing (see Filter.IsSwing)
+-- gets the autoattack animation, and the colour and icon of who swung: pet
+-- says that the pet did (see Flow.New). spellID, from Spell Identity, gives
+-- the icon, and is nil when the spell is not known. lineKind is the Line Kind
+-- of the Hit's Log Line, or nil when its colour told none. late is the
+-- Nameplate as it hid, for a late Hit (see Flow.New).
+function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late, pet)
 	-- Where the text goes. A late Hit's token can name another unit by now,
 	-- so its text has no unit: it starts in the Grace Period on the frame its
 	-- Nameplate hid with, and keeps the look it had then.
@@ -1001,10 +1004,10 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 		where = { unit = hit.unit, frame = C_NamePlate.GetNamePlateForUnit(hit.unit),
 			isTarget = isTrue(UnitIsUnit(hit.unit, "target")) }
 	end
-	local swing = ns.Filter.IsSwing(how, lineKind)
+	local swinger = ns.Filter.IsSwing(how, lineKind) and (pet and "pet" or "player") or nil
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
-		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swing) then
+		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swinger ~= nil) then
 			return
 		end
 		local npcType
@@ -1018,13 +1021,20 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 			return
 		end
 	end
-	local iconID = spellID or (swing and AUTO_ATTACK or nil)
+	local texture
+	if spellID then
+		texture = GetSpellTexture(spellID)
+	elseif swinger == "pet" then
+		texture = PET_ATTACK_TEXTURE
+	elseif swinger then
+		texture = GetSpellTexture(AUTO_ATTACK)
+	end
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(where, swing, hit.amount, school, crit, iconID)
+		self:DamageEvent(where, swinger, hit.amount, school, crit, texture)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(where, hit.action, iconID)
+		self:MissEvent(where, hit.action, texture)
 	end
 end
 
@@ -1036,7 +1046,7 @@ end
 
 -- Shows a font string's icon, when it has one, and starts its animation on
 -- the Nameplate.
-local function startPlateText(fontString, where, size, animation, spellId)
+local function startPlateText(fontString, where, size, animation, texture)
 	-- A late Hit's text is in the Grace Period from the start, and other text
 	-- can enter it before its first update, so wasTarget is set here.
 	fontString.unit = where.unit
@@ -1045,8 +1055,7 @@ local function startPlateText(fontString, where, size, animation, spellId)
 	local global = NameplateSCT.db.global
 	local icon = fontString.icon
 	local skinned = MSQ and global.enableMSQ
-	local texture = global.showIcon and spellId and GetSpellTexture(spellId)
-	if texture then
+	if global.showIcon and texture then
 		icon:Show()
 		icon:SetTexture(texture)
 		local placed = skinned and icon.button or icon
@@ -1073,7 +1082,7 @@ end
 -- The text takes its colour from SetTextColor, not from a colour code joined
 -- to it: a Secret Amount's text is a secret, and a join with one is not known
 -- to work.
-function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, pow)
+function NameplateSCT:DisplayText(where, text, color, size, animation, texture, pow)
 	if (not where.frame) then
 		return
 	end
@@ -1095,11 +1104,11 @@ function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, 
 		fontString.startHeight = 5
 	end
 
-	startPlateText(fontString, where, size, animation, spellId)
+	startPlateText(fontString, where, size, animation, texture)
 end
 
 -- DamageEvent keeps size at 5 or more, so it serves as the start height.
-function NameplateSCT:DisplayIconWithoutText(where, size, animation, spellId, pow)
+function NameplateSCT:DisplayIconWithoutText(where, size, animation, texture, pow)
 	if (not where.frame) then
 		return
 	end
@@ -1110,17 +1119,17 @@ function NameplateSCT:DisplayIconWithoutText(where, size, animation, spellId, po
 	fontString.startHeight = size
 	fontString.pow = pow
 
-	startPlateText(fontString, where, size, animation, spellId)
+	startPlateText(fontString, where, size, animation, texture)
 end
 
--- The hex colour of a damage text.
-function NameplateSCT:TextColor(school, swing, crit)
+-- The hex colour of a damage text. swinger is as in DamageEvent.
+function NameplateSCT:TextColor(school, swinger, crit)
 	if crit and self.db.global.useCritColor then
 		return self.db.global.critColor
-	elseif self.db.global.damageColor and swing then
+	elseif self.db.global.damageColor and swinger then
 		-- Before the school: a swing's school is Physical, whose yellow
 		-- physical abilities share.
-		return SWING_COLOR
+		return SWING_COLORS[swinger]
 	elseif self.db.global.damageColor and school and DAMAGE_TYPE_COLORS[school] then
 		return DAMAGE_TYPE_COLORS[school]
 	end

@@ -45,6 +45,7 @@ globals = {
 	"GameTooltip_UnitColor",
 	"SecureButton_GetModifiedUnit",
 	"STATICPOPUP_NUMDIALOGS",
+	"PET_ATTACK_TEXTURE",
 
 	-- framexml frames
 	"GameTooltip",
