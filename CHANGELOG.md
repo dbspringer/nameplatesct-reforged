@@ -2,6 +2,7 @@
 
 ## 1
 
+- This is a work in progress. In groups and busy fights, the addon can still mistake other players' hits for yours, so some of your numbers can be wrong or missing, mostly melee hits and misses. If you see it happen, a recording of that fight (`/nsctr record`) helps a lot.
 - Type `/nsctr record` to record your combat events, then type it again to stop. Attach the recording to a bug report, so problems in groups, raids, and battlegrounds can be fixed.
 - Your damage and your pet's damage now show above enemy nameplates, and so do misses and dodges. Your combat log filter needs to show them.
 - Your numbers show the icon of the spell that made them when the addon is sure which spell it was. Your melee hits and misses show the Auto Attack icon, and your pet's show the pet Attack icon. Most procs such as poisons, and your pet's spells, have no icon. A wand's Shoot gets its icon from its second hit, once the addon learns your wand's school, and again from the second hit after you change wands. With "Display Icon Only" on, a hit with no known spell shows its number. To clear what the addon learned, type `/nsctr forget` or press "Forget learned spells" in the Icons options.

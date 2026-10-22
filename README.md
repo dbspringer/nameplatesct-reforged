@@ -4,6 +4,12 @@ NameplateSCT's scrolling combat text, drawn above enemy nameplates, for WoW: For
 
 Forever closes the combat log to addons, so the original NameplateSCT can't tell which hits are yours. This version works it out from what the game still sends. Your damage, misses, and your pet's damage show above the enemy you hit, with the original's animations and options.
 
+## Work in progress
+
+Solo, the addon tells your hits apart well. In groups and busy fights, it can still mistake other players' hits for yours, so some of your numbers can be wrong or missing. Melee hits and misses get mixed up the most.
+
+I'm still working on this. If you see it happen, a recording of that fight (`/nsctr record`, see below) helps a lot.
+
 ## Install
 
 Download the latest release from [GitHub Releases](https://github.com/dbspringer/nameplatesct-reforged/releases) and unzip it into your Forever client's `Interface/AddOns` folder.
