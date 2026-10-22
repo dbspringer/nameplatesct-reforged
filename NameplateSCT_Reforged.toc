@@ -20,6 +20,7 @@
 ## X-Credits: Based on NameplateSCT by mpstark and Justwait
 ## X-License: MIT
 ## X-Website: https://github.com/dbspringer/nameplatesct-reforged
+## X-Curse-Project-ID: 1760171
 
 embeds.xml
 Locales\locale.xml

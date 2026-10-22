@@ -12,7 +12,7 @@ I'm still working on this. If you see it happen, a recording of that fight (`/ns
 
 ## Install
 
-Download the latest release from [GitHub Releases](https://github.com/dbspringer/nameplatesct-reforged/releases) and unzip it into your Forever client's `Interface/AddOns` folder.
+Install it from [CurseForge](https://www.curseforge.com/wow/addons/nameplate-scrolling-combat-text-reforged), or download the latest release from [GitHub Releases](https://github.com/dbspringer/nameplatesct-reforged/releases) and unzip it into your Forever client's `Interface/AddOns` folder.
 
 Enemy nameplates need to be on (press V), since the numbers draw on them.
 

@@ -508,8 +508,8 @@ end
 
 -- The player's own Blizzard Target Text setting, kept while the addon hides
 -- that text, so it comes back when the option goes off, when the addon is
--- disabled, and at logout. A crash should leave the player's setting as it
--- was, if the game saves the CVar only at a clean logout (unverified).
+-- disabled, and at logout. A crash leaves the player's setting as it was
+-- (tested: after a force-quit, the CVar read 1 at the next login).
 local savedTargetText
 
 local function hideTargetText()
