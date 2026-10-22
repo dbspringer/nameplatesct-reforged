@@ -38,7 +38,8 @@ function Filter.ReadSpells(text, nameOf)
 end
 
 -- Whether a Hit is a swing or a swing miss, the player's or the pet's. how
--- and lineKind are as for SpellShows. With no Line Kind, a Hit that paired as
+-- is the rule that paired it (see Pairing.New), and lineKind the Line Kind of
+-- its Log Line, or nil when the colour told none. With no Line Kind, a Hit that paired as
 -- melee is the best sign of a swing; a swing whose line came in its own frame
 -- then does not count.
 function Filter.IsSwing(how, lineKind)
@@ -48,18 +49,16 @@ end
 -- Whether the Spell Filter lets the Plate Text for a Hit through. A list
 -- hides the Hits it matches, or, inverted, shows only them. spellName is the
 -- name of the Hit's spell from Spell Identity, or nil when that is not
--- known; action is the Hit's ("WOUND" or a miss), how the rule that paired
--- it (see Pairing.New), and lineKind the Line Kind of its Log Line, or nil
--- when the colour told none. A swing has no Spell Identity, but unknown
+-- known; action is the Hit's ("WOUND" or a miss), and swing whether it is a
+-- swing (see IsSwing). A swing has no Spell Identity, but unknown
 -- never matches it: melee does, and missed too for a swing miss. A list with
 -- no entries lets everything through, also inverted, so turning on Inverse
 -- before typing a spell hides nothing.
-function Filter.SpellShows(list, inverse, spellName, action, how, lineKind)
+function Filter.SpellShows(list, inverse, spellName, action, swing)
 	if list.empty then
 		return true
 	end
 	local miss = action ~= "WOUND"
-	local swing = Filter.IsSwing(how, lineKind)
 	local listed = (spellName ~= nil and list.names[spellName:lower()])
 		or (miss and list.words.missed)
 		or (swing and list.words.melee)

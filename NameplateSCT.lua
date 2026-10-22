@@ -48,7 +48,6 @@ local function hexToRGB(hex)
 end
 
 local animationValues = {
-	-- ["shake"] = L["Shake"],
 	["verticalUp"] = L["Vertical Up"],
 	["verticalDown"] = L["Vertical Down"],
 	["fountain"] = L["Fountain"],
@@ -132,7 +131,7 @@ local defaults = {
 
 		font = defaultFont,
 		fontFlag = "OUTLINE",
-		fontShadow = false,
+		textShadow = false,
 		damageColor = true,
 		defaultColor = "ffff00",
 		useCritColor = false,
@@ -228,9 +227,6 @@ local ANIMATION_ARC_Y_TOP_MAX = 50
 local ANIMATION_ARC_Y_BOTTOM_MIN = 10
 local ANIMATION_ARC_Y_BOTTOM_MAX = 50
 
--- local ANIMATION_SHAKE_DEFLECTION = 15
--- local ANIMATION_SHAKE_NUM_SHAKES = 4
-
 local ANIMATION_RAINFALL_X_MAX = 75
 local ANIMATION_RAINFALL_Y_MIN = 50
 local ANIMATION_RAINFALL_Y_MAX = 100
@@ -247,6 +243,8 @@ if not SCHOOL_MASK_PHYSICAL then -- XXX 9.1 PTR Support
 	SCHOOL_MASK_ARCANE = Enum.Damageclass.MaskArcane
 end
 
+-- With damage colours on, a swing is white, not its school's colour.
+local SWING_COLOR = "FFFFFF"
 
 local DAMAGE_TYPE_COLORS = {
 	[SCHOOL_MASK_PHYSICAL] = "FFFF00",
@@ -276,13 +274,11 @@ local DAMAGE_TYPE_COLORS = {
 	[SCHOOL_MASK_ARCANE + SCHOOL_MASK_FIRE] = "FF808C", -- Spellfire
 	[SCHOOL_MASK_ARCANE + SCHOOL_MASK_NATURE] = "AFB9AF", -- Astral
 	[SCHOOL_MASK_ARCANE + SCHOOL_MASK_FROST] = "C0C0FF", -- Spellfrost
-	[SCHOOL_MASK_ARCANE + SCHOOL_MASK_FROST] = "B980FF", -- Spellshadow
+	[SCHOOL_MASK_ARCANE + SCHOOL_MASK_SHADOW] = "B980FF", -- Spellshadow
 	[SCHOOL_MASK_FIRE + SCHOOL_MASK_FROST + SCHOOL_MASK_NATURE] = "0070DE", -- Elemental
 	[SCHOOL_MASK_FIRE + SCHOOL_MASK_FROST + SCHOOL_MASK_ARCANE + SCHOOL_MASK_NATURE + SCHOOL_MASK_SHADOW] = "C0C0C0", -- Chromatic
 	[SCHOOL_MASK_FIRE + SCHOOL_MASK_FROST + SCHOOL_MASK_ARCANE + SCHOOL_MASK_NATURE + SCHOOL_MASK_SHADOW + SCHOOL_MASK_HOLY] = "1111FF", -- Magic
 	[SCHOOL_MASK_PHYSICAL + SCHOOL_MASK_FIRE + SCHOOL_MASK_FROST + SCHOOL_MASK_ARCANE + SCHOOL_MASK_NATURE + SCHOOL_MASK_SHADOW + SCHOOL_MASK_HOLY] = "FF1111", -- Chaos
-	["melee"] = "FFFFFF",
-	["pet"] = "CC8400"
 }
 
 local MISS_EVENT_STRINGS = {
@@ -318,6 +314,17 @@ local function getFontPath(fontName)
 	return fontPath
 end
 
+local function applyFont(fontString, size)
+	fontString:SetFont(getFontPath(NameplateSCT.db.global.font), size, NameplateSCT.db.global.fontFlag)
+	if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
+end
+
+-- The on-target or off-target formatting for a font string's text.
+local function formattingFor(isTarget)
+	local global = NameplateSCT.db.global
+	return (global.useOffTargetAppearance and not isTarget) and global.offTargetFormatting or global.formatting
+end
+
 local fontStringCache = {}
 local frameCounter = 0
 local function getFontString()
@@ -334,8 +341,7 @@ local function getFontString()
 		fontString:SetParent(fontStringFrame)
 	end
 
-	fontString:SetFont(getFontPath(NameplateSCT.db.global.font), 15, NameplateSCT.db.global.fontFlag)
-	if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
+	applyFont(fontString, 15)
 	fontString:SetAlpha(1)
 	fontString:SetDrawLayer("OVERLAY")
 	fontString:SetText("")
@@ -348,12 +354,16 @@ local function getFontString()
 		end
 		fontString.icon:SetAlpha(1)
 		fontString.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-		if NameplateSCT.db.global.removeBorder then fontString.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+		if NameplateSCT.db.global.removeBorder then
+			fontString.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		else
+			fontString.icon:SetTexCoord(0, 1, 0, 1)
+		end
 		fontString.icon:Hide()
 
 		if MSQ and NameplateSCT.db.global.enableMSQ then
 			if not fontString.icon.button then
-				local button = CreateFrame("Button", nil, fontStringFrame)
+				local button = CreateFrame("Button", nil, frame)
 				button:EnableMouse(false)
 				button:Disable()
 				button:Hide()
@@ -383,8 +393,6 @@ local function recycleFontString(fontString)
 	fontString.arcTop = nil
 	fontString.arcBottom = nil
 	fontString.arcXDist = nil
-	fontString.deflection = nil
-	fontString.numShakes = nil
 	fontString.animation = nil
 	fontString.animatingDuration = nil
 	fontString.animatingStartTime = nil
@@ -406,13 +414,8 @@ local function recycleFontString(fontString)
 			fontString.icon.button:Hide()
 			fontString.icon.button:ClearAllPoints()
 		end
-
-		fontString.icon.anchorFrame = nil
-		fontString.icon.unit = nil
 	end
 
-	fontString:SetFont(getFontPath(NameplateSCT.db.global.font), 15, NameplateSCT.db.global.fontFlag)
-	if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
 	fontString:ClearAllPoints()
 
 	table.insert(fontStringCache, fontString)
@@ -707,10 +710,7 @@ local function AnimationOnUpdate()
 				frame:SetFrameStrata(strataRequired)
 
 				-- alpha
-				local startAlpha = NameplateSCT.db.global.formatting.alpha
-				if (NameplateSCT.db.global.useOffTargetAppearance and not isTarget) then
-					startAlpha = NameplateSCT.db.global.offTargetFormatting.alpha
-				end
+				local startAlpha = formattingFor(isTarget).alpha
 
 				local alpha = LibEasing.InExpo(elapsed, startAlpha, -startAlpha, fontString.animatingDuration)
 				if alpha > 1 then alpha = 1 elseif alpha < 0 then alpha = 0 end -- avoid rare occurences of eg: 1.0003 from the Lib being used to set Alpha
@@ -734,8 +734,7 @@ local function AnimationOnUpdate()
 					else
 						fontString.pow = nil
 						fontString:SetTextHeight(height)
-						fontString:SetFont(getFontPath(NameplateSCT.db.global.font), fontString.NSCTFontSize, NameplateSCT.db.global.fontFlag)
-						if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
+						applyFont(fontString, fontString.NSCTFontSize)
 						fontString:SetText(fontString.NSCTText)
 						if fontString.icon then
 							if MSQ and NameplateSCT.db.global.enableMSQ then
@@ -761,18 +760,16 @@ local function AnimationOnUpdate()
 					yOffset = yOffset + fontString.rainfallStartY
 				elseif (fontString.animation == "fireworks") then
 					-- Fireworks effect: radiates outward from the configured starting radius circle
-					local angle = fontString.fireworksAngle or (math.random() * 2 * math.pi)
+					local angle = fontString.fireworksAngle
 					local progress = elapsed / fontString.animatingDuration
 					-- Use custom linear() easing function
 					local easedProgress = GetLinearEasing(progress)
-					local distance = (fontString.fireworksDistance or 100) * easedProgress
+					local distance = fontString.fireworksDistance * easedProgress
 
 					 -- Get the configured starting radius
 					local startRadius = NameplateSCT.db.global.animations.fireworksRadius
 					xOffset = (startRadius + distance) * math.cos(angle)
 					yOffset = (startRadius + distance) * math.sin(angle)
-				-- elseif (fontString.animation == "shake") then
-					-- TODO
 				end
 
 				if fontString.unit and not fontString.anchorFrame:IsShown() then
@@ -805,9 +802,7 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	fontString.animatingStartTime = GetTime()
 	fontString.anchorFrame = anchorFrame
 
-	if (animation == "verticalUp") then
-		fontString.distance = ANIMATION_VERTICAL_DISTANCE
-	elseif (animation == "verticalDown") then
+	if (animation == "verticalUp" or animation == "verticalDown") then
 		fontString.distance = ANIMATION_VERTICAL_DISTANCE
 	elseif (animation == "fountain") then
 		fontString.arcTop = math.random(ANIMATION_ARC_Y_TOP_MIN, ANIMATION_ARC_Y_TOP_MAX)
@@ -822,9 +817,6 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	elseif (animation == "fireworks") then
 		fontString.fireworksAngle = math.random() * 2 * math.pi
 		fontString.fireworksDistance = math.random(80, 150)
-	-- elseif (animation == "shake") then
-	--	 fontString.deflection = ANIMATION_SHAKE_DEFLECTION
-	--	 fontString.numShakes = ANIMATION_SHAKE_NUM_SHAKES
 	end
 
 	animating[fontString] = true
@@ -880,7 +872,7 @@ end
 local numDamageEvents = 0
 local lastDamageEventTime
 local runningAverageDamageEvents = 0
-function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellId)
+function NameplateSCT:DamageEvent(where, autoattack, amount, school, crit, spellId)
 	-- A Secret Amount can only be shown, so the options that compare an
 	-- amount pass it by.
 	local secret = issecretvalue(amount)
@@ -893,22 +885,18 @@ function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellI
 		return
 	end
 
-	local text, color, animation, pow, size, alpha
-	local autoattack = spellName == "melee" or spellName == "pet"
+	local text, color, animation
+	local pow = crit
 
 	-- select an animation
 	if (autoattack and crit) then
 		animation = self.db.global.animations.autoattackcrit
-		pow = true
 	elseif (autoattack) then
 		animation = self.db.global.animations.autoattack
-		pow = false
 	elseif (crit) then
 		animation = self.db.global.animations.crit
-		pow = true
-	elseif (not autoattack and not crit) then
+	else
 		animation = self.db.global.animations.ability
-		pow = false
 	end
 
 	-- skip if this damage event is disabled
@@ -922,13 +910,7 @@ function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellI
 		return
 	end
 
-	if (self.db.global.useOffTargetAppearance and not isTarget) then
-		size = self.db.global.offTargetFormatting.size
-		alpha = self.db.global.offTargetFormatting.alpha
-	else
-		size = self.db.global.formatting.size
-		alpha = self.db.global.formatting.alpha
-	end
+	local size = formattingFor(isTarget).size
 
 	-- Icon only draws just the icon, so a Hit shows its number when it would
 	-- have no icon: icons are off, or its spell or the spell's texture is not
@@ -938,7 +920,7 @@ function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellI
     if not iconOnly then
         -- truncate
         text = self:truncateText(amount)
-        color = self:TextColor(school, spellName, crit)
+        color = self:TextColor(school, autoattack, crit)
     end
 
 	-- shrink small hits
@@ -979,50 +961,35 @@ function NameplateSCT:DamageEvent(where, spellName, amount, school, crit, spellI
 	end
 
     if iconOnly then
-        self:DisplayIconWithoutText(where, size, animation, spellId, pow, spellName)
+        self:DisplayIconWithoutText(where, size, animation, spellId, pow)
     else
-        self:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
+        self:DisplayText(where, text, color, size, animation, spellId, pow)
     end
 end
 
-function NameplateSCT:MissEvent(where, spellName, missType, spellId)
-	local text, animation, pow, size, alpha, color
-	local isTarget = where.isTarget
-
-	animation = self.db.global.animations.miss
-	color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
+function NameplateSCT:MissEvent(where, missType, spellId)
+	local animation = self.db.global.animations.miss
+	local color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
 
 	-- No animation set, cancel out
 	if (animation == "disabled") then return end
 
-	if (self.db.global.useOffTargetAppearance and not isTarget) then
-		size = self.db.global.offTargetFormatting.size
-		alpha = self.db.global.offTargetFormatting.alpha
-	else
-		size = self.db.global.formatting.size
-		alpha = self.db.global.formatting.alpha
-	end
+	local size = formattingFor(where.isTarget).size
 
 	-- embiggen miss size
 	if self.db.global.sizing.miss then
 		size = size * self.db.global.sizing.missScale
 	end
 
-	pow = true
-
-	text = MISS_EVENT_STRINGS[missType] or L["Missed"]
-
-	self:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
+	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, spellId, true)
 end
 
--- Plate Text for Your Hit on an enemy Nameplate. A melee Log Line comes one
--- Swing Delay before its Hit, so a Hit that paired that way is treated as an
--- autoattack; a swing whose line comes in its own frame gets the ability
--- animation. spellID, from Spell Identity, gives the icon, and is nil when
--- the spell is not known. A swing shows Auto Attack's icon, as the log makes
--- the player's swings and the pet's look the same. lineKind is the Line Kind of the Hit's Log Line,
--- or nil when its colour told none. late is the Nameplate as it hid, for a
--- late Hit (see Flow.New).
+-- Plate Text for Your Hit on an enemy Nameplate. A swing (see Filter.IsSwing),
+-- the player's or the pet's, gets the autoattack animation and colour and
+-- Auto Attack's icon, as the log makes the two look the same. spellID, from
+-- Spell Identity, gives the icon, and is nil when the spell is not known.
+-- lineKind is the Line Kind of the Hit's Log Line, or nil when its colour
+-- told none. late is the Nameplate as it hid, for a late Hit (see Flow.New).
 function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 	-- Where the text goes. A late Hit's token can name another unit by now,
 	-- so its text has no unit: it starts in the Grace Period on the frame its
@@ -1034,9 +1001,10 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 		where = { unit = hit.unit, frame = C_NamePlate.GetNamePlateForUnit(hit.unit),
 			isTarget = isTrue(UnitIsUnit(hit.unit, "target")) }
 	end
+	local swing = ns.Filter.IsSwing(how, lineKind)
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
-		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, how, lineKind) then
+		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swing) then
 			return
 		end
 		local npcType
@@ -1050,14 +1018,13 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late)
 			return
 		end
 	end
-	local spellName = how == "melee" and "melee" or nil
-	local iconID = spellID or (ns.Filter.IsSwing(how, lineKind) and AUTO_ATTACK or nil)
+	local iconID = spellID or (swing and AUTO_ATTACK or nil)
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(where, spellName, hit.amount, school, crit, iconID)
+		self:DamageEvent(where, swing, hit.amount, school, crit, iconID)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(where, spellName, hit.action, iconID)
+		self:MissEvent(where, hit.action, iconID)
 	end
 end
 
@@ -1067,27 +1034,57 @@ function NameplateSCT:ForgetSpellFacts()
 	ns.Say(L["Forgot your wand's school. Shoot's icon comes back from your second hit with it."])
 end
 
+-- Shows a font string's icon, when it has one, and starts its animation on
+-- the Nameplate.
+local function startPlateText(fontString, where, size, animation, spellId)
+	-- A late Hit's text is in the Grace Period from the start, and other text
+	-- can enter it before its first update, so wasTarget is set here.
+	fontString.unit = where.unit
+	fontString.wasTarget = where.isTarget
+
+	local global = NameplateSCT.db.global
+	local icon = fontString.icon
+	local skinned = MSQ and global.enableMSQ
+	local texture = global.showIcon and spellId and GetSpellTexture(spellId)
+	if texture then
+		icon:Show()
+		icon:SetTexture(texture)
+		local placed = skinned and icon.button or icon
+		placed:SetSize(size * global.iconScale, size * global.iconScale)
+		placed:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition, global.xOffsetIcon,
+			global.yOffsetIcon)
+		if skinned then
+			icon.button:Show()
+		end
+	elseif icon then
+		icon:Hide()
+		if skinned then
+			icon.button:Hide()
+		end
+	end
+
+	local duration = global.animations.animationspeed
+	if animation == "fireworks" then
+		duration = global.animations.fireworksDuration
+	end
+	NameplateSCT:Animate(fontString, where.frame, duration, animation)
+end
+
 -- The text takes its colour from SetTextColor, not from a colour code joined
 -- to it: a Secret Amount's text is a secret, and a join with one is not known
 -- to work.
-function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, pow, spellName)
-	local fontString
-	local icon
-	local nameplate = where.frame
-
-	if (not nameplate) then
+function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, pow)
+	if (not where.frame) then
 		return
 	end
 
-	fontString = getFontString()
-
+	local fontString = getFontString()
 	fontString.NSCTText = text
-	fontString:SetText(fontString.NSCTText)
+	fontString:SetText(text)
 	fontString:SetTextColor(hexToRGB(color))
 
 	fontString.NSCTFontSize = size
-	fontString:SetFont(getFontPath(NameplateSCT.db.global.font), fontString.NSCTFontSize, NameplateSCT.db.global.fontFlag)
-	if NameplateSCT.db.global.textShadow then fontString:SetShadowOffset(1,-1) else fontString:SetShadowOffset(0, 0) end
+	applyFont(fontString, size)
 	fontString.startHeight = fontString:GetStringHeight()
 	fontString.pow = pow
 
@@ -1098,126 +1095,34 @@ function NameplateSCT:DisplayText(where, text, color, size, animation, spellId, 
 		fontString.startHeight = 5
 	end
 
-	-- A late Hit's text is in the Grace Period from the start, and other text
-	-- can enter it before its first update, so wasTarget is set here.
-	fontString.unit = where.unit
-	fontString.wasTarget = where.isTarget
-
-	local texture = GetSpellTexture(spellId or spellName or "")
-	if NameplateSCT.db.global.showIcon and texture then
-		icon = fontString.icon
-		icon:Show()
-		icon:SetTexture(texture)
-		if MSQ and NameplateSCT.db.global.enableMSQ then
-			icon.button:SetSize(size * NameplateSCT.db.global.iconScale, size * NameplateSCT.db.global.iconScale)
-			icon.button:SetPoint(
-				inversePositions[NameplateSCT.db.global.iconPosition],
-				fontString,
-				NameplateSCT.db.global.iconPosition,
-				NameplateSCT.db.global.xOffsetIcon,
-				NameplateSCT.db.global.yOffsetIcon
-			)
-			icon.button:Show()
-		else
-			icon:SetSize(size*NameplateSCT.db.global.iconScale, size*NameplateSCT.db.global.iconScale)
-			icon:SetPoint(
-				inversePositions[NameplateSCT.db.global.iconPosition],
-				fontString,
-				NameplateSCT.db.global.iconPosition,
-				NameplateSCT.db.global.xOffsetIcon,
-				NameplateSCT.db.global.yOffsetIcon
-			)
-		end
-        fontString.icon = icon
-    else
-		if fontString.icon then
-			fontString.icon:Hide()
-			if MSQ and NameplateSCT.db.global.enableMSQ then
-				fontString.icon.button:Hide()
-			end
-		end
-	end
-	local duration = NameplateSCT.db.global.animations.animationspeed
-	if animation == "fireworks" then
-		duration = NameplateSCT.db.global.animations.fireworksDuration
-	end
-	self:Animate(fontString, nameplate, duration, animation)
+	startPlateText(fontString, where, size, animation, spellId)
 end
 
-function NameplateSCT:DisplayIconWithoutText(where, size, animation, spellId, pow, spellName)
-	local fontString
-	local icon
-	local nameplate = where.frame
-
-	if (not nameplate) then
+-- DamageEvent keeps size at 5 or more, so it serves as the start height.
+function NameplateSCT:DisplayIconWithoutText(where, size, animation, spellId, pow)
+	if (not where.frame) then
 		return
 	end
 
-	fontString = getFontString()
+	local fontString = getFontString()
 	fontString.NSCTText = ""
-	fontString:SetText(fontString.NSCTText)
 	fontString.NSCTFontSize = size
-	fontString.startHeight = fontString.NSCTFontSize
+	fontString.startHeight = size
 	fontString.pow = pow
 
-	if (fontString.startHeight <= 0) then
-	    fontString.startHeight = 5
-	end
-
-	-- A late Hit's text is in the Grace Period from the start, and other text
-	-- can enter it before its first update, so wasTarget is set here.
-	fontString.unit = where.unit
-	fontString.wasTarget = where.isTarget
-
-	local texture = GetSpellTexture(spellId or spellName or "")
-	if NameplateSCT.db.global.showIcon and texture then
-		icon = fontString.icon
-		icon:Show()
-		icon:SetTexture(texture)
-		if MSQ and NameplateSCT.db.global.enableMSQ then
-			icon.button:SetSize(size * NameplateSCT.db.global.iconScale, size * NameplateSCT.db.global.iconScale)
-			icon.button:SetPoint(
-				inversePositions[NameplateSCT.db.global.iconPosition],
-				fontString,
-				NameplateSCT.db.global.iconPosition,
-				NameplateSCT.db.global.xOffsetIcon,
-				NameplateSCT.db.global.yOffsetIcon
-			)
-			icon.button:Show()
-		else
-			icon:SetSize(size*NameplateSCT.db.global.iconScale, size*NameplateSCT.db.global.iconScale)
-			icon:SetPoint(
-				inversePositions[NameplateSCT.db.global.iconPosition],
-				fontString,
-				NameplateSCT.db.global.iconPosition,
-				NameplateSCT.db.global.xOffsetIcon,
-				NameplateSCT.db.global.yOffsetIcon
-			)
-		end
-        fontString.icon = icon
-    else
-		if fontString.icon then
-			fontString.icon:Hide()
-			if MSQ and NameplateSCT.db.global.enableMSQ then
-				fontString.icon.button:Hide()
-			end
-		end
-	end
-	local duration = NameplateSCT.db.global.animations.animationspeed
-	if animation == "fireworks" then
-		duration = NameplateSCT.db.global.animations.fireworksDuration
-	end
-	self:Animate(fontString, nameplate, duration, animation)
+	startPlateText(fontString, where, size, animation, spellId)
 end
 
 -- The hex colour of a damage text.
-function NameplateSCT:TextColor(school, spellName, crit)
+function NameplateSCT:TextColor(school, swing, crit)
 	if crit and self.db.global.useCritColor then
 		return self.db.global.critColor
+	elseif self.db.global.damageColor and swing then
+		-- Before the school: a swing's school is Physical, whose yellow
+		-- physical abilities share.
+		return SWING_COLOR
 	elseif self.db.global.damageColor and school and DAMAGE_TYPE_COLORS[school] then
 		return DAMAGE_TYPE_COLORS[school]
-	elseif self.db.global.damageColor and spellName == "melee" and DAMAGE_TYPE_COLORS[spellName] then
-		return DAMAGE_TYPE_COLORS[spellName]
 	end
 	return self.db.global.defaultColor
 end
@@ -1236,26 +1141,6 @@ local menu = {
 			name = "|cFFFF0000"..L["YOUR ENEMY NAMEPLATES ARE DISABLED, NAMEPLATESCT WILL NOT WORK!!"].."|r",
 			hidden = function() return GetCVar("nameplateShowEnemies") == "1" end,
 			order = 1,
-			width = "full",
-		},
-		-- enemyNameplatesEnabler = {
-		--	 type = 'toggle',
-		--	 name = "Enemy Nameplates - Enabling Required",
-		--	 get = function(_, newValue) return GetCVar("nameplateShowEnemies") == "1" end,
-		--	 set = function(_, newValue)
-		--		 if (newValue) then
-		--			 SetCVar("nameplateShowEnemies", 1)
-		--		 end
-		--	 end,
-		--	 hidden = function() return GetCVar("nameplateShowEnemies") == "1" end,
-		--	 order = 2,
-		--	 width = "full",
-		-- },
-		nameplatesEnabled2 = {
-			type = 'description',
-			name = "|cFFFF0000"..L["YOUR ENEMY NAMEPLATES ARE DISABLED, NAMEPLATESCT WILL NOT WORK!!"].."|r",
-			hidden = function() return GetCVar("nameplateShowEnemies") == "1" end,
-			order = 3,
 			width = "full",
 		},
 		enable = {
@@ -1425,7 +1310,7 @@ local menu = {
 					values = fontFlags,
 					order = 2,
 				},
-				fontShadow = {
+				textShadow = {
 					type = 'toggle',
 					name = L["Text Shadow"],
 					get = function() return NameplateSCT.db.global.textShadow end,
@@ -1619,7 +1504,7 @@ local menu = {
 						enableMSQ = {
 							type = 'toggle',
 							name = L["Enable Masque"],
-							desc = L["Let Masuqe skin the icons"],
+							desc = L["Let Masque skin the icons"],
 							hidden = function() return not NameplateSCT.db.global.showIcon end,
 							get = function() return NameplateSCT.db.global.enableMSQ end,
 							set = function(_, newValue) NameplateSCT.db.global.enableMSQ = newValue end,
@@ -1645,7 +1530,7 @@ local menu = {
 							name = L["Position"],
 							desc = "",
 							hidden = function() return not NameplateSCT.db.global.showIcon end,
-							get = function() return NameplateSCT.db.global.iconPosition or "Right" end,
+							get = function() return NameplateSCT.db.global.iconPosition end,
 							set = function(_, newValue) NameplateSCT.db.global.iconPosition = newValue end,
 							values = positionValues,
 							order = 6,
@@ -1657,7 +1542,7 @@ local menu = {
 							softMin = -30,
 							softMax = 30,
 							step = 1,
-							get = function() return NameplateSCT.db.global.xOffsetIcon or 0 end,
+							get = function() return NameplateSCT.db.global.xOffsetIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.xOffsetIcon = newValue end,
 							order = 7,
 							width = "Half",
@@ -1669,7 +1554,7 @@ local menu = {
 							softMin = -30,
 							softMax = 30,
 							step = 1,
-							get = function() return NameplateSCT.db.global.yOffsetIcon or 0 end,
+							get = function() return NameplateSCT.db.global.yOffsetIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.yOffsetIcon = newValue end,
 							order = 8,
 							width = "Half",
@@ -1707,17 +1592,15 @@ local menu = {
 					name = L["Show Truncated Letter"],
 					desc = "",
 					hidden = function () return NameplateSCT.db.global.truncateMethod == 'NONE' end,
-					-- disabled = function() return not NameplateSCT.db.global.enabled or NameplateSCT.db.global.truncateMethod == 'NONE' end,
 					get = function() return NameplateSCT.db.global.truncateLetter end,
 					set = function(_, newValue) NameplateSCT.db.global.truncateLetter = newValue end,
 					order = 2,
 				},
 				commaSeperate = {
 					type = 'toggle',
-					name = L["Comma Seperate"],
+					name = L["Comma Separate"],
 					desc = "100000 -> 100,000",
 					hidden = function() return NameplateSCT.db.global.truncateMethod ~= 'NONE' end,
-					-- disabled = function() return not NameplateSCT.db.global.enabled or NameplateSCT.db.global.truncateMethod ~= 'WESTERN' end,
 					get = function() return NameplateSCT.db.global.commaSeperate end,
 					set = function(_, newValue) NameplateSCT.db.global.commaSeperate = newValue end,
 					order = 3,
@@ -1763,7 +1646,7 @@ local menu = {
 
 				useOffTargetAppearance = {
 					type = 'toggle',
-					name = L["Use Seperate Off-Target Text Appearance"],
+					name = L["Use Separate Off-Target Text Appearance"],
 					desc = "",
 					disabled = function() return not NameplateSCT.db.global.displayOffTargetText end,
 					get = function() return NameplateSCT.db.global.useOffTargetAppearance end,

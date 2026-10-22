@@ -14,7 +14,6 @@ ignore = {
 	"211/_", -- Unused local variable _
 	"212", -- Unused argument
 	"213", -- Unused loop variable
-	"231", -- Set but never accessed
 	-- "311", -- Value assigned to a local variable is unused
 	"314", -- Value of a field in a table literal is unused
 	-- "42.", -- Shadowing a local variable, an argument, a loop variable.
@@ -25,14 +24,7 @@ globals = {
 	"_G",
 	"bit",
 
-	-- NameplateSCT globals
-	"NameplateSCT",
-
-	-- global APIs missed
-	"InterfaceOptionsFrame_OpenToCategory",
-
 	-- misc custom
-	"CUSTOM_CLASS_COLORS",
 	"NameplateSCTReforgedTraces",
 	"Blizzard_CombatLog_Filters",
 	"C_AddOns",
@@ -47,17 +39,12 @@ globals = {
 	"C_Spell",
 	"Enum",
 	"Settings",
-	"CooldownFrame_Set",
 	"DEFAULT_CHAT_FRAME",
 	"GameTooltip_Hide",
 	"GameTooltip_SetDefaultAnchor",
 	"GameTooltip_UnitColor",
 	"SecureButton_GetModifiedUnit",
-	"StaticPopup_Show",
-	"StaticPopupDialogs",
 	"STATICPOPUP_NUMDIALOGS",
-	"SlashCmdList",
-	"ChatFrame_AddMessageEventFilter",
 
 	-- framexml frames
 	"GameTooltip",
