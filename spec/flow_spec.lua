@@ -219,20 +219,14 @@ describe("Flow", function()
 			end)
 		end
 
-		-- Traces whose Log Filter colours lines by source tell no swing line,
-		-- so only those coloured by kind have swings to check. Pairing gives a
-		-- melee Hit the oldest melee line that fits, so when the player's and
-		-- the pet's swing lines wait at once, their Hits can swap them: once in
-		-- warlock-spells (Hits 243 and 245), the two wrong owners allowed here.
+		-- Pairing gives a melee Hit the oldest melee line that fits, so when the
+		-- player's and the pet's swing lines wait at once, their Hits can swap
+		-- them: once in the Traces, the two wrong owners expected here.
 		it("tells the player's swings from the pet's, as the Combat Log File does", function()
 			local seen, wrong = { you = 0, pet = 0 }, {}
 			for _, name in ipairs(Trace.NAMES) do
 				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
-				local lines = {}
-				for line in io.lines("spec/traces/" .. name .. ".combatlog.txt") do
-					lines[#lines + 1] = line
-				end
-				local _, _, eventAt = Label.Make(assert(Trace.Load("spec/traces/" .. name .. ".lua")), lines)
+				local _, _, eventAt = Label.Make(trace, Trace.LoadLog(name))
 				local lineOf = {}
 				for _, row in ipairs(labels) do
 					lineOf[row.hit] = row.line
@@ -250,7 +244,7 @@ describe("Flow", function()
 				end
 			end
 			assert.is_true(seen.you > 0 and seen.pet > 0)
-			assert.is_true(#wrong <= 2, table.concat(wrong, ", "))
+			assert.are.same({ "warlock-spells hit 243", "warlock-spells hit 245" }, wrong)
 		end)
 	end)
 end)

@@ -285,11 +285,16 @@ describe("Adapter", function()
 		end)
 
 		describe("gives pet to a swing line", function()
+			-- A Log Line in the colour of this event's kind.
+			local function kindLine(time, event)
+				local colour = ns.LineKind.EventColours()[event]
+				return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind" }
+			end
 			local function swingLine(time)
-				return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.85, 0.85, 0.85, 0, colouring = "kind" }
+				return kindLine(time, "SWING_DAMAGE")
 			end
 			local function swingMissLine(time)
-				return { time, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.6, 0.6, 0.6, 0, colouring = "kind" }
+				return kindLine(time, "SWING_MISSED")
 			end
 			local function pets(records)
 				local result = {}
@@ -305,7 +310,7 @@ describe("Adapter", function()
 				local records = run({
 					swingLine(1),
 					swingMissLine(1),
-					{ 1, "COMBAT_LOG_MESSAGE", "|Ky3|k", 1, 0.85, 0.25, 0, colouring = "kind" },
+					kindLine(1, "SPELL_DAMAGE"),
 				})
 				assert.are.same({ true, true, false }, pets(records))
 			end)
@@ -326,6 +331,12 @@ describe("Adapter", function()
 
 			it("not when the line's colour tells no kind", function()
 				assert.are.same({ false }, pets(run({ logLine(1) })))
+			end)
+
+			it("not when the player had no pet as the line came, but when a Trace did not say", function()
+				local petless, unsaid = swingLine(1), swingLine(2)
+				petless.hasPet = false
+				assert.are.same({ false, true }, pets(run({ petless, unsaid })))
 			end)
 		end)
 	end)

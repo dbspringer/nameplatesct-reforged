@@ -59,11 +59,16 @@ end
 local RANGED_SWING = 2 -- Enum.PlayerSwingType.Ranged
 
 -- PLAYER_SWING comes for the player's own swings only, in the frame of the
--- swing's Log Line (all 25 player swings in the Warlock Traces; none of the
--- pet's 141). So a melee Log Line in a frame with no main-hand or off-hand
--- swing is the pet's, and gets pet. A wand's swing does not count, as a pet
--- swing can come in its frame. When the player and the pet swing in one
--- frame, which line is whose is not known, so all of them stay the player's.
+-- swing's Log Line (each of the player's 20 swing lines in the Warlock Traces
+-- had one in its frame; none of the pet's 114 did). So a melee Log Line in a
+-- frame with no main-hand or off-hand swing is the pet's, and gets pet. A
+-- wand's swing does not count, as a pet swing could come in its frame (not
+-- seen in the Traces). When the player and the pet swing in one frame, which
+-- line is whose is not known, so all of them stay the player's. So does a
+-- line that came while the player had no pet: PLAYER_SWING is tested only on
+-- a Warlock's main hand, and a melee class's extra attack or off-hand swing
+-- could come without one. A Trace from before Events.lua recorded hasPet
+-- counts as having a pet.
 local function markPetSwings(records)
 	for _, record in ipairs(records) do
 		if record.kind == "swing" and record.swingType ~= RANGED_SWING then
@@ -71,7 +76,7 @@ local function markPetSwings(records)
 		end
 	end
 	for _, record in ipairs(records) do
-		if record.kind == "line" and ns.LineKind.IsMelee(record.lineKind) then
+		if record.kind == "line" and ns.LineKind.IsMelee(record.lineKind) and record.hasPet ~= false then
 			record.pet = true
 		end
 	end
@@ -229,7 +234,8 @@ function Adapter.New(onRecord)
 			end
 		elseif event == "COMBAT_LOG_MESSAGE" then
 			if not isRefill(entry[7]) then
-				add(entry, { kind = "line", lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6], entry.colouring) })
+				add(entry, { kind = "line", lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6], entry.colouring),
+					hasPet = entry.hasPet })
 			end
 		elseif event == "UNIT_SPELLCAST_SENT" then
 			-- entry[4] is the target's name, which can be secret.

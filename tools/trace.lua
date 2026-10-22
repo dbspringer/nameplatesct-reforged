@@ -52,6 +52,15 @@ function Trace.LoadChecked(name, colouringOf)
 	return trace, labels
 end
 
+-- The lines of the Combat Log File of the checked Trace of this name.
+function Trace.LoadLog(name)
+	local lines = {}
+	for line in io.lines("spec/traces/" .. name .. ".combatlog.txt") do
+		lines[#lines + 1] = line
+	end
+	return lines
+end
+
 -- Splits the fields of a log line and keeps each field's raw text, quotes
 -- included, so a join gives back the same line.
 local function split(fields)

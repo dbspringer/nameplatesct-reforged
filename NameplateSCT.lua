@@ -1004,7 +1004,10 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late, pet)
 		where = { unit = hit.unit, frame = C_NamePlate.GetNamePlateForUnit(hit.unit),
 			isTarget = isTrue(UnitIsUnit(hit.unit, "target")) }
 	end
-	local swinger = ns.Filter.IsSwing(how, lineKind) and (pet and "pet" or "player") or nil
+	local swinger
+	if ns.Filter.IsSwing(how, lineKind) then
+		swinger = pet and "pet" or "player"
+	end
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
 		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swinger ~= nil) then
@@ -1022,12 +1025,14 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late, pet)
 		end
 	end
 	local texture
-	if spellID then
-		texture = GetSpellTexture(spellID)
-	elseif swinger == "pet" then
-		texture = PET_ATTACK_TEXTURE
-	elseif swinger then
-		texture = GetSpellTexture(AUTO_ATTACK)
+	if self.db.global.showIcon then
+		if spellID then
+			texture = GetSpellTexture(spellID)
+		elseif swinger == "pet" then
+			texture = PET_ATTACK_TEXTURE
+		elseif swinger then
+			texture = GetSpellTexture(AUTO_ATTACK)
+		end
 	end
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
