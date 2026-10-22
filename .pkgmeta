@@ -29,6 +29,8 @@ ignore:
  - .luacheckrc
  - .gitignore
  - fetch-libs.sh
+ - export.sh
+ - Libs/LibStub/tests
  - .busted
  - spec
  - tools
