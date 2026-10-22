@@ -27,7 +27,6 @@ ignore:
  - CLAUDE.md
  - CONTEXT.md
  - .luacheckrc
- - .todo
  - .gitignore
  - fetch-libs.sh
  - .busted

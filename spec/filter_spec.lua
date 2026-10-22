@@ -22,7 +22,7 @@ end
 -- otherwise.
 local function shows(text, inverse, hit)
 	return Filter.SpellShows(Filter.ReadSpells(text, nameOf), inverse, hit.spell, hit.action or "WOUND",
-		hit.how or "frame", hit.kind)
+		Filter.IsSwing(hit.how or "frame", hit.kind))
 end
 
 local BOLT = { spell = "Shadow Bolt", kind = "direct" }
