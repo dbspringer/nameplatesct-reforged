@@ -218,6 +218,19 @@ describe("Flow", function()
 		assert.is_table(killingBlow.late)
 	end)
 
+	-- At 32 yd a shot landed 1.58 s to 1.72 s after its cast. The first shot only
+	-- teaches the wand's school.
+	it("gives Shoot's icon to shots from maximum range", function()
+		local trace = Trace.Load("spec/traces/warlock-wand-range.lua")
+		local icons = {}
+		for _, result in ipairs((run(trace.entries))) do
+			if result.lineKind == "shot" then
+				icons[#icons + 1] = result.spellID or false
+			end
+		end
+		assert.are.same({ false, 5019, 5019, 5019, 5019 }, icons)
+	end)
+
 	-- On the live client a wand's Hit came up to 0.2 s after its shot line.
 	it("shows a wand's Hit that comes up to 0.2 s after its shot line", function()
 		local trace = Trace.Load("spec/traces/warlock-wand-live.lua")
