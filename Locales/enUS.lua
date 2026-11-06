@@ -3,7 +3,7 @@ local L = LibStub("AceLocale-3.0"):NewLocale("NameplateSCT_Reforged", "enUS", tr
 L["Abilities"] = true
 L["Absorbed"] = true
 L["Alpha"] = true
-L["Animation Speed"] = true
+L["Text Duration"] = true
 L["Animations"] = true
 L["Appearance/Offsets"] = true
 L["Auto attacks that are critical hits"] = true
@@ -29,7 +29,7 @@ L["Inverse the logic and only show numbers on the NPC types you check instead of
 L["Minor"] = true
 L["Miss Color"] = true
 L["Default Color"] = true
-L["Default speed: 1"] = true
+L["Seconds that text stays on screen. Default: 1. Fireworks has its own duration."] = true
 L["Deflected"] = true
 L["Dialog"] = true
 L["Disabled"] = true
