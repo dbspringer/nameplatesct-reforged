@@ -26,7 +26,7 @@ local function line(time, lineKind)
 	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
 end
 
-local HEROIC_STRIKE, FIREBALL = 78, 133
+local HEROIC_STRIKE, FIREBALL, SHOOT = 78, 133, 5019
 
 local function cast(time, spellID, target)
 	entryCount = entryCount + 1
@@ -397,6 +397,48 @@ describe("Pairing", function()
 			local decided = pair({ strike, first, second, direct, last })
 			assert.are.equal(direct.entry, decided[first.entry])
 		end)
+	end)
+
+	it("gives a shot line to a Hit on the shot's target up to 0.283 s after it", function()
+		local shoot, shot, wand = cast(0, SHOOT), line(1, "shot"), hit(1.283, "nameplate1", 64)
+		local decided = pair({ shoot, shot, wand })
+		assert.are.equal(shot.entry, decided[wand.entry])
+	end)
+
+	it("gives a shot line past the short window to no Hit on another unit", function()
+		local shoot, shot = cast(0, SHOOT), line(1, "shot")
+		local other, wand = hit(1.2, "nameplate2", 1), hit(1.3, "nameplate1", 1)
+		local decided = pair({ shoot, shot, other, wand })
+		assert.is_false(decided[other.entry])
+		assert.are.equal(shot.entry, decided[wand.entry])
+	end)
+
+	it("gives a shot line past the short window to no Hit when no shot's target is known", function()
+		local shot, wand = line(1, "shot"), hit(1.2, "nameplate1", 64)
+		local decided = pair({ shot, wand })
+		assert.is_false(decided[wand.entry])
+	end)
+
+	it("keeps a shot line for the wand's Hit, not for a Hit that waited before the line", function()
+		local shoot = cast(0, SHOOT)
+		local other, shot, wand = hit(1, "nameplate2", 64), line(1.05, "shot"), hit(1.25, "nameplate1", 64)
+		local decided = pair({ shoot, other, shot, wand })
+		assert.is_false(decided[other.entry])
+		assert.are.equal(shot.entry, decided[wand.entry])
+	end)
+
+	it("gives a Hit in a frame the tick line first, as the shot line can wait for its Hit", function()
+		local shoot, shot, tick, tickLine = cast(0, SHOOT), line(1, "shot"), hit(1, "nameplate1", 32), line(1, "tick")
+		local wand = hit(1.334, "nameplate1", 64)
+		local decided = pair({ shoot, shot, tick, tickLine, wand })
+		assert.are.equal(tickLine.entry, decided[tick.entry])
+		assert.are.equal(shot.entry, decided[wand.entry])
+	end)
+
+	it("gives no direct line to a Hit 0.2 s after it", function()
+		local direct, other = line(1, "direct"), hit(1.2, "nameplate1", 64)
+		local decided = pair({ direct, other })
+		assert.is_false(decided[other.entry])
 	end)
 
 	it("gives no late melee line to a Hit, as a melee line comes before its Hit", function()

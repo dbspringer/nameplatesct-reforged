@@ -21,9 +21,9 @@ ns.Identity = Identity
 -- range flies longer.
 local DIRECT_WINDOW = 1.5
 -- How much later than its time a Hit can be decided, with a margin: Pairing
--- decides a held Hit up to its HOLD plus SHORT_WINDOW (0.25 s) late, at the
+-- decides a held Hit up to its HOLD plus SHOT_WINDOW (0.5 s) late, at the
 -- next Tick. Casts stay this much longer.
-local DECIDE_LATE = 0.5
+local DECIDE_LATE = 0.6
 -- How far a tick can be from its Tick Rhythm. Nearly all ticks came within
 -- 0.07 s of it in the Warlock Traces; one batch came 0.18 s off and gets no
 -- icon. A wider window lets another spell's tick that comes just before fit

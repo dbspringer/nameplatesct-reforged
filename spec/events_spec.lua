@@ -82,6 +82,20 @@ describe("Events, with no recording on", function()
 		assert.are.equal("CRITICAL", shown[1].hit.descriptor)
 	end)
 
+	it("shows a wand's Hit 0.283 s after its shot line, on the shot's target", function()
+		_G.Blizzard_CombatLog_Filters = { currentFilter = 1, filters = { { settings = { lineColoring = true, lineColorPriority = 3 } } } }
+		local shown = start()
+		fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 5019)
+		now = 2.5
+		fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 0.9, 0.7, 0.45, 0)
+		now = 2.783
+		fire("UNIT_COMBAT", "nameplate1", "WOUND", "", "<secret>", 64)
+		finish()
+		_G.Blizzard_CombatLog_Filters = nil
+		assert.are.equal(1, #shown)
+		assert.are.equal("shot", shown[1].lineKind)
+	end)
+
 	it("shows a melee killing blow whose Hit comes after the Nameplate hid", function()
 		guids.nameplate1, guids.softinteract = "Creature-1", "Creature-1"
 		local shown = start()
