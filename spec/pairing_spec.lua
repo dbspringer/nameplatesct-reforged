@@ -7,6 +7,7 @@ local ns = {}
 assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
+assert(loadfile("src/DirectSpells.lua"))("NameplateSCT_Reforged", ns)
 local Adapter, Pairing = ns.Adapter, ns.Pairing
 local Trace = assert(loadfile("tools/trace.lua"))()
 
@@ -23,6 +24,14 @@ end
 local function line(time, lineKind)
 	entryCount = entryCount + 1
 	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
+end
+
+local HEROIC_STRIKE, FIREBALL = 78, 133
+
+local function cast(time, spellID, target)
+	entryCount = entryCount + 1
+	return { kind = "cast", time = time, entry = entryCount, stage = "SUCCEEDED", unit = "player", spellID = spellID,
+		target = target or "nameplate1" }
 end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
@@ -314,6 +323,79 @@ describe("Pairing", function()
 			local decided = pair({ onYou, tick, only })
 			assert.are.equal(only.entry, decided[tick.entry])
 			assert.is_false(decided[onYou.entry])
+		end)
+	end)
+
+	describe("in the frame of a Next-Swing Ability", function()
+		local function records(spellID)
+			local strike = cast(1, spellID)
+			local empty = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			local direct = line(1, "direct")
+			local real = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			return { strike, empty, direct, real }, empty, direct, real
+		end
+
+		it("gives the Log Line to the real Hit, not to the Empty Report before it", function()
+			local all, empty, direct, real = records(HEROIC_STRIKE)
+			local decided = pair(all)
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("leaves two Hits alone when the cast is another spell's", function()
+			local all, first, direct, second = records(FIREBALL)
+			local decided = pair(all)
+			assert.are.equal(direct.entry, decided[first.entry])
+			assert.is_false(decided[second.entry])
+		end)
+
+		it("keeps the Log Line on the only physical WOUND on the unit", function()
+			local strike = cast(1, HEROIC_STRIKE)
+			local only = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			local direct = line(1, "direct")
+			local elsewhere = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local decided = pair({ strike, only, direct, elsewhere })
+			assert.are.equal(direct.entry, decided[only.entry])
+		end)
+
+		local function physical()
+			return hit(1, "nameplate1", 1, "WOUND", "<secret>")
+		end
+
+		it("keeps a physical tick on another unit, and that unit's later Hit", function()
+			local rend = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local tick = line(1, "tick")
+			local strike = cast(1, HEROIC_STRIKE)
+			local empty = physical()
+			local direct = line(1, "direct")
+			local real = physical()
+			local party = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local decided = pair({ rend, tick, strike, empty, direct, real, party })
+			assert.are.equal(tick.entry, decided[rend.entry])
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("keeps a physical tick that comes before the cast on the same unit", function()
+			local rend = physical()
+			local tick = line(1, "tick")
+			local strike = cast(1, HEROIC_STRIKE)
+			local empty = physical()
+			local direct = line(1, "direct")
+			local real = physical()
+			local decided = pair({ rend, tick, strike, empty, direct, real })
+			assert.are.equal(tick.entry, decided[rend.entry])
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("drops nothing when two WOUNDs before the line make the Empty Report unclear", function()
+			local strike = cast(1, HEROIC_STRIKE)
+			local first, second = physical(), physical()
+			local direct = line(1, "direct")
+			local last = physical()
+			local decided = pair({ strike, first, second, direct, last })
+			assert.are.equal(direct.entry, decided[first.entry])
 		end)
 	end)
 

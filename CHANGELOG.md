@@ -3,6 +3,7 @@
 ## 2
 
 - The AddOns list now shows an icon for the addon, the Blacksmithing hammer and anvil.
+- Maul, Heroic Strike, Cleave, and Raptor Strike now show their real number, with their icon, in place of a 0.
 
 ## 1
 

@@ -18,8 +18,8 @@ local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
 		spellFacts = {},
-		show = function(hit, how, _, lineKind, late, pet)
-			shown[#shown + 1] = { hit = hit, how = how, lineKind = lineKind, late = late, pet = pet }
+		show = function(hit, how, spellID, lineKind, late, pet)
+			shown[#shown + 1] = { hit = hit, how = how, spellID = spellID, lineKind = lineKind, late = late, pet = pet }
 		end,
 		noPlate = function(hit, how)
 			plateless[#plateless + 1] = { hit = hit, how = how }
@@ -188,6 +188,32 @@ describe("Flow", function()
 		})
 		assert.are.same({ 4, 6 }, entriesOf(shown))
 		assert.are.same({}, { shown[1].late, shown[2].late })
+	end)
+
+	-- A live Trace: every amount is secret, so only the descriptor tells the
+	-- real Hit. The second Heroic Strike was a crit in the Combat Log File.
+	it("shows the real Hit of each Heroic Strike in the Warrior Trace, with its icon", function()
+		local trace = Trace.Load("spec/traces/warrior-heroic-strike.lua")
+		local strikes = {}
+		for _, result in ipairs((run(trace.entries))) do
+			if result.lineKind == "direct" then
+				strikes[#strikes + 1] = { descriptor = result.hit.descriptor, spellID = result.spellID }
+			end
+		end
+		assert.are.same({ { descriptor = "", spellID = 78 }, { descriptor = "CRITICAL", spellID = 78 } }, strikes)
+	end)
+
+	-- The Heroic Strikes of entries 53 and 94 do not kill, so their frames have
+	-- no killing blow line. Each of the three entries is the frame's last WOUND.
+	it("shows the real Hit of a Heroic Strike that does not kill", function()
+		local trace = Trace.Load("spec/traces/warrior-heroic-strike-2.lua")
+		local entries = {}
+		for _, result in ipairs((run(trace.entries))) do
+			if result.lineKind == "direct" then
+				entries[#entries + 1] = result.hit.entry
+			end
+		end
+		assert.are.same({ 24, 53, 94 }, entries)
 	end)
 
 	describe("on the Warlock Traces", function()
