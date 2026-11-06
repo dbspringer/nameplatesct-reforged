@@ -6,6 +6,7 @@
 - Maul, Heroic Strike, Cleave, and Raptor Strike now show their real number, with their icon, in place of a 0.
 - In busy fights, your melee numbers should less often show on the wrong enemy or go missing. This helps, but it doesn't fix the problem described under release 1.
 - Your wand shots no longer lose their number when the hit lands a moment after the shot.
+- Your wand shots now show their icon from long range too, and the addon can learn your wand's school there.
 - Melee killing blows now show their number more often when the enemy's nameplate disappears first. This needs the game to tell the addon which enemy it was, so in dungeons the number can still go missing.
 
 ## 1

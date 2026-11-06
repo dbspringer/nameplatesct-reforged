@@ -20,6 +20,10 @@ ns.Identity = Identity
 -- Shoot up to 0.63 s after the cast in the Warlock Traces; a cast at long
 -- range flies longer.
 local DIRECT_WINDOW = 1.5
+-- A ranged attack can fly longer: a wand's Shoot landed up to 1.72 s after its
+-- cast at 32 yd (warlock-wand-range), about 0.05 s per yard. This leaves room
+-- for a Hunter's longer range, an estimate from wand data.
+local SHOT_FLIGHT = 2.5
 -- How much later than its time a Hit can be decided, with a margin: Pairing
 -- decides a held Hit up to its HOLD plus SHOT_WINDOW (0.5 s) late, at the
 -- next Tick. Casts stay this much longer.
@@ -36,10 +40,10 @@ local AGREEING_HITS = 2
 -- cast's own time.
 local MISS_WINDOW = 0.1
 
--- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a
--- first tick until one interval after it lands, an area spell's ticks until
--- its duration ends.
-local CAST_AGE = DIRECT_WINDOW + DECIDE_LATE + TICK_TOLERANCE
+-- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
+-- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
+-- spell's ticks until its duration ends.
+local CAST_AGE = SHOT_FLIGHT + DECIDE_LATE + TICK_TOLERANCE
 for _, spell in pairs(ns.TickSpells) do
 	local lasts = spell.area and spell.duration or spell.interval + DIRECT_WINDOW
 	CAST_AGE = math.max(CAST_AGE, lasts + DECIDE_LATE + TICK_TOLERANCE)
@@ -171,9 +175,10 @@ function Identity.New(saved)
 	-- with another school, as a new wand changes Shoot's.
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
+		local window = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
-			if not cast.used and age >= 0 and age <= DIRECT_WINDOW and canHit(cast, group, miss, age) then
+			if not cast.used and age >= 0 and age <= window and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
