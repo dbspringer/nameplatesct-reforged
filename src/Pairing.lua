@@ -160,13 +160,16 @@ function Pairing.New(options)
 	-- Hit takes the oldest waiting line that came after it within the hold,
 	-- but only once that line is too old to be a newer Hit's early line: in
 	-- the Traces a line always came before its Hit, so a newer Hit wins it.
-	-- Waiting this out also makes the result the same at any frame rate.
+	-- Waiting this out also makes the result the same at any frame rate. A
+	-- melee line never pairs here: its Hit comes one Swing Delay after it, so
+	-- a Hit just before the line is another unit's (warrior-retest).
 	local function advance(now)
 		while heldHits[1] and heldHits[1].time + HOLD < now do
 			local hit = heldHits[1]
 			local index
 			for i, line in ipairs(waitingLines) do
-				if line.time > hit.time and line.time <= hit.time + HOLD and suits(hit, line) then
+				if line.time > hit.time and line.time <= hit.time + HOLD and suits(hit, line)
+					and not ns.LineKind.IsMelee(line.lineKind) then
 					index = i
 					break
 				end

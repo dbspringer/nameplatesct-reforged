@@ -218,6 +218,18 @@ describe("Flow", function()
 		assert.is_table(killingBlow.late)
 	end)
 
+	-- Another mob's Hit (entry 17) came 0.1 s before the player's swing line, and
+	-- the swing's real Hit (entry 22) came 0.667 s after that line.
+	it("gives a swing line to the swing's Hit, not to a Hit just before the line", function()
+		local trace = Trace.Load("spec/traces/warrior-retest.lua")
+		local entries = {}
+		for _, result in ipairs((run(trace.entries))) do
+			entries[result.hit.entry] = true
+		end
+		assert.is_nil(entries[17])
+		assert.is_true(entries[22])
+	end)
+
 	-- Unit A's Nameplate hid, and its token and frame now show unit B. A's late
 	-- report comes in B's Heroic Strike frame. No Trace has this order. A's Hit
 	-- can still take the frame's line, so B's real Hit may show nothing, but B's
