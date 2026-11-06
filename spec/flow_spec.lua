@@ -243,6 +243,19 @@ describe("Flow", function()
 		end
 	end)
 
+	-- A DoT tick came in the shot line's frame, and the wand's Hit 0.334 s later.
+	it("keeps a wand's Hit when a tick comes in its shot line's frame", function()
+		local trace = Trace.Load("spec/traces/warlock-wand-overlap.lua")
+		local wand
+		for _, result in ipairs((run(trace.entries))) do
+			if result.hit.time == 783696.627 then
+				wand = result
+			end
+		end
+		assert.is_table(wand)
+		assert.are.equal("shot", wand.lineKind)
+	end)
+
 	-- The longest gap seen: 0.283 s, on the seventh shot of this Trace.
 	it("shows a wand's Hit that comes 0.283 s after its shot line", function()
 		local trace = Trace.Load("spec/traces/warlock-wand-icon.lua")
