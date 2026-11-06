@@ -7,6 +7,7 @@ local ns = {}
 assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
+assert(loadfile("src/DirectSpells.lua"))("NameplateSCT_Reforged", ns)
 local Adapter, Pairing = ns.Adapter, ns.Pairing
 local Trace = assert(loadfile("tools/trace.lua"))()
 
@@ -23,6 +24,13 @@ end
 local function line(time, lineKind)
 	entryCount = entryCount + 1
 	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
+end
+
+local HEROIC_STRIKE, FIREBALL = 78, 133
+
+local function cast(time, spellID, unit)
+	entryCount = entryCount + 1
+	return { kind = "cast", time = time, entry = entryCount, stage = "SUCCEEDED", unit = unit or "player", spellID = spellID }
 end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
@@ -314,6 +322,39 @@ describe("Pairing", function()
 			local decided = pair({ onYou, tick, only })
 			assert.are.equal(only.entry, decided[tick.entry])
 			assert.is_false(decided[onYou.entry])
+		end)
+	end)
+
+	describe("in the frame of a Next-Swing Ability", function()
+		local function records(spellID)
+			local strike = cast(1, spellID)
+			local empty = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			local direct = line(1, "direct")
+			local real = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			return { strike, empty, direct, real }, empty, direct, real
+		end
+
+		it("gives the Log Line to the real Hit, not to the Empty Report before it", function()
+			local all, empty, direct, real = records(HEROIC_STRIKE)
+			local decided = pair(all)
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("leaves two Hits alone when the cast is another spell's", function()
+			local all, first, direct, second = records(FIREBALL)
+			local decided = pair(all)
+			assert.are.equal(direct.entry, decided[first.entry])
+			assert.is_false(decided[second.entry])
+		end)
+
+		it("keeps the Log Line on the only physical WOUND on the unit", function()
+			local strike = cast(1, HEROIC_STRIKE)
+			local only = hit(1, "nameplate1", 1, "WOUND", "<secret>")
+			local direct = line(1, "direct")
+			local elsewhere = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local decided = pair({ strike, only, direct, elsewhere })
+			assert.are.equal(direct.entry, decided[only.entry])
 		end)
 	end)
 

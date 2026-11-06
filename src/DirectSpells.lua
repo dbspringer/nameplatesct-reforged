@@ -39,6 +39,16 @@ local function shoots(school, ids)
 	end
 end
 
+-- A Next-Swing Ability: its frame has an Empty Report before the real Hit (see
+-- Pairing.New). Seen on Heroic Strike in the Warrior Trace and on other
+-- players' Heroic Strikes in the open-world Traces. Unverified on Maul, Raptor
+-- Strike, and Cleave, which replace a swing in the same way.
+local function replacesSwing(ids)
+	for _, id in ipairs(ids) do
+		spells[id] = { school = PHYSICAL, nextSwing = true }
+	end
+end
+
 do
 	-- Ranged attacks
 	spells[5019] = { learns = true, shot = true } -- Shoot, whose school its wand sets
@@ -52,7 +62,7 @@ do
 	hits(NATURE, { 5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912 }) -- Wrath
 	hits(PHYSICAL, { 5221, 6800, 8992, 9829, 9830 }) -- Shred
 	hits(PHYSICAL, { 6785, 6787, 9866, 9867 }) -- Ravage
-	hits(PHYSICAL, { 6807, 6808, 6809, 8972, 9745, 9880, 9881 }) -- Maul
+	replacesSwing({ 6807, 6808, 6809, 8972, 9745, 9880, 9881 }) -- Maul
 	hits(PHYSICAL, { 22568, 22827, 22828, 22829, 31018 }) -- Ferocious Bite
 	hits(PHYSICAL, { 407995, 1238069, 1238070, 1238073 }) -- Primal Bite, Forever only (the first rank is Mangle's ID)
 
@@ -61,7 +71,7 @@ do
 	hits(PHYSICAL, { 2643 }) -- Multi-Shot
 	hits(PHYSICAL, { 2974, 14267, 14268, 27633 }) -- Wing Clip
 	hits(ARCANE, { 3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287 }) -- Arcane Shot
-	hits(PHYSICAL, { 2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
+	replacesSwing({ 2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
 	hits(PHYSICAL, { 19306, 20909, 20910 }) -- Counterattack
 	hits(PHYSICAL, { 19434, 20900, 20901, 20902, 20903, 20904, 27632 }) -- Aimed Shot
 	hits(PHYSICAL, { 19503 }) -- Scatter Shot
@@ -141,9 +151,9 @@ do
 
 	-- Warrior
 	hits(PHYSICAL, { 72, 1671, 1672 }) -- Shield Bash
-	hits(PHYSICAL, { 78, 284, 285, 1608, 11564, 11565, 11566, 11567, 25286, 25712 }) -- Heroic Strike
+	replacesSwing({ 78, 284, 285, 1608, 11564, 11565, 11566, 11567, 25286, 25712 }) -- Heroic Strike
 	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
-	hits(PHYSICAL, { 845, 7369, 11608, 11609, 20569 }) -- Cleave
+	replacesSwing({ 845, 7369, 11608, 11609, 20569 }) -- Cleave
 	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
 	hits(PHYSICAL, { 1680 }) -- Whirlwind
 	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring

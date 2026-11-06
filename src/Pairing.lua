@@ -40,6 +40,39 @@ local function isZeroWound(hit)
 	return hit.action == "WOUND" and not issecretvalue(hit.amount) and hit.amount == 0
 end
 
+-- Whether a cast record is the player's Next-Swing Ability taking effect.
+local function isNextSwing(record)
+	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) then
+		return false
+	end
+	local spell = ns.DirectSpells[record.spellID]
+	return spell ~= nil and spell.nextSwing == true
+end
+
+-- The Empty Reports of a Next-Swing Ability's frame. Live amounts are secret,
+-- so isZeroWound cannot see one. The ability's frame has two physical WOUNDs
+-- on its unit, the Empty Report first, and one Log Line (Warrior Trace). So
+-- the first of two, when its amount is secret, is the Empty Report. With no
+-- second WOUND, the first is the only Hit that the line can be for.
+local function emptyReportsIn(hits)
+	local empty, firstOn = {}, {}
+	for _, hit in ipairs(hits) do
+		if hit.action == "WOUND" and isPhysical(hit) and not OWN_UNITS[hit.unit] then
+			local key = hit.life or hit.unit
+			local first = firstOn[key]
+			if first == nil then
+				firstOn[key] = hit
+			elseif first then
+				if issecretvalue(first.amount) then
+					empty[first] = true
+				end
+				firstOn[key] = false
+			end
+		end
+	end
+	return empty
+end
+
 -- The sort of Hit a UNIT_COMBAT action is, in the terms of
 -- LineKind.Reports: a WOUND is damage, a HEAL a heal, the rest are avoids.
 local function reportOf(hit)
@@ -105,6 +138,8 @@ function Pairing.New(options)
 	local onDecision = options.onDecision
 	local frameTime
 	local frameHits, frameLines = {}, {}
+	-- When the player's latest Next-Swing Ability took effect.
+	local nextSwingTime
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
 
@@ -173,8 +208,11 @@ function Pairing.New(options)
 		local time, hits, lines = frameTime, frameHits, frameLines
 		frameTime, frameHits, frameLines = nil, {}, {}
 		advance(time)
+		local empty = nextSwingTime == time and emptyReportsIn(hits) or {}
 		for _, hit in ipairs(hits) do
-			if not OWN_UNITS[hit.unit] then
+			if empty[hit] then
+				onDecision(hit, nil)
+			elseif not OWN_UNITS[hit.unit] then
 				decide(hit, lines)
 			end
 		end
@@ -190,14 +228,16 @@ function Pairing.New(options)
 
 	local pairing = {}
 
-	-- Casts and Swings pass by: no Pairing rule uses them (Flow gives casts to
-	-- Spell Identity), and they do not open a frame, though a later one closes
-	-- the open frame, which Flow relies on.
+	-- Casts and Swings do not open a frame, though a later one closes the open
+	-- frame, which Flow relies on. Swings pass by, and of the casts Pairing notes
+	-- only a Next-Swing Ability (Flow gives all casts to Spell Identity).
 	function pairing.Push(record)
 		if frameTime and record.time ~= frameTime then
 			endFrame()
 		end
-		if record.kind == "hit" then
+		if record.kind == "cast" and isNextSwing(record) then
+			nextSwingTime = record.time
+		elseif record.kind == "hit" then
 			frameTime = record.time
 			frameHits[#frameHits + 1] = record
 		elseif record.kind == "line" then
