@@ -53,7 +53,9 @@ end
 -- Live amounts are secret, so isZeroWound cannot see one. On the cast's target,
 -- the frame has this order in the Warrior Traces: the cast, a physical WOUND,
 -- the ability's Log Line, then the real physical WOUND. Any other shape can be
--- other damage in the frame, so it keeps the usual Pairing. A second target of
+-- other damage in the frame, so it keeps the usual Pairing. The plate life
+-- matters as well as the token: a late Hit keeps the token of a Nameplate that
+-- hid, and that token can show the cast's target by now. A second target of
 -- Cleave is not covered (no Trace).
 local function emptyReportIn(hits, lines, nextSwing)
 	local lineEntry
@@ -68,7 +70,8 @@ local function emptyReportIn(hits, lines, nextSwing)
 	end
 	local before, hasAfter
 	for _, hit in ipairs(hits) do
-		if hit.unit == nextSwing.target and hit.entry > nextSwing.entry and hit.action == "WOUND" and isPhysical(hit) then
+		if hit.unit == nextSwing.target and hit.life == nextSwing.targetLife and hit.entry > nextSwing.entry
+			and hit.action == "WOUND" and isPhysical(hit) then
 			if hit.entry > lineEntry then
 				hasAfter = true
 			elseif before then

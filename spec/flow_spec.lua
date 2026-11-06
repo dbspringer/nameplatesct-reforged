@@ -218,6 +218,33 @@ describe("Flow", function()
 		assert.is_table(killingBlow.late)
 	end)
 
+	-- Unit A's Nameplate hid, and its token and frame now show unit B. A's late
+	-- report comes in B's Heroic Strike frame. No Trace has this order. A's Hit
+	-- can still take the frame's line, so B's real Hit may show nothing, but B's
+	-- Empty Report must not show as a 0.
+	it("finds a Next-Swing Ability's Empty Report when a late Hit shares its token", function()
+		local function wound(unit, descriptor, extra)
+			local entry = { 1.5, "UNIT_COMBAT", unit, "WOUND", descriptor, "<secret>", 1, canAttack = true }
+			for key, value in pairs(extra) do
+				entry[key] = value
+			end
+			return entry
+		end
+		local shown = run({
+			{ 1, "NAME_PLATE_UNIT_ADDED", "nameplate1", frame = "frame1" },
+			{ 1.2, "NAME_PLATE_UNIT_REMOVED", "nameplate1", frame = "frame1", guid = "Creature-A" },
+			{ 1.3, "NAME_PLATE_UNIT_ADDED", "nameplate1", frame = "frame1" },
+			{ 1.5, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 78, target = "nameplate1" },
+			wound("nameplate1", "EMPTY", { plate = "nameplate1" }),
+			wound("softinteract", "LATE", { guid = "Creature-A" }),
+			{ 1.5, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0 },
+			wound("nameplate1", "REAL", { plate = "nameplate1" }),
+		})
+		for _, result in ipairs(shown) do
+			assert.are_not.equal("EMPTY", result.hit.descriptor)
+		end
+	end)
+
 	-- The Heroic Strikes of entries 53 and 94 do not kill, so their frames have
 	-- no killing blow line. Each of the three entries is the frame's last WOUND.
 	it("shows the real Hit of a Heroic Strike that does not kill", function()

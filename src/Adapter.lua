@@ -284,7 +284,7 @@ function Adapter.New(onRecord)
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
 			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5],
-				target = entry.target })
+				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
 		end
