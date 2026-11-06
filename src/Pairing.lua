@@ -3,10 +3,15 @@ local _, ns = ...
 local Pairing = {}
 ns.Pairing = Pairing
 
--- How long before its Hit a Log Line can come. Spells and wands came up to
--- 0.066 s early in the Warlock Traces; melee came one Swing Delay early:
--- 0.37 s (the player) and 0.52 to 0.98 s (the pet).
+-- How long before its Hit a Log Line can come. Spells came up to 0.066 s early
+-- in the Warlock Traces. A wand's shot came up to 0.034 s early on the beta and
+-- 0.2 s early on the live client, also at 32 yd (warlock-wand-live and
+-- warlock-wand-range): its flight comes before the line, so this does not grow
+-- with distance. Melee came one Swing Delay early: 0.37 s (the player) and 0.52
+-- to 0.98 s (the pet).
 local SHORT_WINDOW = 0.1
+local SHOT_WINDOW = 0.25
+local SHOT_KINDS = { shot = true, shotMiss = true }
 local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
@@ -110,6 +115,11 @@ local function suits(hit, line)
 		and (not ns.LineKind.IsMelee(lineKind) or (isPhysical(hit) and not OWN_UNITS[hit.unit]))
 end
 
+-- How long a line of this kind can wait for its Hit, apart from a melee line.
+local function earlyWindow(line)
+	return SHOT_KINDS[line.lineKind] and SHOT_WINDOW or SHORT_WINDOW
+end
+
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
 -- "melee", or nil when it does not fit. Only a melee line, or one of unknown
 -- kind, comes one Swing Delay early.
@@ -118,7 +128,7 @@ local function fits(hit, line)
 		return nil
 	end
 	local age = hit.time - line.time
-	if age >= 0 and age <= SHORT_WINDOW then
+	if age >= 0 and age <= earlyWindow(line) then
 		return "short"
 	end
 	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
@@ -143,7 +153,7 @@ end
 -- next record. onDecision(hit, line, how) runs once for every Hit, with a nil
 -- line when the Hit is not yours; an error in it drops the rest of that
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
--- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier),
+-- line in the Hit's frame), "short" (a line up to its earlyWindow earlier),
 -- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none.
@@ -174,7 +184,7 @@ function Pairing.New(options)
 					break
 				end
 			end
-			if index and now - waitingLines[index].time <= SHORT_WINDOW then
+			if index and now - waitingLines[index].time <= earlyWindow(waitingLines[index]) then
 				break
 			end
 			table.remove(heldHits, 1)

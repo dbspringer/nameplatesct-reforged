@@ -218,6 +218,18 @@ describe("Flow", function()
 		assert.is_table(killingBlow.late)
 	end)
 
+	-- On the live client a wand's Hit came up to 0.2 s after its shot line.
+	it("shows a wand's Hit that comes up to 0.2 s after its shot line", function()
+		local trace = Trace.Load("spec/traces/warlock-wand-live.lua")
+		local shown = {}
+		for _, result in ipairs((run(trace.entries))) do
+			shown[result.hit.entry] = true
+		end
+		for _, entry in ipairs({ 81, 105, 122, 411, 452 }) do
+			assert.is_true(shown[entry], "entry " .. entry)
+		end
+	end)
+
 	-- Another mob's Hit (entry 17) came 0.1 s before the player's swing line, and
 	-- the swing's real Hit (entry 22) came 0.667 s after that line.
 	it("gives a swing line to the swing's Hit, not to a Hit just before the line", function()
