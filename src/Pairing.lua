@@ -5,9 +5,9 @@ ns.Pairing = Pairing
 
 -- How long before its Hit a Log Line can come. Spells came up to 0.066 s early
 -- in the Warlock Traces. A wand's shot came up to 0.034 s early on the beta and
--- up to 0.283 s early on the live client (warlock-wand-icon, 26 shots at 7 to
--- 37 yd). Most of a shot's flight comes before its line; the part after it is
--- not measured well enough to tie to distance. Melee came one Swing Delay
+-- up to 0.334 s early on the live client, at 2.3 yd (warlock-wand-overlap, 41
+-- shots at 2 to 37 yd). Most of a shot's flight comes before its line, and the
+-- gap after it has no clear tie to distance. Melee came one Swing Delay
 -- early: 0.37 s (the player) and 0.52 to 0.98 s (the pet).
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
@@ -136,7 +136,7 @@ end
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
 -- "melee", or nil when it does not fit. Only a melee line, or one of unknown
 -- kind, comes one Swing Delay early. A shot line past SHORT_WINDOW fits only a
--- Hit on a recent shot's target, as all 26 live shots' Hits were, so another
+-- Hit on a recent shot's target, as all live shots' Hits in the Traces were, so another
 -- unit's Hit cannot take it. Another player's Hit on that unit still can.
 local function fits(hit, line, isShotTarget)
 	if not suits(hit, line) then
@@ -155,8 +155,14 @@ local function fits(hit, line, isShotTarget)
 	end
 end
 
--- Takes from lines the first one that suits the Hit.
+-- Takes from lines the first one that suits the Hit, a shot line last: it can
+-- wait for its own Hit, and another line in the frame cannot.
 local function takeSuited(hit, lines)
+	for i, line in ipairs(lines) do
+		if suits(hit, line) and not SHOT_KINDS[line.lineKind] then
+			return table.remove(lines, i)
+		end
+	end
 	for i, line in ipairs(lines) do
 		if suits(hit, line) then
 			return table.remove(lines, i)
