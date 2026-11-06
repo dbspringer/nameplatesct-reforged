@@ -230,6 +230,18 @@ describe("Flow", function()
 		end
 	end)
 
+	-- The longest gap seen: 0.283 s, on the seventh shot of this Trace.
+	it("shows a wand's Hit that comes 0.283 s after its shot line", function()
+		local trace = Trace.Load("spec/traces/warlock-wand-icon.lua")
+		local shots = 0
+		for _, result in ipairs((run(trace.entries))) do
+			if result.lineKind == "shot" then
+				shots = shots + 1
+			end
+		end
+		assert.are.equal(7, shots)
+	end)
+
 	-- Another mob's Hit (entry 17) came 0.1 s before the player's swing line, and
 	-- the swing's real Hit (entry 22) came 0.667 s after that line.
 	it("gives a swing line to the swing's Hit, not to a Hit just before the line", function()

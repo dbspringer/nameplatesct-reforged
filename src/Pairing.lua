@@ -5,12 +5,12 @@ ns.Pairing = Pairing
 
 -- How long before its Hit a Log Line can come. Spells came up to 0.066 s early
 -- in the Warlock Traces. A wand's shot came up to 0.034 s early on the beta and
--- 0.2 s early on the live client, also at 32 yd (warlock-wand-live and
--- warlock-wand-range): its flight comes before the line, so this does not grow
--- with distance. Melee came one Swing Delay early: 0.37 s (the player) and 0.52
--- to 0.98 s (the pet).
+-- up to 0.283 s early on the live client (warlock-wand-icon, 26 shots at 7 to
+-- 37 yd). Most of a shot's flight comes before its line; the part after it is
+-- not measured well enough to tie to distance. Melee came one Swing Delay
+-- early: 0.37 s (the player) and 0.52 to 0.98 s (the pet).
 local SHORT_WINDOW = 0.1
-local SHOT_WINDOW = 0.25
+local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
 local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
