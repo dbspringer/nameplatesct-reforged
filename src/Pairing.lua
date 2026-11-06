@@ -12,6 +12,9 @@ ns.Pairing = Pairing
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
+-- How long a shot can fly, so how long its cast's target can still take its
+-- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd.
+local SHOT_FLIGHT = 2.5
 local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
@@ -43,6 +46,16 @@ end
 -- in the Combat Log File and shows nothing, so it takes no line.
 local function isZeroWound(hit)
 	return hit.action == "WOUND" and not issecretvalue(hit.amount) and hit.amount == 0
+end
+
+-- Whether a cast record is the player's ranged attack taking effect, with a
+-- known target.
+local function isShotAtTarget(record)
+	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) or not record.target then
+		return false
+	end
+	local spell = ns.DirectSpells[record.spellID]
+	return spell ~= nil and spell.shot == true
 end
 
 -- Whether a cast record is the player's Next-Swing Ability taking effect.
@@ -122,13 +135,18 @@ end
 
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
 -- "melee", or nil when it does not fit. Only a melee line, or one of unknown
--- kind, comes one Swing Delay early.
-local function fits(hit, line)
+-- kind, comes one Swing Delay early. A shot line past SHORT_WINDOW fits only a
+-- Hit on a recent shot's target, as all 26 live shots' Hits were, so another
+-- unit's Hit cannot take it. Another player's Hit on that unit still can.
+local function fits(hit, line, isShotTarget)
 	if not suits(hit, line) then
 		return nil
 	end
 	local age = hit.time - line.time
-	if age >= 0 and age <= earlyWindow(line) then
+	if age >= 0 and age <= SHORT_WINDOW then
+		return "short"
+	end
+	if age >= 0 and age <= SHOT_WINDOW and SHOT_KINDS[line.lineKind] and isShotTarget(hit) then
 		return "short"
 	end
 	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
@@ -153,7 +171,7 @@ end
 -- next record. onDecision(hit, line, how) runs once for every Hit, with a nil
 -- line when the Hit is not yours; an error in it drops the rest of that
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
--- line in the Hit's frame), "short" (a line up to its earlyWindow earlier),
+-- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier, or SHOT_WINDOW for a shot),
 -- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none.
@@ -163,6 +181,18 @@ function Pairing.New(options)
 	local frameHits, frameLines = {}, {}
 	-- The cast of the player's latest Next-Swing Ability.
 	local nextSwing
+	-- The player's ranged attacks that can still be in flight, oldest first.
+	local shots = {}
+
+	local function isShotTarget(hit)
+		for _, shot in ipairs(shots) do
+			if hit.unit == shot.target and hit.life == shot.targetLife and hit.time - shot.time <= SHOT_FLIGHT then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
 
@@ -210,7 +240,7 @@ function Pairing.New(options)
 				-- of each varies too much to tell them apart, and a line's pet
 				-- mark (see Adapter.New) then goes with the wrong Hit.
 				for i, line in ipairs(waitingLines) do
-					how = fits(hit, line)
+					how = fits(hit, line, isShotTarget)
 					if how then
 						found = table.remove(waitingLines, i)
 						break
@@ -256,13 +286,19 @@ function Pairing.New(options)
 
 	-- Casts and Swings do not open a frame, though a later one closes the open
 	-- frame, which Flow relies on. Swings pass by, and of the casts Pairing notes
-	-- only a Next-Swing Ability (Flow gives all casts to Spell Identity).
+	-- only a Next-Swing Ability and a ranged attack (Flow gives all casts to Spell
+	-- Identity).
 	function pairing.Push(record)
 		if frameTime and record.time ~= frameTime then
 			endFrame()
 		end
 		if record.kind == "cast" and isNextSwing(record) then
 			nextSwing = record
+		elseif record.kind == "cast" and isShotAtTarget(record) then
+			while shots[1] and record.time - shots[1].time > SHOT_FLIGHT do
+				table.remove(shots, 1)
+			end
+			shots[#shots + 1] = record
 		elseif record.kind == "hit" then
 			frameTime = record.time
 			frameHits[#frameHits + 1] = record
