@@ -34,6 +34,10 @@ _Avoid_: Orphan time, linger
 One time that a unit took damage, avoided it, or was healed, as the game reports it. The game sends one report of a Hit for each name the unit has (target, nameplate, soft target, player, pet), but it is still one Hit.
 _Avoid_: Event, wound, combat event
 
+**Empty Report**:
+A report of damage with an amount of 0 or no amount, with no damage behind it, as when a Next-Swing Ability fires or after a pet's Torment. It is not a Hit, so it takes no Log Line and shows no Plate Text.
+_Avoid_: Zero wound, 0 hit
+
 **Log Line**:
 One line of the player's own combat log that the game sends to addons. The addon uses only when it came and its colour, never its words.
 _Avoid_: Combat log event, CLEU, chat message
@@ -57,6 +61,10 @@ _Avoid_: My hit, own damage, player damage
 **Swing Delay**:
 The time by which a melee Log Line comes before its Hit. It changes with the weapon.
 _Avoid_: Melee lag, offset
+
+**Next-Swing Ability**:
+An ability that replaces the player's next melee swing, such as Maul, Heroic Strike, or Raptor Strike.
+_Avoid_: On-next-hit ability, queued attack
 
 **Pet Swing**:
 Your Hit from the pet's melee swing, not the player's. Its Plate Text has the pet's colour and icon.
