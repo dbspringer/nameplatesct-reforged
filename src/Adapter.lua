@@ -9,6 +9,12 @@ ns.Adapter = Adapter
 local ENEMY_TOKEN_RANK = { target = 1, softenemy = 2, softinteract = 3 }
 local NO_PLATE = "<no plate>"
 
+-- How long after a Nameplate hides a report on its unit can still come. A
+-- melee Hit comes one Swing Delay after its Log Line, and the kill can hide the
+-- Nameplate first (Warrior Trace: hide at 0.267 s, Hit at 0.300 s, on
+-- softinteract only). This matches Pairing's melee window.
+local LATE_REPORT_WINDOW = 1.1
+
 -- Hits on the player and the pet stay, so Pairing can give the Log Lines for
 -- heals and self-damage to them, not to an enemy's Hit. Events.lua records
 -- `own` on any report that names one of them; Traces from before that field
@@ -180,6 +186,34 @@ function Adapter.New(onRecord)
 	-- Pairing decides the Hit. At the hide, hid is the Nameplate as it hid
 	-- (see Flow.New); reused says that its frame has shown a unit since.
 	local lives, lifeOnFrame = {}, {}
+	-- Nameplates that hid within LATE_REPORT_WINDOW, by their unit's public GUID.
+	-- A secret GUID cannot be compared, so such a Nameplate is not here, and a
+	-- late report on its unit stays with no Nameplate (unverified how often this
+	-- happens in dungeons).
+	local hiddenByGuid = {}
+
+	local function rememberHidden(entry, life)
+		local time, guid = entry[1], entry.guid
+		for known, hidden in pairs(hiddenByGuid) do
+			if time - hidden.time > LATE_REPORT_WINDOW then
+				hiddenByGuid[known] = nil
+			end
+		end
+		if guid ~= nil and not issecretvalue(guid) then
+			hiddenByGuid[guid] = { time = time, token = entry[3], life = life }
+		end
+	end
+
+	local function hiddenFor(entry)
+		local guid = entry.guid
+		if guid == nil or issecretvalue(guid) then
+			return nil
+		end
+		local hidden = hiddenByGuid[guid]
+		if hidden and entry[1] - hidden.time <= LATE_REPORT_WINDOW then
+			return hidden
+		end
+	end
 
 	-- A token that showed before the first event, as after a /reload, starts
 	-- its life when the adapter first sees it.
@@ -223,13 +257,15 @@ function Adapter.New(onRecord)
 				lifeOnFrame[entry.frame] = life
 			end
 			lives[entry[3]] = nil
+			rememberHidden(entry, life)
 		elseif event == "UNIT_COMBAT" then
 			local unit = unitOf(entry)
 			if unit then
+				local hidden = unit == NO_PLATE and hiddenFor(entry) or nil
 				reports[#reports + 1] = {
 					index = count,
-					unit = unit,
-					life = unit:match("^nameplate%d+$") and lifeOf(unit) or nil,
+					unit = hidden and hidden.token or unit,
+					life = hidden and hidden.life or (unit:match("^nameplate%d+$") and lifeOf(unit)) or nil,
 					token = entry[3],
 					time = time,
 					action = entry[4],
@@ -248,7 +284,7 @@ function Adapter.New(onRecord)
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
 			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5],
-				target = entry.target })
+				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
 		end

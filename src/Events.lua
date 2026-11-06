@@ -115,10 +115,16 @@ local function onEvent(_, event, ...)
 		entry.classification = UnitClassification(unit)
 		entry.isBoss = UnitIsBossMob(unit)
 		entry.isPlayer = UnitIsPlayer(unit)
+		entry.guid = UnitGUID(unit)
 	elseif event == "UNIT_COMBAT" then
 		entry.own = ownerOf(unit)
 		if not entry.own then
 			entry.plate = plateFor(unit)
+			-- A report with no plate can be a late Hit on a Nameplate that just
+			-- hid, and only its GUID tells which (see Adapter.New).
+			if not entry.plate then
+				entry.guid = UnitGUID(unit)
+			end
 			-- Checked at each report, since a duel can make a unit attackable
 			-- mid-fight. A secret answer is left out, so the Hit stays.
 			local canAttack = UnitCanAttack("player", unit)
