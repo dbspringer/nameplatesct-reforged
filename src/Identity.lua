@@ -172,9 +172,13 @@ function Identity.New(saved)
 	-- The one cast that fits a direct hit or a shot by time and whose school
 	-- is not known to differ from the Hit's, and how many casts fit. A cast of
 	-- a spell that learns its school and that fits alone by time is taken even
-	-- with another school, as a new wand changes Shoot's.
+	-- with another school, as a new wand changes Shoot's. Shots can overlap, as a
+	-- flight can outlast the time between casts, and a shot's Hit can go unpaired.
+	-- So when every fitting cast is one ranged attack, the Hit takes the oldest:
+	-- the spell is sure, and no cast stays to block the next shot.
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
+		local oldestFitting, oneSpell = nil, true
 		local window = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
@@ -183,11 +187,19 @@ function Identity.New(saved)
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
 					fitting, lastFitting = fitting + 1, cast
+					if not oldestFitting then
+						oldestFitting = cast
+					elseif cast.secret or oldestFitting.secret or cast.spellID ~= oldestFitting.spellID then
+						oneSpell = false
+					end
 				end
 			end
 		end
 		if timely == 1 and learns(lastTimely) then
 			return lastTimely, fitting
+		end
+		if group == "shot" and fitting > 1 and oneSpell then
+			return oldestFitting, fitting
 		end
 		return fitting == 1 and lastFitting or nil, fitting
 	end
