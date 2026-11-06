@@ -49,28 +49,38 @@ local function isNextSwing(record)
 	return spell ~= nil and spell.nextSwing == true
 end
 
--- The Empty Reports of a Next-Swing Ability's frame. Live amounts are secret,
--- so isZeroWound cannot see one. The ability's frame has two physical WOUNDs
--- on its unit, the Empty Report first, and one Log Line (Warrior Trace). So
--- the first of two, when its amount is secret, is the Empty Report. With no
--- second WOUND, the first is the only Hit that the line can be for.
-local function emptyReportsIn(hits)
-	local empty, firstOn = {}, {}
+-- The Empty Report of a Next-Swing Ability's frame, or nil when none is clear.
+-- Live amounts are secret, so isZeroWound cannot see one. On the cast's target,
+-- the frame has this order in the Warrior Traces: the cast, a physical WOUND,
+-- the ability's Log Line, then the real physical WOUND. Any other shape can be
+-- other damage in the frame, so it keeps the usual Pairing. A second target of
+-- Cleave is not covered (no Trace).
+local function emptyReportIn(hits, lines, nextSwing)
+	local lineEntry
+	for _, line in ipairs(lines) do
+		if line.lineKind == nil or line.lineKind == "direct" then
+			lineEntry = line.entry
+			break
+		end
+	end
+	if not lineEntry then
+		return nil
+	end
+	local before, hasAfter
 	for _, hit in ipairs(hits) do
-		if hit.action == "WOUND" and isPhysical(hit) and not OWN_UNITS[hit.unit] then
-			local key = hit.life or hit.unit
-			local first = firstOn[key]
-			if first == nil then
-				firstOn[key] = hit
-			elseif first then
-				if issecretvalue(first.amount) then
-					empty[first] = true
-				end
-				firstOn[key] = false
+		if hit.unit == nextSwing.target and hit.entry > nextSwing.entry and hit.action == "WOUND" and isPhysical(hit) then
+			if hit.entry > lineEntry then
+				hasAfter = true
+			elseif before then
+				return nil
+			else
+				before = hit
 			end
 		end
 	end
-	return empty
+	if before and hasAfter and issecretvalue(before.amount) then
+		return before
+	end
 end
 
 -- The sort of Hit a UNIT_COMBAT action is, in the terms of
@@ -138,8 +148,8 @@ function Pairing.New(options)
 	local onDecision = options.onDecision
 	local frameTime
 	local frameHits, frameLines = {}, {}
-	-- When the player's latest Next-Swing Ability took effect.
-	local nextSwingTime
+	-- The cast of the player's latest Next-Swing Ability.
+	local nextSwing
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
 
@@ -208,9 +218,9 @@ function Pairing.New(options)
 		local time, hits, lines = frameTime, frameHits, frameLines
 		frameTime, frameHits, frameLines = nil, {}, {}
 		advance(time)
-		local empty = nextSwingTime == time and emptyReportsIn(hits) or {}
+		local empty = nextSwing and nextSwing.time == time and emptyReportIn(hits, lines, nextSwing)
 		for _, hit in ipairs(hits) do
-			if empty[hit] then
+			if hit == empty then
 				onDecision(hit, nil)
 			elseif not OWN_UNITS[hit.unit] then
 				decide(hit, lines)
@@ -236,7 +246,7 @@ function Pairing.New(options)
 			endFrame()
 		end
 		if record.kind == "cast" and isNextSwing(record) then
-			nextSwingTime = record.time
+			nextSwing = record
 		elseif record.kind == "hit" then
 			frameTime = record.time
 			frameHits[#frameHits + 1] = record

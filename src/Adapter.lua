@@ -247,7 +247,8 @@ function Adapter.New(onRecord)
 			-- entry[4] is the target's name, which can be secret.
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
-			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5] })
+			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5],
+				target = entry.target })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
 		end

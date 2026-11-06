@@ -28,9 +28,10 @@ end
 
 local HEROIC_STRIKE, FIREBALL = 78, 133
 
-local function cast(time, spellID, unit)
+local function cast(time, spellID, target)
 	entryCount = entryCount + 1
-	return { kind = "cast", time = time, entry = entryCount, stage = "SUCCEEDED", unit = unit or "player", spellID = spellID }
+	return { kind = "cast", time = time, entry = entryCount, stage = "SUCCEEDED", unit = "player", spellID = spellID,
+		target = target or "nameplate1" }
 end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
@@ -355,6 +356,46 @@ describe("Pairing", function()
 			local elsewhere = hit(1, "nameplate2", 1, "WOUND", "<secret>")
 			local decided = pair({ strike, only, direct, elsewhere })
 			assert.are.equal(direct.entry, decided[only.entry])
+		end)
+
+		local function physical()
+			return hit(1, "nameplate1", 1, "WOUND", "<secret>")
+		end
+
+		it("keeps a physical tick on another unit, and that unit's later Hit", function()
+			local rend = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local tick = line(1, "tick")
+			local strike = cast(1, HEROIC_STRIKE)
+			local empty = physical()
+			local direct = line(1, "direct")
+			local real = physical()
+			local party = hit(1, "nameplate2", 1, "WOUND", "<secret>")
+			local decided = pair({ rend, tick, strike, empty, direct, real, party })
+			assert.are.equal(tick.entry, decided[rend.entry])
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("keeps a physical tick that comes before the cast on the same unit", function()
+			local rend = physical()
+			local tick = line(1, "tick")
+			local strike = cast(1, HEROIC_STRIKE)
+			local empty = physical()
+			local direct = line(1, "direct")
+			local real = physical()
+			local decided = pair({ rend, tick, strike, empty, direct, real })
+			assert.are.equal(tick.entry, decided[rend.entry])
+			assert.is_false(decided[empty.entry])
+			assert.are.equal(direct.entry, decided[real.entry])
+		end)
+
+		it("drops nothing when two WOUNDs before the line make the Empty Report unclear", function()
+			local strike = cast(1, HEROIC_STRIKE)
+			local first, second = physical(), physical()
+			local direct = line(1, "direct")
+			local last = physical()
+			local decided = pair({ strike, first, second, direct, last })
+			assert.are.equal(direct.entry, decided[first.entry])
 		end)
 	end)
 

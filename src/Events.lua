@@ -146,7 +146,7 @@ local function onEvent(_, event, ...)
 			extra = { colouring = entry.colouring, hasPet = entry.hasPet }
 		elseif IS_CAST_EVENT[event] and unit == "player" then
 			-- The Nameplate of the player's target at this cast event, which the
-			-- cast need not aim at. No rule reads it yet; Traces keep it.
+			-- cast need not aim at. Pairing reads it for a Next-Swing Ability.
 			extra = { target = plateFor("target") }
 		end
 		ns.Recorder.Record(now, event, extra, ...)
