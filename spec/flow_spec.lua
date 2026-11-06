@@ -203,6 +203,21 @@ describe("Flow", function()
 		assert.are.same({ { descriptor = "", spellID = 78 }, { descriptor = "CRITICAL", spellID = 78 } }, strikes)
 	end)
 
+	-- The mob's Nameplate hid 0.267 s after the swing's Log Line, and the Hit
+	-- came 0.3 s after it, on softinteract only.
+	it("shows a melee killing blow whose Hit comes after the Nameplate hid", function()
+		local trace = Trace.Load("spec/traces/warrior-heroic-strike-2.lua")
+		local killingBlow
+		for _, result in ipairs((run(trace.entries))) do
+			if result.hit.time == 772370.993 then
+				killingBlow = result
+			end
+		end
+		assert.is_table(killingBlow)
+		assert.are.equal("melee", killingBlow.how)
+		assert.is_table(killingBlow.late)
+	end)
+
 	-- The Heroic Strikes of entries 53 and 94 do not kill, so their frames have
 	-- no killing blow line. Each of the three entries is the frame's last WOUND.
 	it("shows the real Hit of a Heroic Strike that does not kill", function()

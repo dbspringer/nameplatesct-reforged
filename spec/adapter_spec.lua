@@ -1,7 +1,8 @@
 -- Stand-in for a WoW secret: it errors when code compares, orders, or reads
 -- it. Lua 5.1 runs __eq only between two tables, so a compare with a plain
 -- value passes quietly; a spec that must catch a compare needs a secret on
--- both sides. Trace placeholders such as "<secret>" are public here.
+-- both sides. The Trace placeholder "<secret>" also counts as a secret, as a
+-- GUID that a Trace recorded as secret must not match another one.
 local SECRET = {
 	__eq = function() error("compared a secret") end,
 	__lt = function() error("compared a secret") end,
@@ -12,7 +13,7 @@ local function newSecret()
 	return setmetatable({}, SECRET)
 end
 _G.issecretvalue = function(value)
-	return getmetatable(value) == SECRET
+	return getmetatable(value) == SECRET or value == "<secret>"
 end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
@@ -179,6 +180,38 @@ describe("Adapter", function()
 			local secret = newSecret()
 			local records = run({ report(1, "nameplate1", "nameplate1", "WOUND", secret) })
 			assert.is_true(rawequal(records[1].amount, secret))
+		end)
+	end)
+
+	describe("a report with no plate after a Nameplate hid", function()
+		local function hide(time, guid)
+			return { time, "NAME_PLATE_UNIT_REMOVED", "nameplate2", guid = guid }
+		end
+
+		local function softReport(time, guid)
+			return { time, "UNIT_COMBAT", "softinteract", "WOUND", "", 29, 1, guid = guid }
+		end
+
+		it("joins the hidden Nameplate that has its public GUID", function()
+			local records = run({ hide(1, "Creature-1"), softReport(1.1, "Creature-1") })
+			assert.are.equal("nameplate2", records[1].unit)
+			assert.is_table(records[1].life.hid)
+		end)
+
+		it("stays on its token when the GUID is another unit's", function()
+			local records = run({ hide(1, "Creature-1"), softReport(1.1, "Creature-2") })
+			assert.are.equal("softinteract", records[1].unit)
+			assert.is_nil(records[1].life)
+		end)
+
+		it("stays on its token after the melee window", function()
+			local records = run({ hide(1, "Creature-1"), softReport(2.2, "Creature-1") })
+			assert.are.equal("softinteract", records[1].unit)
+		end)
+
+		it("stays on its token, with no compare, when the GUIDs are secret", function()
+			local records = run({ hide(1, newSecret()), softReport(1.1, newSecret()) })
+			assert.are.equal("softinteract", records[1].unit)
 		end)
 	end)
 

@@ -81,4 +81,18 @@ describe("Events, with no recording on", function()
 		assert.are.equal(1, #shown)
 		assert.are.equal("CRITICAL", shown[1].hit.descriptor)
 	end)
+
+	it("shows a melee killing blow whose Hit comes after the Nameplate hid", function()
+		guids.nameplate1, guids.softinteract = "Creature-1", "Creature-1"
+		local shown = start()
+		fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 0.85, 0.85, 0.85, 0)
+		fire("PLAYER_SWING", 2.9, 0)
+		now = 1.267
+		fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+		now = 1.3
+		fire("UNIT_COMBAT", "softinteract", "WOUND", "", "<secret>", 1)
+		finish()
+		assert.are.equal(1, #shown)
+		assert.is_table(shown[1].late)
+	end)
 end)
