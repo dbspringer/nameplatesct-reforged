@@ -121,6 +121,15 @@ describe("Flow", function()
 		assert.are.equal(0, wrongly)
 	end)
 
+	it("keeps the Seal after each Judgement of a live Paladin, and gives each Judgement its own icon", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-judgement.lua"))
+		local counts = {}
+		for _, result in ipairs(run(trace.entries)) do
+			counts[result.spellID or "none"] = (counts[result.spellID or "none"] or 0) + 1
+		end
+		assert.are.same({ 20, 11 }, { counts[21084], counts[20271] })
+	end)
+
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.
 	local FRAME = {}
 	local function added(time, token, frame)

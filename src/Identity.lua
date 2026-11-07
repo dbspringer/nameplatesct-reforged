@@ -47,6 +47,9 @@ local SEAL_DURATION = 30
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
 local SCHOOL_HOLY = 2
+-- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
+-- melee line is the longest, and this is well past it.
+local SEAL_CHANGE_AGE = 2
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
 -- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
@@ -88,6 +91,15 @@ local function firstTickFits(hit, spell, from, extra)
 	return since >= spell.interval - TICK_TOLERANCE and since <= spell.interval + TICK_TOLERANCE + extra
 end
 
+-- Whether a cast came before a Hit: by time, and in one frame by entry number,
+-- as they share a time.
+local function cameBefore(record, hit)
+	if record.time ~= hit.time then
+		return record.time < hit.time
+	end
+	return not record.entry or not hit.entry or record.entry < hit.entry
+end
+
 -- The key of a Hit's unit for its Tick Rhythms: its plate life (see
 -- Adapter.New), as one token shows other units over time, or the unit.
 local function plateOf(hit)
@@ -125,11 +137,14 @@ function Identity.New(saved)
 	-- tick (none yet after a landing), and ends when its duration ends.
 	-- Weak keys, so a plate life's rhythms go with the life.
 	local rhythms = setmetatable({}, { __mode = "k" })
-	-- The Active Seal, from the player's casts: { spellID, time }. nil also for
-	-- a Seal whose Seal Proc gets no icon.
-	local activeSeal
-	-- When the player last cast Consecration.
-	local consecratedAt
+	-- The changes of the Active Seal, from the player's casts, oldest first:
+	-- { time, entry, spellID }, with no spellID when none is active or its Seal
+	-- Proc gets no icon. A Hit can be decided after a later cast (Flow gives a
+	-- frame's casts to Identity before its Hits), so a Hit looks up the Seal of
+	-- its own moment.
+	local sealChanges = {}
+	-- The player's last cast of Consecration, or one that could be: { time, entry }.
+	local consecration
 	-- The times of the player's latest swing lines that landed, oldest first.
 	local swingLines = {}
 
@@ -263,20 +278,26 @@ function Identity.New(saved)
 	-- or nil: a proc has no cast and no Tick Rhythm, so only the Seal being on
 	-- the player and a landed swing just before tie it to the Seal.
 	local function sealProc(hit, school, miss)
-		if not activeSeal or not (miss or school == SCHOOL_HOLY) then
+		if not (miss or school == SCHOOL_HOLY) then
 			return nil
 		end
-		local age = hit.time - activeSeal.time
-		if age < 0 or age > SEAL_DURATION then
+		local seal
+		for _, change in ipairs(sealChanges) do
+			if not cameBefore(change, hit) then
+				break
+			end
+			seal = change
+		end
+		if not seal or not seal.spellID or hit.time - seal.time > SEAL_DURATION then
 			return nil
 		end
-		if consecratedAt and hit.time - consecratedAt <= CONSECRATION_DURATION then
+		if consecration and cameBefore(consecration, hit) and hit.time - consecration.time <= CONSECRATION_DURATION then
 			return nil
 		end
 		for _, time in ipairs(swingLines) do
 			local sinceSwing = hit.time - time
 			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
-				return activeSeal.spellID
+				return seal.spellID
 			end
 		end
 	end
@@ -402,22 +423,31 @@ function Identity.New(saved)
 		return fits == 1 and not crowded and found or nil
 	end
 
-	-- Keeps the Active Seal and Consecration's time from a cast of the player. A
-	-- cast whose spell ID is secret could be a Judgement, so the Seal ends.
+	-- Keeps the changes of the Active Seal, which a late Hit can still need, and
+	-- the change that was in force before them.
+	local function changeSeal(record, spellID)
+		while sealChanges[2] and record.time - sealChanges[2].time > SEAL_CHANGE_AGE do
+			table.remove(sealChanges, 1)
+		end
+		sealChanges[#sealChanges + 1] = { time = record.time, entry = record.entry, spellID = spellID }
+	end
+
+	-- Follows the Active Seal and Consecration from a cast of the player. A cast
+	-- whose spell ID is secret could be another Seal or Consecration, so it counts
+	-- as both. Judgement does not end a Seal on Forever: 26 of 77 Judgements in
+	-- the Traces had a proc of the same Seal after them with no recast.
 	local function noteSealCast(record, secret)
 		if secret then
-			activeSeal = nil
+			changeSeal(record, nil)
+			consecration = record
 			return
 		end
 		local spellID = record.spellID
 		local proc = ns.Seals[spellID]
-		local direct = ns.DirectSpells[spellID]
 		if proc ~= nil then
-			activeSeal = proc and { spellID = spellID, time = record.time } or nil
-		elseif direct and direct.endsSeal then
-			activeSeal = nil
+			changeSeal(record, proc and spellID or nil)
 		elseif ns.ConsecrationSpells[spellID] then
-			consecratedAt = record.time
+			consecration = record
 		end
 	end
 

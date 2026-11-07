@@ -39,14 +39,14 @@ local function shoots(school, ids)
 	end
 end
 
--- How long after its cast a Judgement's Hit can come. Other players' 34 Hits and
--- misses in the Traces came within 0.1 s. Its damage is another spell, so only
--- this nearness ties it to the cast. It uses up the Active Seal (see ns.Seals).
-local JUDGEMENT_WINDOW = 0.15
+-- How long after its cast a Judgement's Hit can come. A live Paladin's 11 Hits and
+-- misses came up to 0.166 s after it, and other players' 34 within 0.1 s. Its
+-- damage is another spell, so only this nearness ties it to the cast.
+local JUDGEMENT_WINDOW = 0.2
 
 local function judges(ids)
 	for _, id in ipairs(ids) do
-		spells[id] = { school = HOLY, window = JUDGEMENT_WINDOW, endsSeal = true }
+		spells[id] = { school = HOLY, window = JUDGEMENT_WINDOW }
 	end
 end
 
