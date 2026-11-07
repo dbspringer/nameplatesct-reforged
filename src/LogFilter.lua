@@ -16,9 +16,11 @@ ns.LogFilter = LogFilter
 local OWN_SOURCES = { [0x4511] = true, [0x3111] = true }
 -- Saved colours are the floats the fix wrote, or 8-bit ones after an edit.
 local SAVED_TOLERANCE = 0.005
+-- A damage shield's Hit, such as Thorns, comes in the frame of its line (a
+-- live Druid recording, 2026-11-07: 9 of 9), and with no line it is lost.
 local EVENTS = {
-	"SWING_DAMAGE", "RANGE_DAMAGE", "SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE",
-	"SWING_MISSED", "RANGE_MISSED", "SPELL_MISSED", "SPELL_PERIODIC_MISSED",
+	"SWING_DAMAGE", "RANGE_DAMAGE", "SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE", "DAMAGE_SHIELD",
+	"SWING_MISSED", "RANGE_MISSED", "SPELL_MISSED", "SPELL_PERIODIC_MISSED", "DAMAGE_SHIELD_MISSED",
 }
 
 -- The table at parent[key], made empty first when it is not a table.
