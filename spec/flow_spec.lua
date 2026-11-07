@@ -104,6 +104,61 @@ describe("Flow", function()
 		assert.are.equal(50, shown[1].hit.amount)
 	end)
 
+	it("gives Seal of Righteousness to the Seal Procs of a live Paladin, and to no other Hit", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-seal.lua"))
+		local shown = run(trace.entries)
+		local procs, wrongly = 0, 0
+		for _, result in ipairs(shown) do
+			if result.spellID == 20154 then
+				if result.hit.school == 2 and result.lineKind == "direct" then
+					procs = procs + 1
+				else
+					wrongly = wrongly + 1
+				end
+			end
+		end
+		assert.are.equal(49, procs)
+		assert.are.equal(0, wrongly)
+	end)
+
+	it("keeps the Seal after each Judgement of a live Paladin, and gives each Judgement its own icon", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-judgement.lua"))
+		local counts = {}
+		for _, result in ipairs(run(trace.entries)) do
+			counts[result.spellID or "none"] = (counts[result.spellID or "none"] or 0) + 1
+		end
+		assert.are.same({ 20, 11 }, { counts[21084], counts[20271] })
+	end)
+
+	it("gives no icon when a live Paladin's Judgement and Seal Proc share a frame, and keeps the Seal across fights", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-seal-fights.lua"))
+		local counts, holyWithNone = {}, 0
+		for _, result in ipairs(run(trace.entries)) do
+			counts[result.spellID or "none"] = (counts[result.spellID or "none"] or 0) + 1
+			if not result.spellID and result.hit.school == 2 then
+				holyWithNone = holyWithNone + 1
+			end
+		end
+		assert.are.same({ 25, 10, 4 }, { counts[21084], counts[20271], holyWithNone })
+	end)
+
+	-- Counts alone hid a Touch of the Grave miss with the Seal's icon.
+	it("gives the Seal only to Holy Hits on direct lines, and not to another proc's miss before a real proc", function()
+		local spellOf = {}
+		for _, name in ipairs({ "paladin-seal", "paladin-judgement", "paladin-seal-fights" }) do
+			local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
+			for _, result in ipairs(run(trace.entries)) do
+				if name == "paladin-seal-fights" then
+					spellOf[result.hit.entry] = result.spellID or "none"
+				end
+				if result.spellID == 20154 or result.spellID == 21084 then
+					assert.are.same({ "WOUND", 2, "direct" }, { result.hit.action, result.hit.school, result.lineKind })
+				end
+			end
+		end
+		assert.are.same({ "none", 21084 }, { spellOf[275], spellOf[278] })
+	end)
+
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.
 	local FRAME = {}
 	local function added(time, token, frame)

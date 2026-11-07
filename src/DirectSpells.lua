@@ -15,9 +15,9 @@ local _, ns = ...
 -- (TraitDefinition), also where no trainer or talent is known to teach it,
 -- and the ranged attacks; the Classic spells' schools agree with the Classic
 -- Era data. Left out, among others: spells whose damage comes from another
--- spell (Arcane Missiles, Hellfire, Execute, Judgement), procs (poisons,
--- weapon enchants, seals), totems, and Mana Burn. Holy Shock, whose damage a
--- script makes, is in, so that its Hit on an enemy gets its icon; the cost is
+-- spell (Arcane Missiles, Hellfire, Execute), procs (poisons, weapon enchants;
+-- a Seal Proc has its own rule, see ns.Seals), totems, and Mana Burn. Holy
+-- Shock, whose damage a script makes, is in, so that its Hit on an enemy gets its icon; the cost is
 -- that its cast on a friend, which heals, competes with the casts that could
 -- have made a Holy Hit.
 
@@ -38,6 +38,43 @@ local function shoots(school, ids)
 		spells[id] = { school = school, shot = true }
 	end
 end
+
+-- How long after its cast a Judgement's Hit can come. A live Paladin's 11 Hits and
+-- misses came up to 0.166 s after it, and other players' 34 within 0.1 s. Its
+-- damage is another spell, so only this nearness ties it to the cast.
+local JUDGEMENT_WINDOW = 0.2
+
+local function judges(ids)
+	for _, id in ipairs(ids) do
+		spells[id] = { school = HOLY, window = JUDGEMENT_WINDOW }
+	end
+end
+
+-- The Seals, by the spell ID of their cast, from Forever's spell data, each with
+-- whether its Seal Proc gets an icon (see Identity's sealProc). Any Seal's cast
+-- replaces the Active Seal. Seal of Martyrdom also procs Holy damage, but no
+-- Trace has it, so it only replaces the last Seal.
+local seals = {}
+ns.Seals = seals
+
+local function sealsWith(proc, ids)
+	for _, id in ipairs(ids) do
+		seals[id] = proc
+	end
+end
+
+sealsWith(true, { 20154, 20287, 20288, 20289, 20290, 20291, 20292, 20293, 21084 }) -- Righteousness
+sealsWith(true, { 20375, 20915, 20918, 20919, 20920 }) -- Command
+sealsWith(true, { 20163, 20419, 20421, 20422, 20423, 1311649, 1311656 }) -- Fury, Forever only
+sealsWith(false, { 20164 }) -- Justice
+sealsWith(false, { 20165, 20347, 20348, 20349 }) -- Light
+sealsWith(false, { 20166, 20356, 20357 }) -- Wisdom
+sealsWith(false, { 20162, 20305, 20306, 20307, 20308, 21082 }) -- the Crusader
+sealsWith(false, { 407798 }) -- Martyrdom
+
+-- Consecration's casts. Its ticks are direct Holy Hits with no cast of their
+-- own, so during it they cannot be told from a Seal Proc (see Identity).
+ns.ConsecrationSpells = { [20116] = true, [20922] = true, [20923] = true, [20924] = true, [26573] = true }
 
 -- A Next-Swing Ability: its frame has an Empty Report before the real Hit (see
 -- Pairing.New). Seen on Heroic Strike in the Warrior Trace and on other
@@ -106,6 +143,7 @@ do
 	hits(HOLY, { 678, 679, 680, 1866, 2495, 5569, 10332, 10333 }) -- Holy Strike, Forever only
 	hits(HOLY, { 1311606, 20473, 20929, 20930 }) -- Holy Shock; Forever's first rank, then the Classic ranks
 	hits(HOLY, { 407632 }) -- Hammer of the Righteous
+	judges({ 20271 }) -- Judgement
 
 	-- Priest
 	hits(HOLY, { 585, 591, 598, 984, 1004, 6060, 10933, 10934 }) -- Smite

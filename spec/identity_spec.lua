@@ -47,7 +47,7 @@ end
 local function hitEntry(time, unit, school)
 	return { time, "UNIT_COMBAT", unit, "WOUND", "", 10, school, plate = unit:match("^nameplate") and unit or nil }
 end
-local LINE_EVENTS = { direct = "SPELL_DAMAGE", tick = "SPELL_PERIODIC_DAMAGE" }
+local LINE_EVENTS = { direct = "SPELL_DAMAGE", tick = "SPELL_PERIODIC_DAMAGE", swing = "SWING_DAMAGE" }
 local function lineEntry(time, lineKind)
 	local colour = ns.LineKind.EventColours()[LINE_EVENTS[lineKind]]
 	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind" }
@@ -70,6 +70,215 @@ local function shownSpells(entries, saved)
 end
 
 describe("Spell Identity", function()
+	describe("of a Seal Proc", function()
+		local RIGHTEOUSNESS, COMMAND, FURY, WISDOM, MARTYRDOM = 20154, 20375, 1311649, 20166, 407798
+		local JUDGEMENT, EXORCISM = 20271, 879
+
+		local function swing(identity, time, fields)
+			local line = { kind = "line", time = time, lineKind = "swing" }
+			for key, value in pairs(fields or {}) do
+				line[key] = value
+			end
+			identity.Line(line)
+		end
+
+		-- An Identity with Seal of Righteousness cast at 1, and a landed swing's
+		-- line at 5.
+		local function sealed()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			swing(identity, 5)
+			return identity
+		end
+
+		it("gives the Active Seal to a Holy Hit on a direct line, up to 0.15 s after a swing line", function()
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5, "direct", HOLY))
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5.117, "direct", HOLY))
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5.149, "direct", HOLY))
+		end)
+
+		it("gives each Seal that deals damage, by its own cast", function()
+			for _, seal in ipairs({ RIGHTEOUSNESS, COMMAND, FURY, 21084, 20920, 20163 }) do
+				local identity = Identity.New({})
+				cast(identity, 1, seal)
+				swing(identity, 5)
+				assert.are.equal(seal, of(identity, 5, "direct", HOLY))
+			end
+		end)
+
+		it("gives none to a miss, as another on-hit proc's miss looks the same", function()
+			assert.is_nil(of(sealed(), 5, "directMiss", PHYSICAL))
+		end)
+
+		it("gives none away from a swing line", function()
+			assert.is_nil(of(sealed(), 5.16, "direct", HOLY))
+			assert.is_nil(of(sealed(), 4.99, "direct", HOLY))
+			local noSwing = Identity.New({})
+			cast(noSwing, 1, RIGHTEOUSNESS)
+			assert.is_nil(of(noSwing, 5, "direct", HOLY))
+		end)
+
+		it("gives none after a swing that missed, or the pet's swing", function()
+			for _, fields in ipairs({ { lineKind = "swingMiss" }, { pet = true } }) do
+				local identity = Identity.New({})
+				cast(identity, 1, RIGHTEOUSNESS)
+				swing(identity, 5, fields)
+				assert.is_nil(of(identity, 5, "direct", HOLY))
+			end
+		end)
+
+		it("gives none to another school or another Line Kind", function()
+			assert.is_nil(of(sealed(), 5, "direct", PHYSICAL))
+			assert.is_nil(of(sealed(), 5, "tick", HOLY))
+			assert.is_nil(of(sealed(), 5, "direct", "<secret>"))
+		end)
+
+		it("ends the Active Seal after 30 s", function()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			swing(identity, 31)
+			assert.are.equal(RIGHTEOUSNESS, of(identity, 31, "direct", HOLY))
+			swing(identity, 31.5)
+			assert.is_nil(of(identity, 31.5, "direct", HOLY))
+		end)
+
+		it("takes the latest Seal, and a Seal with no proc in scope ends the last one", function()
+			local identity = sealed()
+			cast(identity, 2, COMMAND)
+			assert.are.equal(COMMAND, of(identity, 5, "direct", HOLY))
+			for _, other in ipairs({ WISDOM, MARTYRDOM }) do
+				local replaced = sealed()
+				cast(replaced, 2, other)
+				assert.is_nil(of(replaced, 5, "direct", HOLY))
+			end
+		end)
+
+		it("keeps the Active Seal after a Judgement cast, as Forever's Judgement does not end it", function()
+			local identity = sealed()
+			cast(identity, 3, JUDGEMENT)
+			assert.are.equal(RIGHTEOUSNESS, of(identity, 5, "direct", HOLY))
+		end)
+
+		it("ends the Active Seal at a cast whose spell ID is secret, as it could be another Seal", function()
+			local identity = sealed()
+			cast(identity, 3, "<secret>")
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+		end)
+
+		it("gives none during Consecration, whose ticks look the same", function()
+			local during = sealed()
+			cast(during, 3, CONSECRATION)
+			assert.is_nil(of(during, 5, "direct", HOLY))
+			local rank = sealed()
+			cast(rank, 3, 26573)
+			assert.is_nil(of(rank, 5, "direct", HOLY))
+			local after = Identity.New({})
+			cast(after, 1, RIGHTEOUSNESS)
+			cast(after, 2, CONSECRATION)
+			swing(after, 10.5)
+			assert.are.equal(RIGHTEOUSNESS, of(after, 10.5, "direct", HOLY))
+		end)
+
+		it("gives none when another cast could explain the Hit too", function()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			cast(identity, 4.9, EXORCISM)
+			swing(identity, 5)
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+			-- The cast stays for its own Hit, which comes away from the swing.
+			assert.are.equal(EXORCISM, of(identity, 5.3, "direct", HOLY))
+		end)
+
+		it("gives Judgement to a Holy Hit or a miss up to 0.2 s after its cast, and not later", function()
+			local function judged()
+				local identity = Identity.New({})
+				cast(identity, 1, RIGHTEOUSNESS)
+				cast(identity, 5, JUDGEMENT)
+				return identity
+			end
+			assert.are.equal(JUDGEMENT, of(judged(), 5, "direct", HOLY))
+			assert.are.equal(JUDGEMENT, of(judged(), 5.166, "direct", HOLY))
+			assert.are.equal(JUDGEMENT, of(judged(), 5.1, "directMiss", PHYSICAL))
+			assert.is_nil(of(judged(), 5.21, "direct", HOLY))
+			assert.is_nil(of(judged(), 5, "direct", PHYSICAL))
+		end)
+
+		it("gives none after a secret cast for Consecration's whole time, as it could be Consecration", function()
+			local identity = Identity.New({})
+			cast(identity, 1, "<secret>")
+			cast(identity, 2.6, RIGHTEOUSNESS)
+			swing(identity, 4)
+			assert.is_nil(of(identity, 4, "direct", HOLY))
+			swing(identity, 9.5)
+			assert.are.equal(RIGHTEOUSNESS, of(identity, 9.5, "direct", HOLY))
+		end)
+
+		describe("through Flow, when a cast and a Hit come close together", function()
+			local function swingEntries(time)
+				return { time, "PLAYER_SWING", 2.9, 0 }, lineEntry(time, "swing")
+			end
+			local function procEntries(time)
+				local swingRecord, swingLine = swingEntries(time)
+				return { swingRecord, swingLine, hitEntry(time, "nameplate1", HOLY), lineEntry(time, "direct") }
+			end
+			local function entriesOf(...)
+				local entries = {}
+				for _, group in ipairs({ ... }) do
+					for _, entry in ipairs(group) do
+						entries[#entries + 1] = entry
+					end
+				end
+				return entries
+			end
+
+			it("keeps the old Seal for a Proc that came before a new Seal's cast in its frame", function()
+				assert.are.same({ RIGHTEOUSNESS }, shownSpells(entriesOf({ castEntry(1, RIGHTEOUSNESS) }, procEntries(5),
+					{ castEntry(5, COMMAND) })))
+			end)
+
+			it("gives the new Seal to a Proc after its cast in the frame", function()
+				assert.are.same({ COMMAND }, shownSpells(entriesOf({ castEntry(1, RIGHTEOUSNESS), castEntry(5, COMMAND) },
+					procEntries(5))))
+			end)
+
+			it("gives none to a Hit that could be a Proc or a Judgement's, and Judgement once no swing is near", function()
+				assert.are.same({ "none", "none" }, shownSpells(entriesOf({ castEntry(1, RIGHTEOUSNESS) }, procEntries(5),
+					{ castEntry(5, JUDGEMENT), hitEntry(5.05, "nameplate1", HOLY), lineEntry(5.05, "direct") })))
+				assert.are.same({ JUDGEMENT }, shownSpells({ castEntry(1, RIGHTEOUSNESS), castEntry(5, JUDGEMENT),
+					hitEntry(5, "nameplate1", HOLY), lineEntry(5, "direct") }))
+			end)
+
+			it("gives none to Holy Hits near a Judgement during Consecration, whichever comes first", function()
+				local function holy(time)
+					return { hitEntry(time, "nameplate1", HOLY), lineEntry(time, "direct") }
+				end
+				assert.are.same({ "none", "none" }, shownSpells(entriesOf({ castEntry(2, CONSECRATION), castEntry(5.95, JUDGEMENT) },
+					holy(6), holy(6.1))))
+				assert.are.same({ "none" }, shownSpells(entriesOf({ castEntry(2, CONSECRATION), castEntry(6, JUDGEMENT) },
+					holy(6))))
+			end)
+
+			it("still counts Consecration for a Hit decided after a later cast that could be Consecration", function()
+				local swingRecord, swingLine = swingEntries(5)
+				assert.are.same({ "none" }, shownSpells({ castEntry(1, RIGHTEOUSNESS), castEntry(2, CONSECRATION), swingRecord,
+					swingLine, hitEntry(5, "nameplate1", HOLY), castEntry(5.05, "<secret>"), lineEntry(5.1, "direct") }))
+			end)
+
+			it("keeps the Seal of the Hit's time for a Hit whose line came late", function()
+				local swingRecord, swingLine = swingEntries(5)
+				assert.are.same({ RIGHTEOUSNESS }, shownSpells({ castEntry(1, RIGHTEOUSNESS), swingRecord, swingLine,
+					hitEntry(5, "nameplate1", HOLY), castEntry(5.05, COMMAND), lineEntry(5.1, "direct") }))
+			end)
+		end)
+
+		it("gives none when Judgement and another cast both fit", function()
+			local identity = Identity.New({})
+			cast(identity, 4.9, EXORCISM)
+			cast(identity, 5, JUDGEMENT)
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+		end)
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}

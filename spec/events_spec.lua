@@ -96,6 +96,45 @@ describe("Events, with no recording on", function()
 		assert.are.equal("shot", shown[1].lineKind)
 	end)
 
+	describe("under a Log Filter that colours lines by kind", function()
+		before_each(function()
+			_G.Blizzard_CombatLog_Filters = { currentFilter = 1, filters = { { settings = { lineColoring = true, lineColorPriority = 3 } } } }
+		end)
+		after_each(function()
+			_G.Blizzard_CombatLog_Filters = nil
+		end)
+
+		it("gives a Seal Proc the Active Seal's spell", function()
+			local shown = start()
+			fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 20154)
+			now = 5
+			fire("PLAYER_SWING", 2.9, 0)
+			fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 0.85, 0.85, 0.85, 0)
+			fire("COMBAT_LOG_MESSAGE", "|Ky2|k", 1, 0.85, 0.25, 0)
+			fire("UNIT_COMBAT", "nameplate1", "WOUND", "", "<secret>", 2)
+			finish()
+			assert.are.equal(1, #shown)
+			assert.are.equal(20154, shown[1].spellID)
+		end)
+
+		it("gives a Judgement's Hit Judgement, and a later Seal Proc the Seal that it did not end", function()
+			local shown = start()
+			fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 21084)
+			now = 5
+			fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-2", 20271)
+			fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0)
+			fire("UNIT_COMBAT", "nameplate1", "WOUND", "", "<secret>", 2)
+			now = 6
+			fire("PLAYER_SWING", 2.9, 0)
+			fire("COMBAT_LOG_MESSAGE", "|Ky2|k", 0.85, 0.85, 0.85, 0)
+			fire("COMBAT_LOG_MESSAGE", "|Ky3|k", 1, 0.85, 0.25, 0)
+			fire("UNIT_COMBAT", "nameplate1", "WOUND", "", "<secret>", 2)
+			finish()
+			assert.are.equal(2, #shown)
+			assert.are.same({ 20271, 21084 }, { shown[1].spellID, shown[2].spellID })
+		end)
+	end)
+
 	it("shows a melee killing blow whose Hit comes after the Nameplate hid", function()
 		guids.nameplate1, guids.softinteract = "Creature-1", "Creature-1"
 		local shown = start()
