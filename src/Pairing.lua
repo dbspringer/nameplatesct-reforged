@@ -8,7 +8,8 @@ ns.Pairing = Pairing
 -- up to 0.334 s early on the live client, at 2.3 yd (warlock-wand-overlap, 41
 -- shots at 2 to 37 yd). Most of a shot's flight comes before its line, and the
 -- gap after it has no clear tie to distance. Melee came one Swing Delay
--- early: 0.37 s (the player) and 0.52 to 0.98 s (the pet).
+-- early: 0.28 s or more in the Traces, with no clean sample under MELEE_FROM,
+-- so a Hit before that is another unit's.
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
@@ -146,7 +147,7 @@ local function fits(hit, line, isShotTarget)
 		return nil
 	end
 	local age = hit.time - line.time
-	if age >= 0 and age <= SHORT_WINDOW then
+	if age >= 0 and age <= SHORT_WINDOW and not ns.LineKind.IsMelee(line.lineKind) then
 		return "short"
 	end
 	if age >= 0 and age <= SHOT_WINDOW and SHOT_KINDS[line.lineKind] and isShotTarget(hit) then
@@ -158,17 +159,34 @@ local function fits(hit, line, isShotTarget)
 	end
 end
 
--- Takes from lines the first one that suits the Hit, a shot line last: it can
--- wait for its own Hit, and another line in the frame cannot.
+-- Takes from the lines of the Hit's frame the first one that suits the Hit, a
+-- shot line last: it can wait for its own Hit, and another line in the frame
+-- cannot. A melee line stays, as its Hit comes one Swing Delay later.
 local function takeSuited(hit, lines)
 	for i, line in ipairs(lines) do
-		if suits(hit, line) and not SHOT_KINDS[line.lineKind] then
+		if suits(hit, line) and not SHOT_KINDS[line.lineKind] and not ns.LineKind.IsMelee(line.lineKind) then
 			return table.remove(lines, i)
 		end
 	end
 	for i, line in ipairs(lines) do
-		if suits(hit, line) then
+		if suits(hit, line) and not ns.LineKind.IsMelee(line.lineKind) then
 			return table.remove(lines, i)
+		end
+	end
+end
+
+-- The first melee line in list that this Hit came too early for, and that no
+-- other early Hit waits on. Events are timed when the addon gets them, so a
+-- frame hitch could bring a swing's line and Hit close together (no Trace shows
+-- this). So the Hit waits: a later Hit that fits takes the line, as the real
+-- Hit's Swing Delay is still to come, and if none does, this Hit gets the line
+-- once the line is over.
+local function earlyMeleeLine(hit, list)
+	for _, line in ipairs(list) do
+		local age = hit.time - line.time
+		if ns.LineKind.IsMelee(line.lineKind) and not line.early and suits(hit, line)
+			and age >= 0 and age <= SHORT_WINDOW then
+			return line
 		end
 	end
 end
@@ -181,7 +199,8 @@ end
 -- line when the Hit is not yours; an error in it drops the rest of that
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier, or SHOT_WINDOW for a shot),
--- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
+-- "melee" (a line one Swing Delay earlier, or a melee line that its early Hit
+-- waited on), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none.
 function Pairing.New(options)
@@ -231,7 +250,10 @@ function Pairing.New(options)
 			onDecision(hit, found, found and "late")
 		end
 		while waitingLines[1] and now - waitingLines[1].time > MELEE_TO do
-			table.remove(waitingLines, 1)
+			local line = table.remove(waitingLines, 1)
+			if line.early then
+				onDecision(line.early, line, "melee")
+			end
 		end
 	end
 
@@ -257,9 +279,17 @@ function Pairing.New(options)
 				end
 			end
 			if found then
+				if found.early then
+					onDecision(found.early, nil)
+				end
 				onDecision(hit, found, how)
 			else
-				heldHits[#heldHits + 1] = hit
+				local line = earlyMeleeLine(hit, waitingLines) or earlyMeleeLine(hit, lines)
+				if line then
+					line.early = hit
+				else
+					heldHits[#heldHits + 1] = hit
+				end
 			end
 		end
 	end

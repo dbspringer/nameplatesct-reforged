@@ -441,6 +441,32 @@ describe("Pairing", function()
 		assert.is_false(decided[other.entry])
 	end)
 
+	it("gives a melee line to no Hit before its Swing Delay, so another player's Hit cannot take it", function()
+		for _, case in ipairs({ { "swing", "WOUND" }, { "swingMiss", "DODGE" } }) do
+			local inFrame, sameFrame, real = line(1, case[1]), hit(1, "nameplate1", 1, case[2]), hit(1.37, "nameplate1", 1, case[2])
+			local early, soon, realLater = line(3, case[1]), hit(3.05, "nameplate1", 1, case[2]), hit(3.37, "nameplate1", 1, case[2])
+			local decided = pair({ inFrame, sameFrame, real, early, soon, realLater })
+			assert.are.same({ false, inFrame.entry, false, early.entry },
+				{ decided[sameFrame.entry], decided[real.entry], decided[soon.entry], decided[realLater.entry] })
+		end
+	end)
+
+	it("gives a melee line to its early Hit once the line is over, when no later Hit took it", function()
+		local inFrame, sameFrame = line(1, "swing"), hit(1, "nameplate1", 1)
+		local early, soon = line(3, "swing"), hit(3.05, "nameplate1", 1)
+		local tooLate = line(5, "swing")
+		local afterWindow = hit(5.2, "nameplate1", 1)
+		local decided = pair({ inFrame, sameFrame, early, soon, tooLate, afterWindow })
+		assert.are.same({ inFrame.entry, early.entry, false },
+			{ decided[sameFrame.entry], decided[soon.entry], decided[afterWindow.entry] })
+	end)
+
+	it("lets one early Hit wait on a melee line, and decides each Hit once", function()
+		local swing, first, second = line(1, "swing"), hit(1, "nameplate1", 1), hit(1, "nameplate2", 1)
+		local decided = pair({ swing, first, second })
+		assert.are.same({ swing.entry, false }, { decided[first.entry], decided[second.entry] })
+	end)
+
 	it("gives no late melee line to a Hit, as a melee line comes before its Hit", function()
 		local other, swing, real = hit(1, "nameplate2", 1), line(1.1, "swing"), hit(1.6, "nameplate1", 1)
 		local decided = pair({ other, swing, real })

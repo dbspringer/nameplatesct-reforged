@@ -81,6 +81,29 @@ describe("Flow", function()
 		assert.are.equal("swing", shown[1].lineKind)
 	end)
 
+	it("shows a swing whose line and Hit a frame hitch delivers close together", function()
+		local swing = ns.LineKind.EventColours().SWING_DAMAGE
+		for _, gap in ipairs({ 0, 0.041 }) do
+			local shown = run({
+				{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+				{ 1 + gap, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
+			})
+			assert.are.equal(1, #shown)
+			assert.are.equal(29, shown[1].hit.amount)
+		end
+	end)
+
+	it("shows the later Hit, not the early one, when both could be the swing's", function()
+		local swing = ns.LineKind.EventColours().SWING_DAMAGE
+		local shown = run({
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
+			{ 1.37, "UNIT_COMBAT", "nameplate1", "WOUND", "", 50, 1, plate = "nameplate1" },
+		})
+		assert.are.equal(1, #shown)
+		assert.are.equal(50, shown[1].hit.amount)
+	end)
+
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.
 	local FRAME = {}
 	local function added(time, token, frame)
