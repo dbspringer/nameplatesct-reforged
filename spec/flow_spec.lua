@@ -42,6 +42,18 @@ local function entriesOf(results)
 end
 
 describe("Flow", function()
+	it("shows a spell's Hit that comes a frame after its line, with its spell", function()
+		local shown = run({
+			{ 0.5, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+			{ 1, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast", 5176, nil, target = "nameplate1" },
+			{ 1.083, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind" },
+			{ 1.2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 10, 8, plate = "nameplate1", canAttack = true },
+		})
+		assert.are.equal(1, #shown)
+		assert.are.equal(5176, shown[1].spellID)
+		assert.is_nil(shown[1].swinger)
+	end)
+
 	describe("a Weapon Proc", function()
 		local function directLine(time)
 			return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind" }
@@ -57,6 +69,17 @@ describe("Flow", function()
 			assert.are.equal(1, #shown)
 			assert.are.equal("player", shown[1].swinger)
 			assert.is_nil(shown[1].spellID)
+		end)
+
+		it("keeps the swing look on a Hit that comes soon after its line", function()
+			local shown = run({
+				{ 0.5, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+				{ 1, "PLAYER_SWING", 3.3, 0 },
+				directLine(1),
+				{ 1.143, "UNIT_COMBAT", "nameplate1", "WOUND", "", 10, 1, plate = "nameplate1", canAttack = true },
+			})
+			assert.are.equal(1, #shown)
+			assert.are.equal("player", shown[1].swinger)
 		end)
 
 		it("shows on a Nameplate that hid before the last Hit", function()
