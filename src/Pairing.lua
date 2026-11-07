@@ -175,6 +175,22 @@ local function takeSuited(hit, lines)
 	end
 end
 
+-- The first melee line in list that this Hit came too early for, and that no
+-- other early Hit waits on. Events are timed when the addon gets them, so a
+-- frame hitch could bring a swing's line and Hit close together (no Trace shows
+-- this). So the Hit waits: a later Hit that fits takes the line, as the real
+-- Hit's Swing Delay is still to come, and if none does, this Hit gets the line
+-- once the line is over.
+local function earlyMeleeLine(hit, list)
+	for _, line in ipairs(list) do
+		local age = hit.time - line.time
+		if ns.LineKind.IsMelee(line.lineKind) and not line.early and suits(hit, line)
+			and age >= 0 and age <= SHORT_WINDOW then
+			return line
+		end
+	end
+end
+
 -- Pairs each Hit from the adapter with the Log Line that proves it is the
 -- player's or the pet's, or decides that it is someone else's. Records go in
 -- through Push in the adapter's order. Tick(now) closes the open frame and
@@ -183,7 +199,8 @@ end
 -- line when the Hit is not yours; an error in it drops the rest of that
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier, or SHOT_WINDOW for a shot),
--- "melee" (a line one Swing Delay earlier), or "late" (a line after the Hit).
+-- "melee" (a line one Swing Delay earlier, or a melee line that its early Hit
+-- waited on), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none.
 function Pairing.New(options)
@@ -233,7 +250,10 @@ function Pairing.New(options)
 			onDecision(hit, found, found and "late")
 		end
 		while waitingLines[1] and now - waitingLines[1].time > MELEE_TO do
-			table.remove(waitingLines, 1)
+			local line = table.remove(waitingLines, 1)
+			if line.early then
+				onDecision(line.early, line, "melee")
+			end
 		end
 	end
 
@@ -259,9 +279,17 @@ function Pairing.New(options)
 				end
 			end
 			if found then
+				if found.early then
+					onDecision(found.early, nil)
+				end
 				onDecision(hit, found, how)
 			else
-				heldHits[#heldHits + 1] = hit
+				local line = earlyMeleeLine(hit, waitingLines) or earlyMeleeLine(hit, lines)
+				if line then
+					line.early = hit
+				else
+					heldHits[#heldHits + 1] = hit
+				end
 			end
 		end
 	end
