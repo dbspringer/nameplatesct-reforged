@@ -2,7 +2,7 @@
 
 ## 4
 
-- Your Windfury hits now show their numbers, with the look of your melee hits. Before, most of them went missing. Other players' physical hits can sometimes show as yours right after a proc, mostly in groups, and that isn't tested yet.
+- Your Windfury hits now show their numbers, with the look of your melee hits. Before, most of them went missing. Right after a proc, another player's physical hit can sometimes show as yours and your own number can go missing, mostly in groups. That isn't tested yet.
 
 ## 3
 

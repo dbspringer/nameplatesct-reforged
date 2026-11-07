@@ -528,6 +528,23 @@ describe("Pairing", function()
 			assert.are.equal(procLine.entry, decided[procHit.entry])
 		end)
 
+		it("pairs a proc's Hit when its line came before the swing in their frame", function()
+			local procLine, procHit = line(1, "direct"), hit(1.5, nil, PHYSICAL)
+			local decided = pair({ procLine, swing(1), procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("pairs a proc's Hit when its line came before the physical ability in their frame", function()
+			local procLine, procHit = line(1, "direct"), hit(1.5, nil, PHYSICAL)
+			local decided = pair({ procLine, cast(1, STORMSTRIKE), procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone when the swing came in a frame after the line", function()
+			local procHit = hit(1.5, nil, PHYSICAL)
+			assert.is_false(pair({ line(1, "direct"), swing(1.1), procHit })[procHit.entry])
+		end)
+
 		it("pairs a proc's miss", function()
 			local procLine, procHit = line(1, "directMiss"), hit(1.75, nil, PHYSICAL, "DODGE")
 			local decided = pair({ swing(1), procLine, procHit })

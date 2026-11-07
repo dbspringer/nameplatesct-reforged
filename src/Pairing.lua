@@ -32,7 +32,8 @@ local SCHOOL_PHYSICAL = 1
 -- no words, so that they are Windfury's comes from the issue and this pattern.
 -- Nothing tells such a line from a physical ability's or a Seal Proc's, so one
 -- whose Hit does not come stays for any physical Hit. Another player's can take
--- it, and no Trace has a Shaman in a group to show how often that happens.
+-- it, which also loses the real Hit if the proc's own line is the one it took,
+-- and no Trace has a Shaman in a group to show how often that happens.
 local PROC_AFTER_SWING = 0.15
 local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 
@@ -343,7 +344,12 @@ function Pairing.New(options)
 				decide(hit, lines)
 			end
 		end
+		-- Only here is every swing and cast of the frame in, as a line can come
+		-- before its strike in one frame (5 direct lines in the Warrior and Paladin
+		-- Traces). A swing or cast of a later frame ends this frame first.
 		for _, line in ipairs(lines) do
+			line.mayBeProc = lastStrike ~= nil and line.time - lastStrike <= PROC_AFTER_SWING
+				and DIRECT_KINDS[line.lineKind] == true
 			waitingLines[#waitingLines + 1] = line
 		end
 	end
@@ -374,8 +380,6 @@ function Pairing.New(options)
 		elseif record.kind == "line" then
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
-			record.mayBeProc = lastStrike ~= nil and record.time - lastStrike <= PROC_AFTER_SWING
-				and DIRECT_KINDS[record.lineKind] == true
 		elseif record.kind == "swing" and record.swingType ~= ns.Adapter.RANGED_SWING then
 			lastStrike = record.time
 		end
