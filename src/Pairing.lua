@@ -4,13 +4,16 @@ local Pairing = {}
 ns.Pairing = Pairing
 
 -- How long before its Hit a Log Line can come. Spells came up to 0.066 s early
--- in the Warlock Traces. A wand's shot came up to 0.034 s early on the beta and
+-- in the Warlock Traces, and a Druid's Wrath 0.117 s early, a frame apart (live,
+-- 2026-11-07). A Weapon Proc's Hit can come from 0.143 s (see PROC_AFTER_SWING),
+-- which this must stay under, or that Hit pairs as a spell's and loses its swing
+-- look. A wand's shot came up to 0.034 s early on the beta and
 -- up to 0.334 s early on the live client, at 2.3 yd (warlock-wand-overlap, 41
 -- shots at 2 to 37 yd). Most of a shot's flight comes before its line, and the
 -- gap after it has no clear tie to distance. Melee came one Swing Delay
 -- early: 0.28 s or more in the Traces, with no clean sample under MELEE_FROM,
 -- so a Hit before that is another unit's.
-local SHORT_WINDOW = 0.1
+local SHORT_WINDOW = 0.125
 local SHOT_WINDOW = 0.35
 -- How long a shot can fly, so how long its cast's target can still take its
 -- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd

@@ -3,6 +3,7 @@
 ## 4
 
 - The "Scale Down Small Hits", "Small Hits Scale", "Hide Small Hits", and "Hide Hits Threshold" options are gone. The game only lets addons display a hit's amount, not compare it, so these options did nothing.
+- Your spell hits no longer lose their number when the hit lands a moment after the game logs it. This fixes the occasional missing Wrath.
 - Your Windfury hits now show their numbers, with the look of your melee hits. Before, most of them went missing. Right after a proc, another player's physical hit can sometimes show as yours and your own number can go missing, mostly in groups. That isn't tested yet.
 
 ## 3
