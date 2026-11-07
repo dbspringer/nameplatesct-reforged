@@ -1,5 +1,9 @@
 # Changelog
 
+## 4
+
+- Your Windfury hits now show their numbers, with the look of your melee hits. Before, most of them went missing. Other players' physical hits can sometimes show as yours right after a proc, mostly in groups, and that isn't tested yet.
+
 ## 3
 
 - Your Seal of Righteousness, Seal of Command, and Seal of Fury numbers now show the Seal's icon, and your Judgement shows its icon, so a Seal's pale yellow crit no longer looks like a melee crit. They now count as those spells in the Spell Filter, not as `unknown`. Neither has an icon while your Consecration is up, and a Seal's number has none after a reload until you cast a Seal again. A missed Seal proc has no icon either.

@@ -204,8 +204,8 @@ describe("Adapter", function()
 			assert.is_nil(records[1].life)
 		end)
 
-		it("stays on its token after the melee window", function()
-			local records = run({ hide(1, "Creature-1"), softReport(2.2, "Creature-1") })
+		it("stays on its token after the late report window", function()
+			local records = run({ hide(1, "Creature-1"), softReport(2.5, "Creature-1") })
 			assert.are.equal("softinteract", records[1].unit)
 		end)
 

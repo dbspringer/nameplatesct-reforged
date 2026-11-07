@@ -62,6 +62,10 @@ _Avoid_: My hit, own damage, player damage
 The time by which a melee Log Line comes before its Hit. It changes with the weapon.
 _Avoid_: Melee lag, offset
 
+**Weapon Proc**:
+An extra attack from a weapon enchant, such as Windfury Weapon. Its Log Line looks like a direct spell's, but its Hit comes about as late as a swing's, and its Plate Text looks like a swing.
+_Avoid_: Extra swing, Windfury hit
+
 **Next-Swing Ability**:
 An ability that replaces the player's next melee swing, such as Maul, Heroic Strike, or Raptor Strike.
 _Avoid_: On-next-hit ability, queued attack

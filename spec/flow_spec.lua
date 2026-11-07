@@ -41,6 +41,36 @@ local function entriesOf(results)
 end
 
 describe("Flow", function()
+	describe("a Weapon Proc", function()
+		local function directLine(time)
+			return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind" }
+		end
+
+		it("shows as a swing with no spell", function()
+			local shown = run({
+				{ 0.5, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+				{ 1, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast", 17364, nil, target = "nameplate1" },
+				directLine(1),
+				{ 1.5, "UNIT_COMBAT", "nameplate1", "WOUND", "", 10, 1, plate = "nameplate1", canAttack = true },
+			})
+			assert.are.equal(1, #shown)
+			assert.are.equal("melee", shown[1].how)
+			assert.is_nil(shown[1].spellID)
+		end)
+
+		it("shows on a Nameplate that hid before the last Hit", function()
+			local frame = {}
+			local shown = run({
+				{ 0.5, "NAME_PLATE_UNIT_ADDED", "nameplate1", frame = frame },
+				{ 1, "PLAYER_SWING", 3.3, 0 },
+				directLine(1),
+				{ 1.28, "NAME_PLATE_UNIT_REMOVED", "nameplate1", frame = frame, guid = "Creature-1" },
+				{ 2.41, "UNIT_COMBAT", "softinteract", "WOUND", "", 10, 1, guid = "Creature-1", canAttack = true },
+			})
+			assert.are.equal(1, #shown)
+			assert.are.equal(frame, shown[1].late.frame)
+		end)
+	end)
 	it("sends Your Hit with no Nameplate to noPlate, not to show", function()
 		local shown, plateless = run({
 			{ 1, "UNIT_COMBAT", "target", "WOUND", "", 29, 32 },

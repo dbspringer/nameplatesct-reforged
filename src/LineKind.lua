@@ -34,6 +34,10 @@ local KINDS = {
 -- 0.70 grey (COMBATLOG_DEFAULT_COLORS unitColoring), so a line in any other
 -- colour is another unit's, or the player's highlighted killing blow.
 local OWN_BY_SOURCE = { r = 0.70, g = 0.70, b = 0.70 }
+-- The longest a Weapon Proc's Hit comes after its Log Line. Pairing keeps a proc
+-- line this long, and the adapter a Nameplate that hid, as the kill can hide it
+-- before the Hit comes. The longest seen is 1.41 s (a Shaman's Trace, issue #48).
+LineKind.LONGEST_PROC_DELAY = 1.45
 -- Blizzard's lineColorPriority values, and the colouring each one gives.
 local BY_SOURCE, BY_EVENT_TYPE = 1, 3
 local COLOURINGS = { [BY_SOURCE] = "source", [BY_EVENT_TYPE] = "kind" }
