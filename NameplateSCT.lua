@@ -160,11 +160,7 @@ local defaults = {
 			miss = false,
 			missScale = 1.5,
 
-			smallHits = true,
-			smallHitsScale = 0.66,
-			smallHitsHide = false,
 			autoattackcritsizing = true,
-			hideSmallHitsThreshold = 0,
 		},
 
 		animations = {
@@ -215,9 +211,6 @@ end
 ---------------------
 -- LOCAL CONSTANTS --
 ---------------------
-
-local SMALL_HIT_EXPIRY_WINDOW = 30
-local SMALL_HIT_MULTIPIER = 0.5
 
 local ANIMATION_VERTICAL_DISTANCE = 75
 
@@ -877,23 +870,11 @@ function NameplateSCT:truncateText(amount)
 	return ns.Amount.Format(amount, self.db.global, eastAsiaLetter)
 end
 
-local numDamageEvents = 0
-local lastDamageEventTime
-local runningAverageDamageEvents = 0
-
 -- swinger is who swung, "player" or "pet", or nil for a Hit that is no
 -- swing. texture is the icon's texture, or nil for none.
 function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
-	-- A Secret Amount can only be shown, so the options that compare an
-	-- amount pass it by.
-	local secret = issecretvalue(amount)
-	if not secret then
+	if not issecretvalue(amount) then
 		amount = amount or 0
-	end
-
-	-- Hide small hits based on threshold
-	if not secret and self.db.global.sizing.hideSmallHitsThreshold > amount then
-		return
 	end
 
 	local text, color, animation
@@ -931,28 +912,6 @@ function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
         text = self:truncateText(amount)
         color = self:TextColor(school, swinger, crit)
     end
-
-	-- shrink small hits
-	if (self.db.global.sizing.smallHits or self.db.global.sizing.smallHitsHide) and not secret then
-		if (not lastDamageEventTime or (lastDamageEventTime + SMALL_HIT_EXPIRY_WINDOW < GetTime())) then
-			numDamageEvents = 0
-			runningAverageDamageEvents = 0
-		end
-
-		runningAverageDamageEvents = ((runningAverageDamageEvents*numDamageEvents) + amount)/(numDamageEvents + 1)
-		numDamageEvents = numDamageEvents + 1
-		lastDamageEventTime = GetTime()
-
-		if ((not crit and amount < SMALL_HIT_MULTIPIER*runningAverageDamageEvents)
-			or (crit and amount/2 < SMALL_HIT_MULTIPIER*runningAverageDamageEvents)) then
-			if self.db.global.sizing.smallHitsHide then
-				-- skip this damage event, it's too small
-				return
-			else
-				size = size * self.db.global.sizing.smallHitsScale
-			end
-		end
-	end
 
 	-- embiggen crit's size
 	if (self.db.global.sizing.crits and crit) then
@@ -1758,49 +1717,6 @@ local menu = {
 					width = "double",
 				},
 
-				smallHits = {
-					type = 'toggle',
-					name = L["Scale Down Small Hits"],
-					desc = L["Scale down hits that are below a running average of your recent damage output"],
-					disabled = function() return not NameplateSCT.db.global.enabled or NameplateSCT.db.global.sizing.smallHitsHide end,
-					get = function() return NameplateSCT.db.global.sizing.smallHits end,
-					set = function(_, newValue) NameplateSCT.db.global.sizing.smallHits = newValue end,
-					order = 20,
-				},
-				smallHitsScale = {
-					type = 'range',
-					name = L["Small Hits Scale"],
-					desc = "",
-					disabled = function() return not NameplateSCT.db.global.enabled or not NameplateSCT.db.global.sizing.smallHits or NameplateSCT.db.global.sizing.smallHitsHide end,
-					min = 0.33,
-					max = 1,
-					step = .01,
-					get = function() return NameplateSCT.db.global.sizing.smallHitsScale end,
-					set = function(_, newValue) NameplateSCT.db.global.sizing.smallHitsScale = newValue end,
-					order = 21,
-					width = "double",
-				},
-				smallHitsHide = {
-					type = 'toggle',
-					name = L["Hide Small Hits"],
-					desc = L["Hide hits that are below a running average of your recent damage output"],
-					get = function() return NameplateSCT.db.global.sizing.smallHitsHide end,
-					set = function(_, newValue) NameplateSCT.db.global.sizing.smallHitsHide = newValue end,
-					order = 22,
-				},
-				hideSmallHitsThreshold = {
-					type = 'range',
-					name = L["Hide Hits Threshold"],
-					desc = L["Hide hits that are below this threshold."],
-					min = 0,
-					max = 10000000,
-					softMax = 10000,
-					step = 1,
-					get = function() return NameplateSCT.db.global.sizing.hideSmallHitsThreshold end,
-					set = function(_, newValue) NameplateSCT.db.global.sizing.hideSmallHitsThreshold = newValue end,
-					order = 23,
-					width = "full",
-				},
 			},
 		},
 
