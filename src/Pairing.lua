@@ -13,6 +13,7 @@ ns.Pairing = Pairing
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
+local DIRECT_KINDS = { direct = true, directMiss = true }
 -- How long a shot can fly, so how long its cast's target can still take its
 -- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd
 -- (warlock-wand-range), about 0.05 s per yard. This leaves room for a Hunter's
@@ -24,6 +25,17 @@ local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- line, but Forever Combat Text waits this long for a late spell line.
 local HOLD = 0.15
 local SCHOOL_PHYSICAL = 1
+-- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
+-- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
+-- after the swing or Stormstrike that made them, and their Hits 0.143 to 1.41 s
+-- after the lines, with one more at 2.3 s that this leaves out. Those lines have
+-- no words, so that they are Windfury's comes from the issue and this pattern.
+-- Nothing tells such a line from a physical ability's or a Seal Proc's, so one
+-- whose Hit does not come stays for any physical Hit. Another player's can take
+-- it, which also loses the real Hit if the proc's own line is the one it took,
+-- and no Trace has a Shaman in a group to show how often that happens.
+local PROC_AFTER_SWING = 0.15
+local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
@@ -69,6 +81,16 @@ local function isNextSwing(record)
 	end
 	local spell = ns.DirectSpells[record.spellID]
 	return spell ~= nil and spell.nextSwing == true
+end
+
+-- Whether a cast record is the player's physical ability taking effect, which
+-- can make a Weapon Proc.
+local function isStrike(record)
+	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) then
+		return false
+	end
+	local spell = ns.DirectSpells[record.spellID]
+	return spell ~= nil and spell.school == SCHOOL_PHYSICAL and not spell.shot
 end
 
 -- The Empty Report of a Next-Swing Ability's frame, or nil when none is clear.
@@ -138,8 +160,8 @@ local function earlyWindow(line)
 end
 
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
--- "melee", or nil when it does not fit. Only a melee line, or one of unknown
--- kind, comes one Swing Delay early. A shot line past SHORT_WINDOW fits only a
+-- "melee", or nil when it does not fit. Only a melee line, one of unknown kind,
+-- or a Weapon Proc's comes one Swing Delay early. A shot line past SHORT_WINDOW fits only a
 -- Hit on a recent shot's target, as all live shots' Hits in the Traces were, so another
 -- unit's Hit cannot take it. Another player's Hit on that unit still can.
 local function fits(hit, line, isShotTarget)
@@ -152,6 +174,9 @@ local function fits(hit, line, isShotTarget)
 	end
 	if age >= 0 and age <= SHOT_WINDOW and SHOT_KINDS[line.lineKind] and isShotTarget(hit) then
 		return "short"
+	end
+	if line.mayBeProc and age >= 0 and age <= PROC_TO and isPhysical(hit) then
+		return "melee"
 	end
 	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
 		and (not line.lineKind or ns.LineKind.IsMelee(line.lineKind)) then
@@ -199,8 +224,8 @@ end
 -- line when the Hit is not yours; an error in it drops the rest of that
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier, or SHOT_WINDOW for a shot),
--- "melee" (a line one Swing Delay earlier, or a melee line that its early Hit
--- waited on), or "late" (a line after the Hit).
+-- "melee" (a line one Swing Delay earlier, a melee line that its early Hit
+-- waited on, or a Weapon Proc's line), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none.
 function Pairing.New(options)
@@ -209,6 +234,9 @@ function Pairing.New(options)
 	local frameHits, frameLines = {}, {}
 	-- The cast of the player's latest Next-Swing Ability.
 	local nextSwing
+	-- When the player last swung or used a physical ability, which can make a
+	-- Weapon Proc.
+	local lastStrike
 	-- The player's ranged attacks that can still be in flight, oldest first.
 	local shots = {}
 
@@ -249,7 +277,7 @@ function Pairing.New(options)
 			local found = index and table.remove(waitingLines, index) or nil
 			onDecision(hit, found, found and "late")
 		end
-		while waitingLines[1] and now - waitingLines[1].time > MELEE_TO do
+		while waitingLines[1] and now - waitingLines[1].time > (waitingLines[1].mayBeProc and PROC_TO or MELEE_TO) do
 			local line = table.remove(waitingLines, 1)
 			if line.early then
 				onDecision(line.early, line, "melee")
@@ -316,7 +344,12 @@ function Pairing.New(options)
 				decide(hit, lines)
 			end
 		end
+		-- Only here is every swing and cast of the frame in, as a line can come
+		-- before its strike in one frame (5 direct lines in the Warrior and Paladin
+		-- Traces). A swing or cast of a later frame ends this frame first.
 		for _, line in ipairs(lines) do
+			line.mayBeProc = lastStrike ~= nil and line.time - lastStrike <= PROC_AFTER_SWING
+				and DIRECT_KINDS[line.lineKind] == true
 			waitingLines[#waitingLines + 1] = line
 		end
 	end
@@ -324,12 +357,15 @@ function Pairing.New(options)
 	local pairing = {}
 
 	-- Casts and Swings do not open a frame, though a later one closes the open
-	-- frame, which Flow relies on. Swings pass by, and of the casts Pairing notes
-	-- only a Next-Swing Ability and a ranged attack (Flow gives all casts to Spell
-	-- Identity).
+	-- frame, which Flow relies on. Of the swings Pairing notes only the time of a
+	-- melee one, and of the casts only a physical ability, a Next-Swing Ability,
+	-- and a ranged attack (Flow gives all casts to Spell Identity).
 	function pairing.Push(record)
 		if frameTime and record.time ~= frameTime then
 			endFrame()
+		end
+		if record.kind == "cast" and isStrike(record) then
+			lastStrike = record.time
 		end
 		if record.kind == "cast" and isNextSwing(record) then
 			nextSwing = record
@@ -344,6 +380,8 @@ function Pairing.New(options)
 		elseif record.kind == "line" then
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
+		elseif record.kind == "swing" and record.swingType ~= ns.Adapter.RANGED_SWING then
+			lastStrike = record.time
 		end
 	end
 

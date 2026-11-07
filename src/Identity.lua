@@ -531,7 +531,9 @@ function Identity.New(saved)
 
 	-- Of for each { hit, line } of decisions that came together, with
 	-- whether each tick is crowded. A resisted tick reports school 1 whatever
-	-- its spell, so only real ticks crowd.
+	-- its spell, so only real ticks crowd. A Hit paired as melee has no spell. A
+	-- Weapon Proc's line is a direct one, but its Hit must not use up a cast that
+	-- it did not come from.
 	function identity.OfAll(decisions)
 		local spellIDs = {}
 		for i, decision in ipairs(decisions) do
@@ -544,7 +546,9 @@ function Identity.New(saved)
 					end
 				end
 			end
-			spellIDs[i] = identity.Of(decision.hit, decision.line, crowded)
+			if decision.how ~= "melee" then
+				spellIDs[i] = identity.Of(decision.hit, decision.line, crowded)
+			end
 		end
 		return spellIDs
 	end

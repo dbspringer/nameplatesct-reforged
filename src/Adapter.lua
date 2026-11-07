@@ -12,8 +12,9 @@ local NO_PLATE = "<no plate>"
 -- How long after a Nameplate hides a report on its unit can still come. A
 -- melee Hit comes one Swing Delay after its Log Line, and the kill can hide the
 -- Nameplate first (Warrior Trace: hide at 0.267 s, Hit at 0.300 s, on
--- softinteract only). This matches Pairing's melee window.
-local LATE_REPORT_WINDOW = 1.1
+-- softinteract only). A Weapon Proc's Hit can come later than a swing's, so this
+-- is the longer of the two delays.
+local LATE_REPORT_WINDOW = ns.LineKind.LONGEST_PROC_DELAY
 
 -- Hits on the player and the pet stay, so Pairing can give the Log Lines for
 -- heals and self-damage to them, not to an enemy's Hit. Events.lua records
@@ -69,6 +70,7 @@ local function byEntry(a, b)
 end
 
 local RANGED_SWING = 2 -- Enum.PlayerSwingType.Ranged
+Adapter.RANGED_SWING = RANGED_SWING
 
 -- PLAYER_SWING comes for the player's own swings only, in the frame of the
 -- swing's Log Line (each of the player's 20 swing lines in the Warlock Traces

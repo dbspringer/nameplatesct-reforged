@@ -41,7 +41,8 @@ end
 -- is the rule that paired it (see Pairing.New), and lineKind the Line Kind of
 -- its Log Line, or nil when the colour told none. With no Line Kind, a Hit that paired as
 -- melee is the best sign of a swing; a swing whose line came in its own frame
--- then does not count.
+-- then does not count. A Weapon Proc's Hit pairs as melee too, so it looks like
+-- a swing: the Hits of a proc and of its swing cannot be told apart.
 function Filter.IsSwing(how, lineKind)
 	return how == "melee" or ns.LineKind.IsMelee(lineKind)
 end

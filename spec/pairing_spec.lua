@@ -504,6 +504,84 @@ describe("Pairing", function()
 		assert.are.equal(tickLine.entry, pair({ tickLine, tick })[tick.entry])
 	end)
 
+	describe("a Weapon Proc", function()
+		local PHYSICAL, FIRE, MELEE, RANGED, STORMSTRIKE = 1, 4, 0, 2, 17364
+
+		local function swing(time, swingType)
+			entryCount = entryCount + 1
+			return { kind = "swing", time = time, entry = entryCount, swingType = swingType or MELEE }
+		end
+
+		it("pairs every Hit of a proc whose lines came with the swing's", function()
+			local swingLine = line(1, "swing")
+			local first, second = line(1.101, "direct"), line(1.101, "direct")
+			local hits = { hit(1.244, nil, PHYSICAL), hit(1.852, nil, PHYSICAL), hit(2.506, nil, PHYSICAL) }
+			local decided = pair({ swing(1), swingLine, first, second, hits[1], hits[2], hits[3] })
+			assert.are.equal(first.entry, decided[hits[1].entry])
+			assert.are.equal(swingLine.entry, decided[hits[2].entry])
+			assert.are.equal(second.entry, decided[hits[3].entry])
+		end)
+
+		it("pairs a proc's Hit after a physical ability with no swing", function()
+			local procLine, procHit = line(1, "direct"), hit(1.144, nil, PHYSICAL)
+			local decided = pair({ cast(1, STORMSTRIKE), procLine, procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("pairs a proc's Hit when its line came before the swing in their frame", function()
+			local procLine, procHit = line(1, "direct"), hit(1.5, nil, PHYSICAL)
+			local decided = pair({ procLine, swing(1), procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("pairs a proc's Hit when its line came before the physical ability in their frame", function()
+			local procLine, procHit = line(1, "direct"), hit(1.5, nil, PHYSICAL)
+			local decided = pair({ procLine, cast(1, STORMSTRIKE), procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone when the swing came in a frame after the line", function()
+			local procHit = hit(1.5, nil, PHYSICAL)
+			assert.is_false(pair({ line(1, "direct"), swing(1.1), procHit })[procHit.entry])
+		end)
+
+		it("pairs a proc's miss", function()
+			local procLine, procHit = line(1, "directMiss"), hit(1.75, nil, PHYSICAL, "DODGE")
+			local decided = pair({ swing(1), procLine, procHit })
+			assert.are.equal(procLine.entry, decided[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone when a direct line came with no swing", function()
+			local procHit = hit(1.5, nil, PHYSICAL)
+			assert.is_false(pair({ line(1, "direct"), procHit })[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone when the line came after a wand's swing", function()
+			local procHit = hit(1.5, nil, PHYSICAL)
+			assert.is_false(pair({ swing(1, RANGED), line(1, "direct"), procHit })[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone after a spell that is not physical", function()
+			local procHit = hit(1.5, nil, PHYSICAL)
+			assert.is_false(pair({ cast(1, FIREBALL), line(1, "direct"), procHit })[procHit.entry])
+		end)
+
+		it("leaves a physical Hit alone when the line came well after the swing", function()
+			local procHit = hit(1.8, nil, PHYSICAL)
+			assert.is_false(pair({ swing(1), line(1.3, "direct"), procHit })[procHit.entry])
+		end)
+
+		it("gives a late proc line to no Hit that is not physical", function()
+			local procHit = hit(1.5, nil, FIRE)
+			assert.is_false(pair({ swing(1), line(1, "direct"), procHit })[procHit.entry])
+		end)
+
+		it("gives its line to no Hit past the longest delay", function()
+			local procHit = hit(2.5, nil, PHYSICAL)
+			assert.is_false(pair({ swing(1), line(1, "direct"), procHit })[procHit.entry])
+		end)
+	end)
+
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
