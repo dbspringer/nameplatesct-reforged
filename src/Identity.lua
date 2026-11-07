@@ -20,10 +20,8 @@ ns.Identity = Identity
 -- Shoot up to 0.63 s after the cast in the Warlock Traces; a cast at long
 -- range flies longer.
 local DIRECT_WINDOW = 1.5
--- A ranged attack can fly longer: a wand's Shoot landed up to 1.72 s after its
--- cast at 32 yd (warlock-wand-range), about 0.05 s per yard. This leaves room
--- for a Hunter's longer range, an estimate from wand data.
-local SHOT_FLIGHT = 2.5
+-- A ranged attack can fly longer.
+local SHOT_FLIGHT = ns.Pairing.SHOT_FLIGHT
 -- How much later than its time a Hit can be decided, with a margin: Pairing
 -- decides a held Hit up to its HOLD plus SHOT_WINDOW (0.5 s) late, at the
 -- next Tick. Casts stay this much longer.

@@ -5,7 +5,7 @@
 
 local Import = {}
 
-local DEFAULT_WOW_DIR = "/Applications/World of Warcraft/_classic_beta_"
+local DEFAULT_WOW_DIR = "/Applications/World of Warcraft/_forever_"
 -- Margin around the Trace, so the label script also sees the lines that a
 -- Hit at either end pairs with.
 local MARGIN_MS = 10000

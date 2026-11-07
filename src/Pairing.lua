@@ -13,8 +13,11 @@ local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
 -- How long a shot can fly, so how long its cast's target can still take its
--- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd.
+-- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd
+-- (warlock-wand-range), about 0.05 s per yard. This leaves room for a Hunter's
+-- longer range, an estimate from wand data. Spell Identity uses it too.
 local SHOT_FLIGHT = 2.5
+Pairing.SHOT_FLIGHT = SHOT_FLIGHT
 local MELEE_FROM, MELEE_TO = 0.25, 1.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.

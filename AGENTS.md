@@ -1,6 +1,6 @@
 # nameplatesct-reforged
 
-A WoW addon that draws NameplateSCT's combat text above enemy nameplates on the Forever client (`_classic_beta_`, 1.60.x, Interface 16001). It is seeded from Justw8/NameplateSCT (MIT, remote `upstream`; read only, push to `origin`). Forever closes the combat log to addons and can make amounts secret, so the upstream data path is replaced; the renderer, animations, and Ace3 options stay. Client-specific code stays in one module, so a Retail TOC remains a small later step.
+A WoW addon that draws NameplateSCT's combat text above enemy nameplates on the Forever client (`_forever_`, 1.60.x, Interface 16001). It is seeded from Justw8/NameplateSCT (MIT, remote `upstream`; read only, push to `origin`). Forever closes the combat log to addons and can make amounts secret, so the upstream data path is replaced; the renderer, animations, and Ace3 options stay. Client-specific code stays in one module, so a Retail TOC remains a small later step.
 
 ## Agent skills
 
@@ -29,7 +29,7 @@ Plans, research, and other working notes live in the Obsidian vault, under `Name
 
 - An amount, and anything derived from it, can be a Secret Amount. Pass it only to display calls (`SetText`, `SetFormattedText`) and to `AbbreviateNumbers` or `BreakUpLargeNumbers`; compare or calculate with it only after `issecretvalue` says it is public.
 - A Lua field that addon code writes on a Blizzard frame or table taints the Blizzard code that reads it. Test any technique that touches Blizzard frames in combat, with a small `/run` first, before building on it.
-- Settle a client fact with an in-game test or the installed addons in `_classic_beta_/Interface/AddOns/`, and label any fact you have not tested as unverified.
+- Settle a client fact with an in-game test or the installed addons in `_forever_/Interface/AddOns/`, and label any fact you have not tested as unverified.
 
 ## Conventions
 
