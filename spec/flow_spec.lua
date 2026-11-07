@@ -55,7 +55,7 @@ describe("Flow", function()
 				{ 1.5, "UNIT_COMBAT", "nameplate1", "WOUND", "", 10, 1, plate = "nameplate1", canAttack = true },
 			})
 			assert.are.equal(1, #shown)
-			assert.are.equal("melee", shown[1].how)
+			assert.are.equal("player", shown[1].swinger)
 			assert.is_nil(shown[1].spellID)
 		end)
 
