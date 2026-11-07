@@ -130,6 +130,18 @@ describe("Flow", function()
 		assert.are.same({ 20, 11 }, { counts[21084], counts[20271] })
 	end)
 
+	it("gives no icon when a live Paladin's Judgement and Seal Proc share a frame, and keeps the Seal across fights", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-seal-fights.lua"))
+		local counts, holyWithNone = {}, 0
+		for _, result in ipairs(run(trace.entries)) do
+			counts[result.spellID or "none"] = (counts[result.spellID or "none"] or 0) + 1
+			if not result.spellID and result.hit.school == 2 then
+				holyWithNone = holyWithNone + 1
+			end
+		end
+		assert.are.same({ 26, 10, 4 }, { counts[21084], counts[20271], holyWithNone })
+	end)
+
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.
 	local FRAME = {}
 	local function added(time, token, frame)
