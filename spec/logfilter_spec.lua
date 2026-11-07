@@ -54,6 +54,17 @@ describe("LogFilter", function()
 		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
+	it("finds a filter that sends no damage shield lines fixable, and the fix turns them on", function()
+		for _, event in ipairs({ "DAMAGE_SHIELD", "DAMAGE_SHIELD_MISSED" }) do
+			local saved = fixedFilters()
+			saved.filters[1].filters[1].eventList[event] = nil
+			assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+			LogFilter.Fix(saved, MY_ACTIONS)
+			assert.is_true(saved.filters[1].filters[1].eventList[event])
+			assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		end
+	end)
+
 	it("adds Done By you and your pet, and picks My actions", function()
 		local saved = fixedFilters()
 		saved.filters[1].filters[1].sourceFlags = { [ME] = true }
