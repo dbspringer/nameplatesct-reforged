@@ -104,6 +104,23 @@ describe("Flow", function()
 		assert.are.equal(50, shown[1].hit.amount)
 	end)
 
+	it("gives Seal of Righteousness to the Seal Procs of a live Paladin, and to no other Hit", function()
+		local trace = assert(Trace.Load("spec/traces/paladin-seal.lua"))
+		local shown = run(trace.entries)
+		local procs, wrongly = 0, 0
+		for _, result in ipairs(shown) do
+			if result.spellID == 20154 then
+				if result.hit.school == 2 and result.lineKind == "direct" then
+					procs = procs + 1
+				else
+					wrongly = wrongly + 1
+				end
+			end
+		end
+		assert.are.equal(49, procs)
+		assert.are.equal(0, wrongly)
+	end)
+
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.
 	local FRAME = {}
 	local function added(time, token, frame)

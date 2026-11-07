@@ -41,6 +41,9 @@ function Flow.New(options)
 	})
 	-- A cast goes in after Pairing has decided the frames before it.
 	local adapter = ns.Adapter.New(function(record)
+		if record.kind == "line" then
+			identity.Line(record)
+		end
 		pairing.Push(record)
 		if record.kind == "cast" then
 			pending[#pending + 1] = { cast = record }

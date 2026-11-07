@@ -37,6 +37,16 @@ local AGREEING_HITS = 2
 -- a spell that does not travel: the Warlock Traces show these misses at the
 -- cast's own time.
 local MISS_WINDOW = 0.1
+-- A Seal Proc comes just after the swing that landed it: 302 of 307 of
+-- Righteousness and all 7 of Command in the Traces, of all players, came within
+-- this of their swing's event, and 1 of 2 of Fury (no swing in the file for the
+-- other). A live Paladin's 49 came up to 0.117 s after their swing line.
+local SEAL_PROC_WINDOW = 0.15
+-- A Seal's aura lasted its full 30.0 s in the Paladin Trace.
+local SEAL_DURATION = 30
+-- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
+local CONSECRATION_DURATION = 8.2
+local SCHOOL_HOLY = 2
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
 -- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
@@ -97,8 +107,9 @@ end
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
--- Cast(record) takes the adapter's cast records. Of(hit, line, crowded)
--- gives the spell ID of Your Hit on an enemy, or nil; Hits come in about the
+-- Cast(record) takes the adapter's cast records, and Line(record) its Log
+-- Lines. Of(hit, line, crowded) gives the spell ID of Your Hit on an enemy, or
+-- nil; Hits come in about the
 -- order of their time, a held Hit up to DECIDE_LATE late. crowded says that
 -- another tick that could be the same spell's came at the same time on the
 -- same unit.
@@ -114,6 +125,13 @@ function Identity.New(saved)
 	-- tick (none yet after a landing), and ends when its duration ends.
 	-- Weak keys, so a plate life's rhythms go with the life.
 	local rhythms = setmetatable({}, { __mode = "k" })
+	-- The Active Seal, from the player's casts: { spellID, time }. nil also for
+	-- a Seal whose Seal Proc gets no icon.
+	local activeSeal
+	-- When the player last cast Consecration.
+	local consecratedAt
+	-- The times of the player's latest swing lines that landed, oldest first.
+	local swingLines = {}
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -177,9 +195,11 @@ function Identity.New(saved)
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
 		local oldestFitting, oneSpell = nil, true
-		local window = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
+		local groupWindow = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
+			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+			local window = direct and direct.window or groupWindow
 			if not cast.used and age >= 0 and age <= window and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
@@ -239,6 +259,28 @@ function Identity.New(saved)
 		return fitting
 	end
 
+	-- The Active Seal's spell if this direct Hit or miss could be its Seal Proc,
+	-- or nil: a proc has no cast and no Tick Rhythm, so only the Seal being on
+	-- the player and a landed swing just before tie it to the Seal.
+	local function sealProc(hit, school, miss)
+		if not activeSeal or not (miss or school == SCHOOL_HOLY) then
+			return nil
+		end
+		local age = hit.time - activeSeal.time
+		if age < 0 or age > SEAL_DURATION then
+			return nil
+		end
+		if consecratedAt and hit.time - consecratedAt <= CONSECRATION_DURATION then
+			return nil
+		end
+		for _, time in ipairs(swingLines) do
+			local sinceSwing = hit.time - time
+			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
+				return activeSeal.spellID
+			end
+		end
+	end
+
 	local function ofDirect(hit, group, school, miss, plate)
 		local areaCasts
 		if group == "direct" then
@@ -256,7 +298,13 @@ function Identity.New(saved)
 			local _, fitting = castOf(hit, group, school, miss)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
-		local found = castOf(hit, group, school, miss)
+		local found, fitting = castOf(hit, group, school, miss)
+		local seal = group == "direct" and sealProc(hit, school, miss)
+		if seal then
+			-- A cast that fits could have made the Hit too, so it gets none, and
+			-- that cast stays for its own Hit.
+			return fitting == 0 and seal or nil
+		end
 		if not found then
 			return nil
 		end
@@ -354,7 +402,37 @@ function Identity.New(saved)
 		return fits == 1 and not crowded and found or nil
 	end
 
+	-- Keeps the Active Seal and Consecration's time from a cast of the player. A
+	-- cast whose spell ID is secret could be a Judgement, so the Seal ends.
+	local function noteSealCast(record, secret)
+		if secret then
+			activeSeal = nil
+			return
+		end
+		local spellID = record.spellID
+		local proc = ns.Seals[spellID]
+		local direct = ns.DirectSpells[spellID]
+		if proc ~= nil then
+			activeSeal = proc and { spellID = spellID, time = record.time } or nil
+		elseif direct and direct.endsSeal then
+			activeSeal = nil
+		elseif ns.ConsecrationSpells[spellID] then
+			consecratedAt = record.time
+		end
+	end
+
 	local identity = {}
+
+	-- A pet's swing line has no Seal Proc, and a swing that missed lands none.
+	function identity.Line(record)
+		if record.lineKind ~= "swing" or record.pet then
+			return
+		end
+		while swingLines[1] and record.time - swingLines[1] > SEAL_PROC_WINDOW + DECIDE_LATE do
+			table.remove(swingLines, 1)
+		end
+		swingLines[#swingLines + 1] = record.time
+	end
 
 	function identity.Cast(record)
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
@@ -376,6 +454,9 @@ function Identity.New(saved)
 			table.remove(casts, 1)
 		end
 		local secret = issecretvalue(record.spellID)
+		if record.unit == "player" then
+			noteSealCast(record, secret)
+		end
 		casts[#casts + 1] = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
 			secret = secret or nil }
 	end

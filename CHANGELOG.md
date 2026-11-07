@@ -2,6 +2,7 @@
 
 ## 3
 
+- Your Seal of Righteousness, Seal of Command, and Seal of Fury numbers now show the Seal's icon, and your Judgement shows its icon, so a Seal's pale yellow crit no longer looks like a melee crit. They now count as those spells in the Spell Filter, not as `unknown`. A Seal's number has no icon while your Consecration is up, or after a reload until you cast a Seal again.
 - Another player's hit that lands just as you or your pet swing no longer takes your melee number, so your real number shows instead. Others' hits can still take your numbers at other moments, as described under release 1.
 
 ## 2

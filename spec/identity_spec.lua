@@ -70,6 +70,147 @@ local function shownSpells(entries, saved)
 end
 
 describe("Spell Identity", function()
+	describe("of a Seal Proc", function()
+		local RIGHTEOUSNESS, COMMAND, FURY, WISDOM, MARTYRDOM = 20154, 20375, 1311649, 20166, 407798
+		local JUDGEMENT, EXORCISM = 20271, 879
+
+		local function swing(identity, time, fields)
+			local line = { kind = "line", time = time, lineKind = "swing" }
+			for key, value in pairs(fields or {}) do
+				line[key] = value
+			end
+			identity.Line(line)
+		end
+
+		-- An Identity with Seal of Righteousness cast at 1, and a landed swing's
+		-- line at 5.
+		local function sealed()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			swing(identity, 5)
+			return identity
+		end
+
+		it("gives the Active Seal to a Holy Hit on a direct line, up to 0.15 s after a swing line", function()
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5, "direct", HOLY))
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5.117, "direct", HOLY))
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5.149, "direct", HOLY))
+		end)
+
+		it("gives each Seal that deals damage, by its own cast", function()
+			for _, seal in ipairs({ RIGHTEOUSNESS, COMMAND, FURY, 21084, 20920, 20163 }) do
+				local identity = Identity.New({})
+				cast(identity, 1, seal)
+				swing(identity, 5)
+				assert.are.equal(seal, of(identity, 5, "direct", HOLY))
+			end
+		end)
+
+		it("gives the Active Seal to a miss on a direct miss line, which has no school of its own", function()
+			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5, "directMiss", PHYSICAL))
+		end)
+
+		it("gives none away from a swing line", function()
+			assert.is_nil(of(sealed(), 5.16, "direct", HOLY))
+			assert.is_nil(of(sealed(), 4.99, "direct", HOLY))
+			local noSwing = Identity.New({})
+			cast(noSwing, 1, RIGHTEOUSNESS)
+			assert.is_nil(of(noSwing, 5, "direct", HOLY))
+		end)
+
+		it("gives none after a swing that missed, or the pet's swing", function()
+			for _, fields in ipairs({ { lineKind = "swingMiss" }, { pet = true } }) do
+				local identity = Identity.New({})
+				cast(identity, 1, RIGHTEOUSNESS)
+				swing(identity, 5, fields)
+				assert.is_nil(of(identity, 5, "direct", HOLY))
+			end
+		end)
+
+		it("gives none to another school or another Line Kind", function()
+			assert.is_nil(of(sealed(), 5, "direct", PHYSICAL))
+			assert.is_nil(of(sealed(), 5, "tick", HOLY))
+			assert.is_nil(of(sealed(), 5, "direct", "<secret>"))
+		end)
+
+		it("ends the Active Seal after 30 s", function()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			swing(identity, 31)
+			assert.are.equal(RIGHTEOUSNESS, of(identity, 31, "direct", HOLY))
+			swing(identity, 31.5)
+			assert.is_nil(of(identity, 31.5, "direct", HOLY))
+		end)
+
+		it("takes the latest Seal, and a Seal with no proc in scope ends the last one", function()
+			local identity = sealed()
+			cast(identity, 2, COMMAND)
+			assert.are.equal(COMMAND, of(identity, 5, "direct", HOLY))
+			for _, other in ipairs({ WISDOM, MARTYRDOM }) do
+				local replaced = sealed()
+				cast(replaced, 2, other)
+				assert.is_nil(of(replaced, 5, "direct", HOLY))
+			end
+		end)
+
+		it("ends the Active Seal at a Judgement cast", function()
+			local identity = sealed()
+			cast(identity, 3, JUDGEMENT)
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+		end)
+
+		it("ends the Active Seal at a cast whose spell ID is secret, as it could be a Judgement", function()
+			local identity = sealed()
+			cast(identity, 3, "<secret>")
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+		end)
+
+		it("gives none during Consecration, whose ticks look the same", function()
+			local during = sealed()
+			cast(during, 3, CONSECRATION)
+			assert.is_nil(of(during, 5, "direct", HOLY))
+			local rank = sealed()
+			cast(rank, 3, 26573)
+			assert.is_nil(of(rank, 5, "direct", HOLY))
+			local after = Identity.New({})
+			cast(after, 1, RIGHTEOUSNESS)
+			cast(after, 2, CONSECRATION)
+			swing(after, 10.5)
+			assert.are.equal(RIGHTEOUSNESS, of(after, 10.5, "direct", HOLY))
+		end)
+
+		it("gives none when another cast could explain the Hit too", function()
+			local identity = Identity.New({})
+			cast(identity, 1, RIGHTEOUSNESS)
+			cast(identity, 4.9, EXORCISM)
+			swing(identity, 5)
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+			-- The cast stays for its own Hit, which comes away from the swing.
+			assert.are.equal(EXORCISM, of(identity, 5.3, "direct", HOLY))
+		end)
+
+		it("gives Judgement to a Holy Hit or a miss up to 0.15 s after its cast, and not later", function()
+			local function judged()
+				local identity = Identity.New({})
+				cast(identity, 1, RIGHTEOUSNESS)
+				cast(identity, 5, JUDGEMENT)
+				return identity
+			end
+			assert.are.equal(JUDGEMENT, of(judged(), 5, "direct", HOLY))
+			assert.are.equal(JUDGEMENT, of(judged(), 5.149, "direct", HOLY))
+			assert.are.equal(JUDGEMENT, of(judged(), 5.1, "directMiss", PHYSICAL))
+			assert.is_nil(of(judged(), 5.16, "direct", HOLY))
+			assert.is_nil(of(judged(), 5, "direct", PHYSICAL))
+		end)
+
+		it("gives none when Judgement and another cast both fit", function()
+			local identity = Identity.New({})
+			cast(identity, 4.9, EXORCISM)
+			cast(identity, 5, JUDGEMENT)
+			assert.is_nil(of(identity, 5, "direct", HOLY))
+		end)
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}
