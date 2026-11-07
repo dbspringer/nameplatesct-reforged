@@ -8,7 +8,8 @@ ns.Pairing = Pairing
 -- up to 0.334 s early on the live client, at 2.3 yd (warlock-wand-overlap, 41
 -- shots at 2 to 37 yd). Most of a shot's flight comes before its line, and the
 -- gap after it has no clear tie to distance. Melee came one Swing Delay
--- early: 0.37 s (the player) and 0.52 to 0.98 s (the pet).
+-- early: 0.28 s or more in the Traces, with no clean sample under MELEE_FROM,
+-- so a Hit before that is another unit's.
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
 local SHOT_KINDS = { shot = true, shotMiss = true }
@@ -146,7 +147,7 @@ local function fits(hit, line, isShotTarget)
 		return nil
 	end
 	local age = hit.time - line.time
-	if age >= 0 and age <= SHORT_WINDOW then
+	if age >= 0 and age <= SHORT_WINDOW and not ns.LineKind.IsMelee(line.lineKind) then
 		return "short"
 	end
 	if age >= 0 and age <= SHOT_WINDOW and SHOT_KINDS[line.lineKind] and isShotTarget(hit) then
@@ -158,16 +159,17 @@ local function fits(hit, line, isShotTarget)
 	end
 end
 
--- Takes from lines the first one that suits the Hit, a shot line last: it can
--- wait for its own Hit, and another line in the frame cannot.
+-- Takes from the lines of the Hit's frame the first one that suits the Hit, a
+-- shot line last: it can wait for its own Hit, and another line in the frame
+-- cannot. A melee line stays, as its Hit comes one Swing Delay later.
 local function takeSuited(hit, lines)
 	for i, line in ipairs(lines) do
-		if suits(hit, line) and not SHOT_KINDS[line.lineKind] then
+		if suits(hit, line) and not SHOT_KINDS[line.lineKind] and not ns.LineKind.IsMelee(line.lineKind) then
 			return table.remove(lines, i)
 		end
 	end
 	for i, line in ipairs(lines) do
-		if suits(hit, line) then
+		if suits(hit, line) and not ns.LineKind.IsMelee(line.lineKind) then
 			return table.remove(lines, i)
 		end
 	end

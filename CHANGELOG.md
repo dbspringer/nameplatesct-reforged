@@ -1,5 +1,9 @@
 # Changelog
 
+## 3
+
+- Another player's hit that lands just as you or your pet swing no longer takes your melee number, so your real number shows instead. Others' hits can still take your numbers at other moments, as described under release 1.
+
 ## 2
 
 - The AddOns list now shows an icon for the addon, the Blacksmithing hammer and anvil.

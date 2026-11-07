@@ -74,8 +74,8 @@ describe("Flow", function()
 	it("passes the Line Kind of the Hit's Log Line to show", function()
 		local swing = ns.LineKind.EventColours().SWING_DAMAGE
 		local shown = run({
-			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
 			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+			{ 1.37, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
 		})
 		assert.are.equal(1, #shown)
 		assert.are.equal("swing", shown[1].lineKind)
