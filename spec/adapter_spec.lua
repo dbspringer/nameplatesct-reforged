@@ -306,10 +306,9 @@ describe("Adapter", function()
 				{ 3, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 707, "CastBar-1" },
 				{ 4, "UNIT_SPELLCAST_INTERRUPTED", "pet", "Cast-2", 3716, "<nil>", "CastBar-2" },
 			})
-			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "SENT", unit = "player",
-				castGUID = "Cast-1", spellID = 707 }, records[1])
+			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "SENT", unit = "player", spellID = 707 }, records[1])
 			assert.are.same({ "START", "SUCCEEDED", "INTERRUPTED" }, { records[2].stage, records[3].stage, records[4].stage })
-			assert.are.same({ "pet", "Cast-2", 3716 }, { records[4].unit, records[4].castGUID, records[4].spellID })
+			assert.are.same({ "pet", 3716 }, { records[4].unit, records[4].spellID })
 		end)
 
 		it("makes a Cast for a channel's start and stop", function()
@@ -317,14 +316,13 @@ describe("Adapter", function()
 				{ 1, "UNIT_SPELLCAST_CHANNEL_START", "player", "Cast-3", 689 },
 				{ 2, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "Cast-3", 689 },
 			})
-			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "CHANNEL_START", unit = "player",
-				castGUID = "Cast-3", spellID = 689 }, records[1])
-			assert.are.same({ "CHANNEL_STOP", "Cast-3", 689 }, { records[2].stage, records[2].castGUID, records[2].spellID })
+			assert.are.same({ kind = "cast", time = 1, entry = 1, stage = "CHANNEL_START", unit = "player", spellID = 689 }, records[1])
+			assert.are.same({ "CHANNEL_STOP", 689 }, { records[2].stage, records[2].spellID })
 		end)
 
 		it("makes a Swing from a swing timer start", function()
 			local records = run({ { 1, "PLAYER_SWING", 1.7, 2 } })
-			assert.are.same({ kind = "swing", time = 1, entry = 1, duration = 1.7, swingType = 2 }, records[1])
+			assert.are.same({ kind = "swing", time = 1, entry = 1, swingType = 2 }, records[1])
 		end)
 
 		describe("gives pet to a swing line", function()

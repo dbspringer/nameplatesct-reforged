@@ -58,7 +58,7 @@ local function shownSpells(entries, saved)
 	local spells = {}
 	local flow = ns.Flow.New({
 		spellFacts = saved or {},
-		show = function(_, _, spellID)
+		show = function(_, spellID)
 			spells[#spells + 1] = spellID or "none"
 		end,
 	})
@@ -914,7 +914,7 @@ describe("Spell Identity", function()
 				end
 				local flow = ns.Flow.New({
 					spellFacts = facts,
-					show = function(hit, _, spellID)
+					show = function(hit, spellID)
 						local want = spellOf[hit.entry]
 						if spellID == nil and want then
 							unknown = unknown + 1

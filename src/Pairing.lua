@@ -12,18 +12,18 @@ ns.Pairing = Pairing
 -- so a Hit before that is another unit's.
 local SHORT_WINDOW = 0.1
 local SHOT_WINDOW = 0.35
-local SHOT_KINDS = { shot = true, shotMiss = true }
-local DIRECT_KINDS = { direct = true, directMiss = true }
 -- How long a shot can fly, so how long its cast's target can still take its
 -- Hit. A wand's Shoot landed up to 1.72 s after its cast at 32 yd
 -- (warlock-wand-range), about 0.05 s per yard. This leaves room for a Hunter's
 -- longer range, an estimate from wand data. Spell Identity uses it too.
 local SHOT_FLIGHT = 2.5
 Pairing.SHOT_FLIGHT = SHOT_FLIGHT
-local MELEE_FROM, MELEE_TO = 0.25, 1.1
+local MELEE_FROM, MELEE_TO = 0.25, ns.LineKind.LONGEST_SWING_DELAY
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
 local HOLD = 0.15
+-- How much later than its time a held Hit can be decided, at the next Tick.
+Pairing.LATEST_DECISION = HOLD + SHOT_WINDOW
 local SCHOOL_PHYSICAL = 1
 -- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
 -- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
@@ -40,8 +40,12 @@ local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
 -- attack on them must not take the player's waiting lines.
-local OWN_UNITS = { player = true, pet = true }
+local OWN_UNITS = ns.Adapter.OWN_UNITS
 local OWN_ACTIONS = { WOUND = true, HEAL = true }
+
+local function isShotLine(line)
+	return ns.LineKind.Group(line.lineKind) == "shot"
+end
 
 -- The player cannot heal an enemy, and Plate Text shows no heal, so a heal on
 -- a unit other than the player or the pet takes no line: an enemy's heal must
@@ -64,33 +68,13 @@ local function isZeroWound(hit)
 	return hit.action == "WOUND" and not issecretvalue(hit.amount) and hit.amount == 0
 end
 
--- Whether a cast record is the player's ranged attack taking effect, with a
--- known target.
-local function isShotAtTarget(record)
-	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) or not record.target then
-		return false
-	end
-	local spell = ns.DirectSpells[record.spellID]
-	return spell ~= nil and spell.shot == true
-end
-
--- Whether a cast record is the player's Next-Swing Ability taking effect.
-local function isNextSwing(record)
+-- The spell that a cast record of the player's makes take effect, when it is
+-- one that hits and its ID is public, or nil.
+local function spellTakingEffect(record)
 	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) then
-		return false
+		return nil
 	end
-	local spell = ns.DirectSpells[record.spellID]
-	return spell ~= nil and spell.nextSwing == true
-end
-
--- Whether a cast record is the player's physical ability taking effect, which
--- can make a Weapon Proc.
-local function isStrike(record)
-	if record.stage ~= "SUCCEEDED" or record.unit ~= "player" or issecretvalue(record.spellID) then
-		return false
-	end
-	local spell = ns.DirectSpells[record.spellID]
-	return spell ~= nil and spell.school == SCHOOL_PHYSICAL and not spell.shot
+	return ns.DirectSpells[record.spellID]
 end
 
 -- The Empty Report of a Next-Swing Ability's frame, or nil when none is clear.
@@ -156,7 +140,7 @@ end
 
 -- How long a line of this kind can wait for its Hit, apart from a melee line.
 local function earlyWindow(line)
-	return SHOT_KINDS[line.lineKind] and SHOT_WINDOW or SHORT_WINDOW
+	return isShotLine(line) and SHOT_WINDOW or SHORT_WINDOW
 end
 
 -- How a waiting line, from an earlier frame, fits an enemy Hit: "short" or
@@ -172,7 +156,7 @@ local function fits(hit, line, isShotTarget)
 	if age >= 0 and age <= SHORT_WINDOW and not ns.LineKind.IsMelee(line.lineKind) then
 		return "short"
 	end
-	if age >= 0 and age <= SHOT_WINDOW and SHOT_KINDS[line.lineKind] and isShotTarget(hit) then
+	if age >= 0 and age <= SHOT_WINDOW and isShotLine(line) and isShotTarget(hit) then
 		return "short"
 	end
 	if line.mayBeProc and age >= 0 and age <= PROC_TO and isPhysical(hit) then
@@ -189,7 +173,7 @@ end
 -- cannot. A melee line stays, as its Hit comes one Swing Delay later.
 local function takeSuited(hit, lines)
 	for i, line in ipairs(lines) do
-		if suits(hit, line) and not SHOT_KINDS[line.lineKind] and not ns.LineKind.IsMelee(line.lineKind) then
+		if suits(hit, line) and not isShotLine(line) and not ns.LineKind.IsMelee(line.lineKind) then
 			return table.remove(lines, i)
 		end
 	end
@@ -349,7 +333,7 @@ function Pairing.New(options)
 		-- Traces). A swing or cast of a later frame ends this frame first.
 		for _, line in ipairs(lines) do
 			line.mayBeProc = lastStrike ~= nil and line.time - lastStrike <= PROC_AFTER_SWING
-				and DIRECT_KINDS[line.lineKind] == true
+				and ns.LineKind.Group(line.lineKind) == "direct"
 			waitingLines[#waitingLines + 1] = line
 		end
 	end
@@ -364,16 +348,19 @@ function Pairing.New(options)
 		if frameTime and record.time ~= frameTime then
 			endFrame()
 		end
-		if record.kind == "cast" and isStrike(record) then
-			lastStrike = record.time
-		end
-		if record.kind == "cast" and isNextSwing(record) then
-			nextSwing = record
-		elseif record.kind == "cast" and isShotAtTarget(record) then
-			while shots[1] and record.time - shots[1].time > SHOT_FLIGHT do
-				table.remove(shots, 1)
+		if record.kind == "cast" then
+			local spell = spellTakingEffect(record)
+			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
+				lastStrike = record.time
 			end
-			shots[#shots + 1] = record
+			if spell and spell.nextSwing then
+				nextSwing = record
+			elseif spell and spell.shot and record.target then
+				while shots[1] and record.time - shots[1].time > SHOT_FLIGHT do
+					table.remove(shots, 1)
+				end
+				shots[#shots + 1] = record
+			end
 		elseif record.kind == "hit" then
 			frameTime = record.time
 			frameHits[#frameHits + 1] = record

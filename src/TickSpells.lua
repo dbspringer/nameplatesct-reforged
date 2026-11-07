@@ -38,16 +38,18 @@ local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 
 local spells = {}
 ns.TickSpells = spells
 
+-- The ranks of a spell share one table, as nothing changes an entry.
 local function ticks(interval, school, duration, kind, ids)
+	local spell = {
+		interval = interval,
+		school = school,
+		duration = duration,
+		hits = kind.hits == true,
+		travels = kind.travels == true,
+		area = kind.area == true,
+	}
 	for _, id in ipairs(ids) do
-		spells[id] = {
-			interval = interval,
-			school = school,
-			duration = duration,
-			hits = kind.hits == true,
-			travels = kind.travels == true,
-			area = kind.area == true,
-		}
+		spells[id] = spell
 	end
 end
 

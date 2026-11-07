@@ -3,16 +3,28 @@ local _, ns = ...
 local Flow = {}
 ns.Flow = Flow
 
+-- Who swung, "player" or "pet", for a Hit that is a swing or a swing miss, or
+-- nil. how is the rule that paired it (see Pairing.New). With no Line Kind, a
+-- Hit that paired as melee is the best sign of a swing; a swing whose line came
+-- in its own frame then does not count. A Weapon Proc's Hit pairs as melee too,
+-- so it looks like a swing: the Hits of a proc and of its swing cannot be told
+-- apart. The pet's swing lines are marked (see Adapter.New).
+local function swingerOf(how, line)
+	if how == "melee" or ns.LineKind.IsMelee(line.lineKind) then
+		return line.pet and "pet" or "player"
+	end
+end
+
 -- Connects the adapter, Pairing and Spell Identity, and sends on Your Hits
 -- on enemies. Raw events go in through Push, in the shape of Trace entries.
 -- Tick(now) closes the open frame and ends the holds that are over; call it
--- once each frame. show(hit, how, spellID, lineKind, late, pet) gets Your Hit
--- on an enemy Nameplate, with the spell that made it or nil (see
--- Identity.New), the Line Kind of its Log Line, or nil when the colour told
--- none, and pet, true when the line is the pet's swing (see Adapter.New);
--- noPlate(hit, how), which is optional, gets Your Hit on target or a soft
--- target that has no Nameplate. how is the rule that paired the Hit (see
--- Pairing.New). spellFacts, which is required, holds the Spell Facts, which
+-- once each frame. show(hit, spellID, late, swinger, how, lineKind) gets Your
+-- Hit on an enemy Nameplate, with the spell that made it or nil (see
+-- Identity.New), and who swung (see swingerOf). how and lineKind, the Line Kind
+-- of its Log Line or nil when the colour told none, say how it was decided;
+-- the renderer needs neither. noPlate(hit, how), which is optional, gets Your
+-- Hit on target or a soft target that has no Nameplate.
+-- spellFacts, which is required, holds the Spell Facts, which
 -- Identity changes in place. Hits on the player or the pet go nowhere: they
 -- are there to use up the Log Lines of heals and self-damage.
 -- A Hit decided after its Nameplate hid, such as a killing blow whose Log
@@ -34,7 +46,7 @@ function Flow.New(options)
 
 	local pairing = ns.Pairing.New({
 		onDecision = function(hit, line, how)
-			if line and hit.unit ~= "player" and hit.unit ~= "pet" then
+			if line and not ns.Adapter.OWN_UNITS[hit.unit] then
 				pending[#pending + 1] = { hit = hit, line = line, how = how }
 			end
 		end,
@@ -62,7 +74,7 @@ function Flow.New(options)
 					noPlate(hit, decision.how)
 				end
 			elseif not life.reused then
-				show(hit, decision.how, spellIDs[i], decision.line.lineKind, life.hid, decision.line.pet == true)
+				show(hit, spellIDs[i], life.hid, swingerOf(decision.how, decision.line), decision.how, decision.line.lineKind)
 			end
 		end
 	end

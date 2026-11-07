@@ -25,12 +25,8 @@ local LATEST = 0.1
 local CAST_OF = { [1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678 }
 -- A delay past this is longer than any seen in the Warlock Traces.
 local LATE = 1.0
--- Log Line colours arrive as 8-bit floats (see LineKind.lua).
-local COLOUR_TOLERANCE = 0.02
--- Blizzard's grey for the player's and the pet's lines under colours by
--- source, and for an event with no colour under colours by kind
+-- Blizzard's grey for an event with no colour under colours by kind
 -- (COMBATLOG_DEFAULT_COLORS). A highlighted line is this much brighter.
-local OWN_BY_SOURCE = 0.70
 local UNCOLOURED = 0.5
 local HIGHLIGHT = 1.5
 
@@ -186,13 +182,13 @@ end
 -- event's colour, or grey for an event with no colour; by source, the
 -- player's and the pet's grey; a highlighted event's line brighter, at most
 -- white. nil under any other colouring, which tells nothing.
-function Label.ColourOf(event, colouring, filter)
+local function colourOf(event, colouring, filter)
 	local colour
 	if colouring == "kind" then
 		colour = load().LineKind.EventColours()[event.name]
 			or { r = UNCOLOURED, g = UNCOLOURED, b = UNCOLOURED }
 	elseif colouring == "source" then
-		colour = { r = OWN_BY_SOURCE, g = OWN_BY_SOURCE, b = OWN_BY_SOURCE }
+		colour = load().LineKind.OWN_BY_SOURCE
 	else
 		return nil
 	end
@@ -206,9 +202,8 @@ end
 -- one frame share a time, so only their colours tell which line reports
 -- which event.
 local function colourFits(entry, event, filter)
-	local colour = type(entry[4]) == "number" and Label.ColourOf(event, entry.colouring, filter)
-	return not colour or (math.abs(entry[4] - colour.r) <= COLOUR_TOLERANCE
-		and math.abs(entry[5] - colour.g) <= COLOUR_TOLERANCE and math.abs(entry[6] - colour.b) <= COLOUR_TOLERANCE)
+	local colour = type(entry[4]) == "number" and colourOf(event, entry.colouring, filter)
+	return not colour or load().LineKind.Near(entry[4], entry[5], entry[6], colour)
 end
 
 -- Pairs each Log Line with the file event it reports, by the one time offset
@@ -466,7 +461,7 @@ end
 -- eventAt (see Make), in place of the spell it had. A person checks `line`,
 -- so a corrected line gets its own file event's spell. Also returns the
 -- number of rows with a line whose file event names no spell.
-function Label.AddSpells(text, eventAt)
+local function addSpells(text, eventAt)
 	local missing = 0
 	local out = {}
 	for row in (text .. "\n"):gmatch("(.-)\n") do
@@ -508,35 +503,24 @@ local function main(...)
 	end
 	local base = "spec/traces/" .. name
 	local labelPath = base .. ".labels.lua"
-	local exists = io.open(labelPath, "r")
-	if exists then
-		exists:close()
-	end
+	local exists = Trace.Exists(labelPath)
 	if exists and not spellsOnly then
 		fail(labelPath .. " exists; remove it first to label again, or use --spells")
 	elseif spellsOnly and not exists then
 		fail(labelPath .. " does not exist")
 	end
 	local trace = Trace.Load(base .. ".lua") or fail("cannot read " .. base .. ".lua")
-	local lines = {}
-	for line in io.lines(base .. ".combatlog.txt") do
-		lines[#lines + 1] = line
-	end
-	local rows, lonely, eventAt = Label.Make(trace, lines)
+	local rows, lonely, eventAt = Label.Make(trace, Trace.LoadLog(name))
 	if not rows then
 		fail(lonely)
 	end
 	if spellsOnly then
-		local text, missing = Label.AddSpells(readAll(labelPath), eventAt)
-		local file = assert(io.open(labelPath, "w"))
-		file:write(text)
-		file:close()
+		local text, missing = addSpells(readAll(labelPath), eventAt)
+		Trace.WriteFile(labelPath, text)
 		print(("%s: spells added, %d Log Lines with no spell ID"):format(name, missing))
 		return
 	end
-	local file = assert(io.open(labelPath, "w"))
-	file:write(Label.Format(name, trace, rows, lonely))
-	file:close()
+	Trace.WriteFile(labelPath, Label.Format(name, trace, rows, lonely))
 	local unsure = 0
 	for _, row in ipairs(rows) do
 		unsure = unsure + (row.unsure and 1 or 0)

@@ -3,9 +3,7 @@ _G.issecretvalue = function(value)
 end
 
 local ns = {}
-for _, file in ipairs({ "src/LineKind.lua", "src/Filter.lua" }) do
-	assert(loadfile(file))("NameplateSCT_Reforged", ns)
-end
+assert(loadfile("src/Filter.lua"))("NameplateSCT_Reforged", ns)
 local Filter = ns.Filter
 
 -- Two rank IDs of Shadow Bolt, and Corruption; any other ID is no spell.
@@ -18,17 +16,16 @@ local function nameOf(spellID)
 end
 
 -- Whether a hide list (or a show-only list, when inverse) lets the Hit
--- through. A hit is a WOUND that paired in its own frame unless it says
--- otherwise.
+-- through. A hit is a WOUND and no swing unless it says otherwise.
 local function shows(text, inverse, hit)
 	return Filter.SpellShows(Filter.ReadSpells(text, nameOf), inverse, hit.spell, hit.action or "WOUND",
-		Filter.IsSwing(hit.how or "frame", hit.kind))
+		hit.swing == true)
 end
 
-local BOLT = { spell = "Shadow Bolt", kind = "direct" }
-local BOLT_MISS = { spell = "Shadow Bolt", action = "RESIST", kind = "directMiss" }
-local SWING = { kind = "swing" }
-local SWING_MISS = { action = "DODGE", kind = "swingMiss" }
+local BOLT = { spell = "Shadow Bolt" }
+local BOLT_MISS = { spell = "Shadow Bolt", action = "RESIST" }
+local SWING = { swing = true }
+local SWING_MISS = { action = "DODGE", swing = true }
 
 describe("Filter.SpellShows", function()
 	it("matches a spell by any rank's ID or by its name in any case", function()
@@ -62,9 +59,7 @@ describe("Filter.SpellShows", function()
 		assert.is_true(shows("missed", false, SWING))
 	end)
 
-	it("takes a Hit with no Line Kind for a swing only when it paired as melee", function()
-		assert.is_false(shows("melee", false, { how = "melee" }))
-		assert.is_true(shows("unknown", false, { how = "melee" }))
+	it("counts a Hit that is no swing as unknown when it has no Spell Identity, never as melee", function()
 		assert.is_true(shows("melee", false, {}))
 		assert.is_false(shows("unknown", false, {}))
 	end)

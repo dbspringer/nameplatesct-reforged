@@ -13,13 +13,14 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 -- Pushes the entries through a new Flow, ends every hold, and returns the
 -- Hits that went to show and to noPlate, each with its how, and for show
--- the Line Kind, pet, and for a late Hit its Nameplate as it hid.
+-- the Line Kind, who swung, and for a late Hit its Nameplate as it hid.
 local function run(entries)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
 		spellFacts = {},
-		show = function(hit, how, spellID, lineKind, late, pet)
-			shown[#shown + 1] = { hit = hit, how = how, spellID = spellID, lineKind = lineKind, late = late, pet = pet }
+		show = function(hit, spellID, late, swinger, how, lineKind)
+			shown[#shown + 1] = { hit = hit, how = how, spellID = spellID, lineKind = lineKind, late = late,
+				swinger = swinger }
 		end,
 		noPlate = function(hit, how)
 			plateless[#plateless + 1] = { hit = hit, how = how }
@@ -85,7 +86,7 @@ describe("Flow", function()
 		local shown = {}
 		local flow = Flow.New({
 			spellFacts = {},
-			show = function(hit, how)
+			show = function(hit, _, _, _, how)
 				shown[#shown + 1] = hit.entry .. ":" .. how
 			end,
 		})
@@ -109,6 +110,18 @@ describe("Flow", function()
 		})
 		assert.are.equal(1, #shown)
 		assert.are.equal("swing", shown[1].lineKind)
+	end)
+
+	it("takes a Hit with no Line Kind for a swing only when it paired as melee", function()
+		local shown = run({
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0 },
+			{ 1.3, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
+			{ 5, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0 },
+			{ 5, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
+		})
+		assert.are.same({ "melee", "frame" }, { shown[1].how, shown[2].how })
+		assert.are.equal("player", shown[1].swinger)
+		assert.is_nil(shown[2].swinger)
 	end)
 
 	it("shows a swing whose line and Hit a frame hitch delivers close together", function()
@@ -473,11 +486,11 @@ describe("Flow", function()
 					if ns.LineKind.IsMelee(result.lineKind) then
 						local who = eventAt[lineOf[result.hit.entry]].srcWho
 						seen[who] = seen[who] + 1
-						if (who == "pet") ~= result.pet then
+						if (who == "pet") ~= (result.swinger == "pet") then
 							wrong[#wrong + 1] = ("%s hit %d"):format(name, result.hit.entry)
 						end
 					else
-						assert.is_false(result.pet, ("%s hit %d"):format(name, result.hit.entry))
+						assert.are_not.equal("pet", result.swinger, ("%s hit %d"):format(name, result.hit.entry))
 					end
 				end
 			end

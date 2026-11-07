@@ -20,16 +20,20 @@ local LATE_REPORT_WINDOW = ns.LineKind.LONGEST_PROC_DELAY
 -- heals and self-damage to them, not to an enemy's Hit. Events.lua records
 -- `own` on any report that names one of them; Traces from before that field
 -- name them only by these tokens.
-local OWN_TOKENS = { player = true, pet = true }
+local OWN_UNITS = { player = true, pet = true }
+Adapter.OWN_UNITS = OWN_UNITS
 
--- UNIT_SPELLCAST_SENT has its own branch in Push, since its arguments differ.
+-- The cast events, and the stage of each. UNIT_SPELLCAST_SENT has its own
+-- branch in Push, since its arguments differ.
 local CAST_STAGES = {
+	UNIT_SPELLCAST_SENT = "SENT",
 	UNIT_SPELLCAST_START = "START",
 	UNIT_SPELLCAST_SUCCEEDED = "SUCCEEDED",
 	UNIT_SPELLCAST_INTERRUPTED = "INTERRUPTED",
 	UNIT_SPELLCAST_CHANNEL_START = "CHANNEL_START",
 	UNIT_SPELLCAST_CHANNEL_STOP = "CHANNEL_STOP",
 }
+Adapter.CAST_STAGES = CAST_STAGES
 
 -- The unit a report names: player or pet, or else the nameplate token that
 -- Events.lua recorded with it. Returns nil for a token whose reports only
@@ -47,7 +51,7 @@ local function unitOf(entry)
 	if entry.canAttack == false then
 		return nil
 	end
-	if OWN_TOKENS[token] then
+	if OWN_UNITS[token] then
 		return token
 	end
 	if entry.plate then
@@ -267,7 +271,7 @@ function Adapter.New(onRecord)
 				reports[#reports + 1] = {
 					index = count,
 					unit = hidden and hidden.token or unit,
-					life = hidden and hidden.life or (unit:match("^nameplate%d+$") and lifeOf(unit)) or nil,
+					life = hidden and hidden.life or (unit == entry.plate and lifeOf(unit)) or nil,
 					token = entry[3],
 					time = time,
 					action = entry[4],
@@ -283,12 +287,12 @@ function Adapter.New(onRecord)
 			end
 		elseif event == "UNIT_SPELLCAST_SENT" then
 			-- entry[4] is the target's name, which can be secret.
-			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], castGUID = entry[5], spellID = entry[6] })
+			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
-			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], castGUID = entry[4], spellID = entry[5],
+			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], spellID = entry[5],
 				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil })
 		elseif event == "PLAYER_SWING" then
-			add(entry, { kind = "swing", duration = entry[3], swingType = entry[4] })
+			add(entry, { kind = "swing", swingType = entry[4] })
 		end
 		return count
 	end
