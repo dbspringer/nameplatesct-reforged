@@ -14,7 +14,7 @@ local SECRET = "<secret>"
 local NIL = "<nil>"
 
 local recording = false
-local entries, head, count
+local entries, count
 
 local function public(value)
 	if issecretvalue(value) then
@@ -83,9 +83,6 @@ end
 
 -- An entry is { time, event, arg1, arg2, ... }, plus named fields from extra.
 function Recorder.Record(time, event, extra, ...)
-	if not recording then
-		return
-	end
 	local entry = { time, event }
 	for i = 1, select("#", ...) do
 		entry[i + 2] = public((select(i, ...)))
@@ -95,14 +92,13 @@ function Recorder.Record(time, event, extra, ...)
 			entry[key] = public(value)
 		end
 	end
-	head = head % MAX_ENTRIES + 1
-	entries[head] = entry
+	entries[count % MAX_ENTRIES + 1] = entry
 	count = count + 1
 end
 
 function Recorder.Start()
 	recording = true
-	entries, head, count = {}, 0, 0
+	entries, count = {}, 0
 	NameplateSCTReforgedTraces = { header = header() }
 	say(L["Recording combat events for a bug report. The recording holds your character name and zone. Type /nsctr record again to stop."])
 end
@@ -111,14 +107,14 @@ end
 -- entry in every copy of the Trace.
 function Recorder.Stop()
 	recording = false
-	local size = math.min(count, MAX_ENTRIES)
-	local first = count > MAX_ENTRIES and head % MAX_ENTRIES + 1 or 1
+	local dropped = math.max(count - MAX_ENTRIES, 0)
+	local size = count - dropped
 	local ordered = {}
-	for i = 0, size - 1 do
-		ordered[i + 1] = entries[(first - 1 + i) % MAX_ENTRIES + 1]
+	for i = 1, size do
+		ordered[i] = entries[(dropped + i - 1) % MAX_ENTRIES + 1]
 	end
 	NameplateSCTReforgedTraces.entries = ordered
-	NameplateSCTReforgedTraces.dropped = count - size
+	NameplateSCTReforgedTraces.dropped = dropped
 	entries = nil
 	return size
 end

@@ -22,10 +22,9 @@ ns.Identity = Identity
 local DIRECT_WINDOW = 1.5
 -- A ranged attack can fly longer.
 local SHOT_FLIGHT = ns.Pairing.SHOT_FLIGHT
--- How much later than its time a Hit can be decided, with a margin: Pairing
--- decides a held Hit up to its HOLD plus SHOT_WINDOW (0.5 s) late, at the
--- next Tick. Casts stay this much longer.
-local DECIDE_LATE = 0.6
+-- How much later than its time a Hit can be decided, with a margin. Casts stay
+-- this much longer.
+local DECIDE_LATE = ns.Pairing.LATEST_DECISION + 0.1
 -- How far a tick can be from its Tick Rhythm. Nearly all ticks came within
 -- 0.07 s of it in the Warlock Traces; one batch came 0.18 s off and gets no
 -- icon. A wider window lets another spell's tick that comes just before fit
@@ -59,12 +58,6 @@ for _, spell in pairs(ns.TickSpells) do
 	local lasts = spell.area and spell.duration or spell.interval + DIRECT_WINDOW
 	CAST_AGE = math.max(CAST_AGE, lasts + DECIDE_LATE + TICK_TOLERANCE)
 end
-
--- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
--- a known spell's cast is in one group only. A miss reports school 1 whatever
--- the spell, so it teaches nothing and uses the school of its spell's hits.
-local GROUPS = { direct = "direct", directMiss = "direct", shot = "shot", shotMiss = "shot" }
-local IS_TICK = { tick = true, tickMiss = true }
 
 local function isMiss(lineKind)
 	return ns.LineKind.Reports(lineKind) == "miss"
@@ -116,6 +109,113 @@ local function sameTick(a, b)
 	return issecretvalue(schoolA) or issecretvalue(schoolB) or schoolA == schoolB
 end
 
+-- Follows the player's Active Seal, Consecration, and landed swings, which are
+-- all that tie a Seal Proc or a Judgement to the player, as a proc has no cast.
+local function newSealTracker()
+	-- The changes of the Active Seal, from the player's casts, oldest first:
+	-- { time, entry, spellID }, with no spellID when none is active or its Seal
+	-- Proc gets no icon. A Hit can be decided after a later cast (Flow gives a
+	-- frame's casts to Identity before its Hits), so a Hit looks up the Seal of
+	-- its own moment.
+	local sealChanges = {}
+	-- The player's recent casts of Consecration, or ones that could be, oldest
+	-- first. A late Hit can need an older one than the latest.
+	local consecrations = {}
+	-- The times of the player's latest swing lines that landed, oldest first.
+	local swingLines = {}
+
+	-- Keeps the changes of the Active Seal, which a late Hit can still need, and
+	-- the change that was in force before them.
+	local function changeSeal(record, spellID)
+		while sealChanges[2] and record.time - sealChanges[2].time > SEAL_CHANGE_AGE do
+			table.remove(sealChanges, 1)
+		end
+		sealChanges[#sealChanges + 1] = { time = record.time, entry = record.entry, spellID = spellID }
+	end
+
+	local function noteConsecration(record)
+		while consecrations[1] and record.time - consecrations[1].time > CONSECRATION_DURATION + SEAL_CHANGE_AGE do
+			table.remove(consecrations, 1)
+		end
+		consecrations[#consecrations + 1] = record
+	end
+
+	local tracker = {}
+
+	-- Takes a cast of the player. A cast whose spell ID is secret could be another
+	-- Seal or Consecration, so it counts as both. Judgement does not end a Seal on
+	-- Forever: 26 of 77 Judgements in the Traces had a proc of the same Seal after
+	-- them with no recast.
+	function tracker.Cast(record, secret)
+		if secret then
+			changeSeal(record, nil)
+			noteConsecration(record)
+			return
+		end
+		local spellID = record.spellID
+		local proc = ns.Seals[spellID]
+		if proc ~= nil then
+			changeSeal(record, proc and spellID or nil)
+		elseif ns.ConsecrationSpells[spellID] then
+			noteConsecration(record)
+		end
+	end
+
+	-- A pet's swing line has no Seal Proc, and a swing that missed lands none.
+	function tracker.Line(record)
+		if record.lineKind ~= "swing" or record.pet then
+			return
+		end
+		while swingLines[1] and record.time - swingLines[1] > SEAL_PROC_WINDOW + DECIDE_LATE do
+			table.remove(swingLines, 1)
+		end
+		swingLines[#swingLines + 1] = record.time
+	end
+
+	-- Whether Consecration could be ticking at this Hit's moment. Its ticks are
+	-- direct Holy Hits with no cast, so they look like a Seal Proc or a Judgement.
+	function tracker.Consecrated(hit)
+		for _, cast in ipairs(consecrations) do
+			if cameBefore(cast, hit) and hit.time - cast.time <= CONSECRATION_DURATION then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- The Active Seal's spell if this direct Hit could be its Seal Proc, or nil: a
+	-- proc has no cast and no Tick Rhythm, so only the Seal being on the player and
+	-- a landed swing just before tie it to the Seal. A miss has no school, and
+	-- another on-hit proc's miss looks the same (Touch of the Grave's 21 and
+	-- Windfury's 4 to Seal of Command's 4 in the Traces), so it gets none.
+	function tracker.ProcSpell(hit, school)
+		if school ~= SCHOOL_HOLY then
+			return nil
+		end
+		local seal
+		for _, change in ipairs(sealChanges) do
+			if not cameBefore(change, hit) then
+				break
+			end
+			seal = change
+		end
+		if not seal or not seal.spellID or hit.time - seal.time > SEAL_DURATION then
+			return nil
+		end
+		if tracker.Consecrated(hit) then
+			return nil
+		end
+		for _, time in ipairs(swingLines) do
+			local sinceSwing = hit.time - time
+			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
+				return seal.spellID
+			end
+		end
+	end
+
+	return tracker
+end
+
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
@@ -137,17 +237,7 @@ function Identity.New(saved)
 	-- tick (none yet after a landing), and ends when its duration ends.
 	-- Weak keys, so a plate life's rhythms go with the life.
 	local rhythms = setmetatable({}, { __mode = "k" })
-	-- The changes of the Active Seal, from the player's casts, oldest first:
-	-- { time, entry, spellID }, with no spellID when none is active or its Seal
-	-- Proc gets no icon. A Hit can be decided after a later cast (Flow gives a
-	-- frame's casts to Identity before its Hits), so a Hit looks up the Seal of
-	-- its own moment.
-	local sealChanges = {}
-	-- The player's recent casts of Consecration, or ones that could be, oldest
-	-- first. A late Hit can need an older one than the latest.
-	local consecrations = {}
-	-- The times of the player's latest swing lines that landed, oldest first.
-	local swingLines = {}
+	local seals = newSealTracker()
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -275,47 +365,6 @@ function Identity.New(saved)
 		return fitting
 	end
 
-	-- Whether Consecration could be ticking at this Hit's moment. Its ticks are
-	-- direct Holy Hits with no cast, so they look like a Seal Proc or a Judgement.
-	local function consecrated(hit)
-		for _, cast in ipairs(consecrations) do
-			if cameBefore(cast, hit) and hit.time - cast.time <= CONSECRATION_DURATION then
-				return true
-			end
-		end
-		return false
-	end
-
-	-- The Active Seal's spell if this direct Hit could be its Seal Proc, or nil: a
-	-- proc has no cast and no Tick Rhythm, so only the Seal being on the player and
-	-- a landed swing just before tie it to the Seal. A miss has no school, and
-	-- another on-hit proc's miss looks the same (Touch of the Grave's 21 and
-	-- Windfury's 4 to Seal of Command's 4 in the Traces), so it gets none.
-	local function sealProc(hit, school)
-		if school ~= SCHOOL_HOLY then
-			return nil
-		end
-		local seal
-		for _, change in ipairs(sealChanges) do
-			if not cameBefore(change, hit) then
-				break
-			end
-			seal = change
-		end
-		if not seal or not seal.spellID or hit.time - seal.time > SEAL_DURATION then
-			return nil
-		end
-		if consecrated(hit) then
-			return nil
-		end
-		for _, time in ipairs(swingLines) do
-			local sinceSwing = hit.time - time
-			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
-				return seal.spellID
-			end
-		end
-	end
-
 	local function ofDirect(hit, group, school, miss, plate)
 		local areaCasts
 		if group == "direct" then
@@ -334,7 +383,7 @@ function Identity.New(saved)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
 		local found, fitting = castOf(hit, group, school, miss)
-		local seal = group == "direct" and sealProc(hit, school)
+		local seal = group == "direct" and seals.ProcSpell(hit, school)
 		if seal then
 			-- A cast that fits could have made the Hit too, so it gets none, and
 			-- that cast stays for its own Hit.
@@ -346,7 +395,7 @@ function Identity.New(saved)
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
-		if direct and direct.window and consecrated(hit) then
+		if direct and direct.window and seals.Consecrated(hit) then
 			return nil
 		end
 		found.used = true
@@ -443,53 +492,9 @@ function Identity.New(saved)
 		return fits == 1 and not crowded and found or nil
 	end
 
-	-- Keeps the changes of the Active Seal, which a late Hit can still need, and
-	-- the change that was in force before them.
-	local function changeSeal(record, spellID)
-		while sealChanges[2] and record.time - sealChanges[2].time > SEAL_CHANGE_AGE do
-			table.remove(sealChanges, 1)
-		end
-		sealChanges[#sealChanges + 1] = { time = record.time, entry = record.entry, spellID = spellID }
-	end
-
-	local function noteConsecration(record)
-		while consecrations[1] and record.time - consecrations[1].time > CONSECRATION_DURATION + SEAL_CHANGE_AGE do
-			table.remove(consecrations, 1)
-		end
-		consecrations[#consecrations + 1] = record
-	end
-
-	-- Follows the Active Seal and Consecration from a cast of the player. A cast
-	-- whose spell ID is secret could be another Seal or Consecration, so it counts
-	-- as both. Judgement does not end a Seal on Forever: 26 of 77 Judgements in
-	-- the Traces had a proc of the same Seal after them with no recast.
-	local function noteSealCast(record, secret)
-		if secret then
-			changeSeal(record, nil)
-			noteConsecration(record)
-			return
-		end
-		local spellID = record.spellID
-		local proc = ns.Seals[spellID]
-		if proc ~= nil then
-			changeSeal(record, proc and spellID or nil)
-		elseif ns.ConsecrationSpells[spellID] then
-			noteConsecration(record)
-		end
-	end
-
 	local identity = {}
 
-	-- A pet's swing line has no Seal Proc, and a swing that missed lands none.
-	function identity.Line(record)
-		if record.lineKind ~= "swing" or record.pet then
-			return
-		end
-		while swingLines[1] and record.time - swingLines[1] > SEAL_PROC_WINDOW + DECIDE_LATE do
-			table.remove(swingLines, 1)
-		end
-		swingLines[#swingLines + 1] = record.time
-	end
+	identity.Line = seals.Line
 
 	function identity.Cast(record)
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
@@ -504,7 +509,7 @@ function Identity.New(saved)
 			end
 			return
 		end
-		if record.stage ~= "SUCCEEDED" or (record.unit ~= "player" and record.unit ~= "pet") then
+		if record.stage ~= "SUCCEEDED" or not ns.Adapter.OWN_UNITS[record.unit] then
 			return
 		end
 		while casts[1] and record.time - casts[1].time > CAST_AGE do
@@ -512,20 +517,23 @@ function Identity.New(saved)
 		end
 		local secret = issecretvalue(record.spellID)
 		if record.unit == "player" then
-			noteSealCast(record, secret)
+			seals.Cast(record, secret)
 		end
 		casts[#casts + 1] = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
 			secret = secret or nil }
 	end
 
+	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
+	-- a known spell's cast is in one group only. A miss reports school 1 whatever
+	-- the spell, so it teaches nothing and uses the school of its spell's hits.
 	function identity.Of(hit, line, crowded)
 		local plate = plateOf(hit)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
-		if IS_TICK[line.lineKind] then
+		local group = ns.LineKind.Group(line.lineKind)
+		if group == "tick" then
 			return ofTick(hit, school, crowded, plate)
 		end
-		local group = GROUPS[line.lineKind]
 		return group and ofDirect(hit, group, school, miss, plate) or nil
 	end
 

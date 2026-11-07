@@ -34,11 +34,7 @@ local animating = {}
 local randomX = {}
 local randomY = {}
 
--- A unit query such as UnitIsUnit can give a secret, which cannot be tested
--- as a boolean.
-local function isTrue(value)
-	return not issecretvalue(value) and value == true
-end
+local isTrue = ns.Events.IsTrue
 
 local function rgbToHex(r, g, b)
 	return string.format("%02x%02x%02x", math.floor(255 * r), math.floor(255 * g), math.floor(255 * b))
@@ -125,9 +121,10 @@ local defaults = {
 		yOffset = 0,
 
 		modOffTargetStrata = false,
+		-- Indexes into STRATAS.
 		strata = {
-			target = "HIGH",
-			offTarget = "MEDIUM",
+			target = 4,
+			offTarget = 3,
 		},
 
 		font = defaultFont,
@@ -227,15 +224,8 @@ local ANIMATION_RAINFALL_Y_MAX = 100
 local ANIMATION_RAINFALL_Y_START_MIN = 5
 local ANIMATION_RAINFALL_Y_START_MAX = 15
 
-if not SCHOOL_MASK_PHYSICAL then -- XXX 9.1 PTR Support
-	SCHOOL_MASK_PHYSICAL = Enum.Damageclass.MaskPhysical
-	SCHOOL_MASK_HOLY = Enum.Damageclass.MaskHoly
-	SCHOOL_MASK_FIRE = Enum.Damageclass.MaskFire
-	SCHOOL_MASK_NATURE = Enum.Damageclass.MaskNature
-	SCHOOL_MASK_FROST = Enum.Damageclass.MaskFrost
-	SCHOOL_MASK_SHADOW = Enum.Damageclass.MaskShadow
-	SCHOOL_MASK_ARCANE = Enum.Damageclass.MaskArcane
-end
+local SCHOOL_MASK_PHYSICAL, SCHOOL_MASK_HOLY, SCHOOL_MASK_FIRE, SCHOOL_MASK_NATURE = 1, 2, 4, 8
+local SCHOOL_MASK_FROST, SCHOOL_MASK_SHADOW, SCHOOL_MASK_ARCANE = 16, 32, 64
 
 -- With damage colours on, a swing takes the colour of who swung, not its
 -- school's: white for the player, NameplateSCT's pet orange for the pet.
@@ -330,7 +320,7 @@ local function getFontString()
 	else
 		frameCounter = frameCounter + 1
 		fontStringFrame = CreateFrame("Frame", nil, UIParent)
-		fontStringFrame:SetFrameStrata(NameplateSCT:GetStrata(NameplateSCT.db.global.strata.target))
+		fontStringFrame:SetFrameStrata(STRATAS[NameplateSCT.db.global.strata.target])
 		fontStringFrame:SetFrameLevel(frameCounter)
 		fontString = fontStringFrame:CreateFontString()
 		fontString:SetParent(fontStringFrame)
@@ -421,29 +411,9 @@ end
 ----------------
 
 local function adjustStrata()
-	local offStrata
-
-	if (NameplateSCT.db.global.modOffTargetStrata) then
-		return
-	end
-
-	if (NameplateSCT.db.global.strata.target == 1) then -- Background
-		NameplateSCT.db.global.strata.offTarget = 1
-		return
-	else
-		for k, v in ipairs(STRATAS) do
-			if (k == NameplateSCT.db.global.strata.target) then
-				offStrata = k - 1
-			end
-		end
-	end
-
-	NameplateSCT.db.global.strata.offTarget = offStrata
-end
-
-function NameplateSCT:GetStrata(strataNumber)
-	if type(strataNumber) == "number" then
-		return STRATAS[strataNumber]
+	local strata = NameplateSCT.db.global.strata
+	if not NameplateSCT.db.global.modOffTargetStrata then
+		strata.offTarget = math.max(strata.target - 1, 1)
 	end
 end
 
@@ -452,30 +422,11 @@ end
 ----------
 
 function NameplateSCT:ConvertDB()
-	if type(NameplateSCT.db.global.strata.offTarget) == "string" then
-		for k, v in ipairs(STRATAS) do
-			if (v == NameplateSCT.db.global.strata.offTarget) then
-				NameplateSCT.db.global.strata.offTarget = k
-			end
-		end
-	end
-	if type(NameplateSCT.db.global.strata.target) == "string" then
-		for k, v in ipairs(STRATAS) do
-			if (v == NameplateSCT.db.global.strata.target) then
-				NameplateSCT.db.global.strata.target = k
-			end
-		end
-	end
 	-- Made here, not in OnEnable: OnInitialize can Disable the addon, which
 	-- skips OnEnable, and /nsctr forget still wipes this table.
 	if type(NameplateSCT.db.global.spellFacts) ~= "table" then
 		NameplateSCT.db.global.spellFacts = {}
 	end
-	-- The spell list is per character now, and the NPC list went, since the
-	-- game hides NPC IDs in instances. No release showed the Filters panel,
-	-- so no player has a list to keep.
-	local global = NameplateSCT.db.global
-	global.filter, global.inverseSpellFilter, global.npcFilter, global.inverseNPCFilter = nil, nil, nil, nil
 end
 
 function NameplateSCT:OnInitialize()
@@ -548,8 +499,8 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
-	ns.Events.Start(function(hit, how, spellID, lineKind, late, pet)
-		self:ShowHit(hit, how, spellID, lineKind, late, pet)
+	ns.Events.Start(function(hit, spellID, late, swinger)
+		self:ShowHit(hit, spellID, late, swinger)
 	end, function()
 		self:NoPlate()
 	end, self.db.global.spellFacts)
@@ -619,15 +570,15 @@ local function arcPath(elapsed, duration, xDist, yStart, yTop, yBottom)
 end
 
 local function powSizing(elapsed, duration, start, middle, finish)
-	local size = finish
-	if (elapsed < duration) then
-		if (elapsed/duration < 0.5) then
-			size = LibEasing.OutQuint(elapsed, start, middle - start, duration/2)
-		else
-			size = LibEasing.InQuint(elapsed - elapsed/2, middle, finish - middle, duration/2)
-		end
+	if (elapsed/duration < 0.5) then
+		return LibEasing.OutQuint(elapsed, start, middle - start, duration/2)
 	end
-	return size
+	return LibEasing.InQuint(elapsed - elapsed/2, middle, finish - middle, duration/2)
+end
+
+-- The region that sets an icon's size and place: the Masque button when skinned.
+local function iconRegion(icon)
+	return MSQ and NameplateSCT.db.global.enableMSQ and icon.button or icon
 end
 
 -- CSS linear() points
@@ -692,8 +643,9 @@ end
 
 local function AnimationOnUpdate()
 	if (next(animating)) then
+		local now, global = GetTime(), NameplateSCT.db.global
 		for fontString, _ in pairs(animating) do
-			local elapsed = GetTime() - fontString.animatingStartTime
+			local elapsed = now - fontString.animatingStartTime
 			if (elapsed > fontString.animatingDuration) then
 				-- the animation is over
 				recycleFontString(fontString)
@@ -705,10 +657,13 @@ local function AnimationOnUpdate()
 					fontString.wasTarget = isTarget
 				end
 
-				-- frame level
-				local frame = fontString:GetParent()
-				local strataRequired = (isTarget) and NameplateSCT:GetStrata(NameplateSCT.db.global.strata.target) or NameplateSCT:GetStrata(NameplateSCT.db.global.strata.offTarget)
-				frame:SetFrameStrata(strataRequired)
+				-- frame level; each font string has its own parent frame, which keeps
+				-- its strata through a recycle
+				local strataRequired = STRATAS[isTarget and global.strata.target or global.strata.offTarget]
+				if fontString.NSCTStrata ~= strataRequired then
+					fontString.NSCTStrata = strataRequired
+					fontString:GetParent():SetFrameStrata(strataRequired)
+				end
 
 				-- alpha
 				local startAlpha = formattingFor(isTarget).alpha
@@ -719,31 +674,20 @@ local function AnimationOnUpdate()
 
 				-- sizing
 				if (fontString.pow) then
-					local iconScale = NameplateSCT.db.global.iconScale
 					local height = fontString.startHeight
+					local size = height
 					if (elapsed < fontString.animatingDuration/6) then
 						fontString:SetText(fontString.NSCTText)
-						local size = powSizing(elapsed, fontString.animatingDuration/6, height/2, height*2, height)
+						size = powSizing(elapsed, fontString.animatingDuration/6, height/2, height*2, height)
 						fontString:SetTextHeight(size)
-						if fontString.icon then
-							if MSQ and NameplateSCT.db.global.enableMSQ then
-								fontString.icon.button:SetSize(size*iconScale, size*iconScale)
-							else
-								fontString.icon:SetSize(size*iconScale, size*iconScale)
-							end
-						end
 					else
 						fontString.pow = nil
 						fontString:SetTextHeight(height)
 						applyFont(fontString, fontString.NSCTFontSize)
 						fontString:SetText(fontString.NSCTText)
-						if fontString.icon then
-							if MSQ and NameplateSCT.db.global.enableMSQ then
-								fontString.icon.button:SetSize(height*iconScale, height*iconScale)
-							else
-								fontString.icon:SetSize(height*iconScale, height*iconScale)
-							end
-						end
+					end
+					if fontString.icon then
+						iconRegion(fontString.icon):SetSize(size*global.iconScale, size*global.iconScale)
 					end
 				end
 
@@ -768,7 +712,7 @@ local function AnimationOnUpdate()
 					local distance = fontString.fireworksDistance * easedProgress
 
 					 -- Get the configured starting radius
-					local startRadius = NameplateSCT.db.global.animations.fireworksRadius
+					local startRadius = global.animations.fireworksRadius
 					xOffset = (startRadius + distance) * math.cos(angle)
 					yOffset = (startRadius + distance) * math.sin(angle)
 				end
@@ -781,11 +725,11 @@ local function AnimationOnUpdate()
 					-- -- Fireworks effect ignores global offset and random jitter, always relative to center
 					fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", xOffset, yOffset)
 				else
-					fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", NameplateSCT.db.global.xOffset + xOffset + randomX[fontString], NameplateSCT.db.global.yOffset + yOffset + randomY[fontString])
+					fontString:SetPoint("CENTER", fontString.anchorFrame, "CENTER", global.xOffset + xOffset + randomX[fontString], global.yOffset + yOffset + randomY[fontString])
 				end
 			end
 		end
-		if MSQ and NameplateSCT.db.global.enableMSQ then
+		if MSQ and global.enableMSQ then
 			NameplateSCT.frame.MSQGroup:ReSkin()
 		end
 	else
@@ -860,15 +804,6 @@ end
 -------------
 
 local eastAsiaLetter = L["Truncate Letter East Asia"]
-if eastAsiaLetter == 'Truncate Letter East Asia' then
-	-- miss locale, Use its pronunciation instead
-	-- 'w' means 'wan', 1wan = 10000
-	eastAsiaLetter = 'w'
-end
-
-function NameplateSCT:truncateText(amount)
-	return ns.Amount.Format(amount, self.db.global, eastAsiaLetter)
-end
 
 -- swinger is who swung, "player" or "pet", or nil for a Hit that is no
 -- swing. texture is the icon's texture, or nil for none.
@@ -909,7 +844,7 @@ function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
 	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and texture ~= nil
     if not iconOnly then
         -- truncate
-        text = self:truncateText(amount)
+        text = ns.Amount.Format(amount, self.db.global, eastAsiaLetter)
         color = self:TextColor(school, swinger, crit)
     end
 
@@ -952,13 +887,12 @@ function NameplateSCT:MissEvent(where, missType, texture)
 	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, texture, true)
 end
 
--- Plate Text for Your Hit on an enemy Nameplate. A swing (see Filter.IsSwing)
--- gets the autoattack animation, and the colour and icon of who swung: pet
--- says that the pet did (see Flow.New). spellID, from Spell Identity, gives
--- the icon, and is nil when the spell is not known. lineKind is the Line Kind
--- of the Hit's Log Line, or nil when its colour told none. late is the
--- Nameplate as it hid, for a late Hit (see Flow.New).
-function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late, pet)
+-- Plate Text for Your Hit on an enemy Nameplate. A swing gets the autoattack
+-- animation, and the colour and icon of who swung: swinger is "player", "pet",
+-- or nil for a Hit that is no swing. spellID, from Spell Identity, gives the
+-- icon, and is nil when the spell is not known. late is the Nameplate as it
+-- hid, for a late Hit (see Flow.New).
+function NameplateSCT:ShowHit(hit, spellID, late, swinger)
 	-- Where the text goes. A late Hit's token can name another unit by now,
 	-- so its text has no unit: it starts in the Grace Period on the frame its
 	-- Nameplate hid with, and keeps the look it had then.
@@ -968,10 +902,6 @@ function NameplateSCT:ShowHit(hit, how, spellID, lineKind, late, pet)
 	else
 		where = { unit = hit.unit, frame = C_NamePlate.GetNamePlateForUnit(hit.unit),
 			isTarget = isTrue(UnitIsUnit(hit.unit, "target")) }
-	end
-	local swinger
-	if ns.Filter.IsSwing(how, lineKind) then
-		swinger = pet and "pet" or "player"
 	end
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
@@ -1028,7 +958,7 @@ local function startPlateText(fontString, where, size, animation, texture)
 	if global.showIcon and texture then
 		icon:Show()
 		icon:SetTexture(texture)
-		local placed = skinned and icon.button or icon
+		local placed = iconRegion(icon)
 		placed:SetSize(size * global.iconScale, size * global.iconScale)
 		placed:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition, global.xOffsetIcon,
 			global.yOffsetIcon)
@@ -1163,7 +1093,6 @@ local menu = {
 					type = 'range',
 					name = L["Text Duration"],
 					desc = L["Seconds that text stays on screen. Default: 1. Fireworks has its own duration."],
-					disabled = function() return not NameplateSCT.db.global.enabled end,
 					min = 0.5,
 					max = 2,
 					step = .1,
@@ -1181,7 +1110,6 @@ local menu = {
 					type = 'range',
 					name = L["Fireworks Radius"],
 					desc = L["Start radius for fireworks animation"],
-					disabled = function() return not NameplateSCT.db.global.enabled end,
 					min = 0,
 					max = 200,
 					step = 20,
@@ -1194,7 +1122,6 @@ local menu = {
 					type = 'range',
 					name = L["Fireworks Duration"],
 					desc = L["Duration of the fireworks animation"],
-					disabled = function() return not NameplateSCT.db.global.enabled end,
 					min = 0.5,
 					max = 3,
 					step = 0.5,
@@ -1451,7 +1378,6 @@ local menu = {
 					name = L["Icons"],
 					order = 60,
 					inline = true,
-					disabled = function() return not NameplateSCT.db.global.enabled end,
 					args = {
 						showIcon = {
 							type = 'toggle',

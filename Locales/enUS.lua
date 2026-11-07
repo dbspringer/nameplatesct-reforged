@@ -117,7 +117,7 @@ L["Tooltip"] = true
 L["Top Left"] = true
 L["Top Right"] = true
 L["Top"] = true
-L["Truncate Letter East Asia"] = true
+L["Truncate Letter East Asia"] = "w" -- "wan", 1 wan = 10000: the unit letter, not display text
 L["Truncate Method:\n\nWestern:\n  1000=>1K,\n  1000K=>1M\nAsia East:\n  10000=>1w"] = true
 L["Truncate Number"] = true
 L["Use Crit Color"] = true

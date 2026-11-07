@@ -13,8 +13,7 @@ ns.LogFilter = LogFilter
 -- logout, and Blizzard applies it at the next load.
 
 -- Done By "Me" and "My pet" (COMBATLOG_FILTER_MINE, COMBATLOG_FILTER_MY_PET).
-local SOURCES = { 0x4511, 0x3111 }
-local IS_OWN_SOURCE = { [0x4511] = true, [0x3111] = true }
+local OWN_SOURCES = { [0x4511] = true, [0x3111] = true }
 -- Saved colours are the floats the fix wrote, or 8-bit ones after an edit.
 local SAVED_TOLERANCE = 0.005
 local EVENTS = {
@@ -40,8 +39,7 @@ end
 
 local function sameColour(saved, colour)
 	return type(saved) == "table" and type(saved.r) == "number" and type(saved.g) == "number"
-		and type(saved.b) == "number" and math.abs(saved.r - colour.r) <= SAVED_TOLERANCE
-		and math.abs(saved.g - colour.g) <= SAVED_TOLERANCE and math.abs(saved.b - colour.b) <= SAVED_TOLERANCE
+		and type(saved.b) == "number" and ns.LineKind.Near(saved.r, saved.g, saved.b, colour, SAVED_TOLERANCE)
 end
 
 -- Whether the filter colours each line by its Line Kind. Highlighting makes a
@@ -98,7 +96,7 @@ local function asksOnlyOwn(part)
 		return false
 	end
 	for flag, on in pairs(part.sourceFlags) do
-		if on and not IS_OWN_SOURCE[flag] then
+		if on and not OWN_SOURCES[flag] then
 			return false
 		end
 	end
@@ -115,7 +113,7 @@ local function suitsPairing(filter)
 		or flagsOf(part.destFlags) == "none" then
 		return false
 	end
-	for _, flag in ipairs(SOURCES) do
+	for flag in pairs(OWN_SOURCES) do
 		if part.sourceFlags[flag] ~= true then
 			return false
 		end
@@ -171,7 +169,7 @@ function LogFilter.Fix(saved, myActions)
 	local part = tableAt(tableAt(filter, "filters"), 1)
 	local eventList = tableAt(part, "eventList")
 	part.sourceFlags = {}
-	for _, flag in ipairs(SOURCES) do
+	for flag in pairs(OWN_SOURCES) do
 		part.sourceFlags[flag] = true
 	end
 	if flagsOf(part.destFlags) == "none" then

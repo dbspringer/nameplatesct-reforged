@@ -37,21 +37,11 @@ function Filter.ReadSpells(text, nameOf)
 	return list
 end
 
--- Whether a Hit is a swing or a swing miss, the player's or the pet's. how
--- is the rule that paired it (see Pairing.New), and lineKind the Line Kind of
--- its Log Line, or nil when the colour told none. With no Line Kind, a Hit that paired as
--- melee is the best sign of a swing; a swing whose line came in its own frame
--- then does not count. A Weapon Proc's Hit pairs as melee too, so it looks like
--- a swing: the Hits of a proc and of its swing cannot be told apart.
-function Filter.IsSwing(how, lineKind)
-	return how == "melee" or ns.LineKind.IsMelee(lineKind)
-end
-
 -- Whether the Spell Filter lets the Plate Text for a Hit through. A list
 -- hides the Hits it matches, or, inverted, shows only them. spellName is the
 -- name of the Hit's spell from Spell Identity, or nil when that is not
 -- known; action is the Hit's ("WOUND" or a miss), and swing whether it is a
--- swing (see IsSwing). A swing has no Spell Identity, but unknown
+-- swing. A swing has no Spell Identity, but unknown
 -- never matches it: melee does, and missed too for a swing miss. A list with
 -- no entries lets everything through, also inverted, so turning on Inverse
 -- before typing a spell hides nothing.

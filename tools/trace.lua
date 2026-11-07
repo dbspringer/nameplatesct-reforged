@@ -61,6 +61,20 @@ function Trace.LoadLog(name)
 	return lines
 end
 
+function Trace.Exists(path)
+	local file = io.open(path, "r")
+	if file then
+		file:close()
+	end
+	return file ~= nil
+end
+
+function Trace.WriteFile(path, text)
+	local file = assert(io.open(path, "w"))
+	file:write(text)
+	file:close()
+end
+
 -- Splits the fields of a log line and keeps each field's raw text, quotes
 -- included, so a join gives back the same line.
 local function split(fields)

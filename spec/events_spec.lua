@@ -43,7 +43,11 @@ _G.UnitClassification = function() return "normal" end
 _G.UnitIsBossMob = function() return false end
 _G.UnitIsPlayer = function() return false end
 
-local ns = { Recorder = { IsRecording = function() return false end } }
+local recording, recorded = false, {}
+local ns = { Recorder = {
+	IsRecording = function() return recording end,
+	Record = function(_, event, extra) recorded[event] = extra end,
+} }
 for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua",
 	"src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua", "src/Events.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
@@ -53,7 +57,7 @@ local function start()
 	local shown = {}
 	now = 1
 	ns.Events.Stop()
-	ns.Events.Start(function(hit, how, spellID, lineKind, late)
+	ns.Events.Start(function(hit, spellID, late, _, how, lineKind)
 		shown[#shown + 1] = { hit = hit, how = how, spellID = spellID, lineKind = lineKind, late = late }
 	end, nil, {})
 	return shown
@@ -147,5 +151,30 @@ describe("Events, with no recording on", function()
 		finish()
 		assert.are.equal(1, #shown)
 		assert.is_table(shown[1].late)
+	end)
+end)
+
+describe("Events, with a recording on", function()
+	before_each(function()
+		recording, recorded = true, {}
+		guids.target = "Creature-1"
+	end)
+	after_each(function()
+		recording = false
+		_G.UnitCanAttack = function() return true end
+	end)
+
+	it("gives a Trace the live entry's fields, with no frame", function()
+		start()
+		fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+		assert.is_nil(recorded.NAME_PLATE_UNIT_REMOVED.frame)
+		assert.are.equal("normal", recorded.NAME_PLATE_UNIT_REMOVED.classification)
+	end)
+
+	it("keeps the plate and the GUID of a report on a unit the player cannot attack", function()
+		_G.UnitCanAttack = function() return false end
+		start()
+		fire("UNIT_COMBAT", "target", "WOUND", "", 29, 1)
+		assert.are.same({ plate = "nameplate1", canAttack = false, guid = "Creature-1" }, recorded.UNIT_COMBAT)
 	end)
 end)

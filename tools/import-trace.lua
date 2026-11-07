@@ -234,20 +234,6 @@ local function readLines(path)
 	return lines
 end
 
-local function writeFile(path, text)
-	local file = assert(io.open(path, "w"))
-	file:write(text)
-	file:close()
-end
-
-local function exists(path)
-	local file = io.open(path, "r")
-	if file then
-		file:close()
-	end
-	return file ~= nil
-end
-
 local function main(name, savedVariablesPath, combatLogPath)
 	if not name or not name:find("^[%w%-]+$") then
 		fail("usage: luajit tools/import-trace.lua <name> [savedvariables-file] [combatlog-file]")
@@ -255,7 +241,7 @@ local function main(name, savedVariablesPath, combatLogPath)
 	local tracePath = "spec/traces/" .. name .. ".lua"
 	local logPath = "spec/traces/" .. name .. ".combatlog.txt"
 	for _, path in ipairs({ tracePath, logPath }) do
-		if exists(path) then
+		if Trace.Exists(path) then
 			fail(path .. " exists; remove it first to import again")
 		end
 	end
@@ -270,8 +256,8 @@ local function main(name, savedVariablesPath, combatLogPath)
 
 	local scrubbed, scrubbedLines = Import.Scrub(trace, lines)
 	os.execute("mkdir -p spec/traces")
-	writeFile(tracePath, "NameplateSCTReforgedTraces = " .. serialize(scrubbed, "") .. "\n")
-	writeFile(logPath, table.concat(scrubbedLines, "\n") .. "\n")
+	Trace.WriteFile(tracePath, "NameplateSCTReforgedTraces = " .. serialize(scrubbed, "") .. "\n")
+	Trace.WriteFile(logPath, table.concat(scrubbedLines, "\n") .. "\n")
 	print(("%s: %d entries, %d log lines from %s"):format(name, #scrubbed.entries, #scrubbedLines - 1, combatLogPath))
 end
 

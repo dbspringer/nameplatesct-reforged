@@ -20,18 +20,7 @@ local GAME_EVENTS = {
 	"NAME_PLATE_UNIT_REMOVED",
 }
 
-local CAST_EVENTS = {
-	"UNIT_SPELLCAST_SENT",
-	"UNIT_SPELLCAST_START",
-	"UNIT_SPELLCAST_SUCCEEDED",
-	"UNIT_SPELLCAST_INTERRUPTED",
-	"UNIT_SPELLCAST_CHANNEL_START",
-	"UNIT_SPELLCAST_CHANNEL_STOP",
-}
-local IS_CAST_EVENT = {}
-for _, event in ipairs(CAST_EVENTS) do
-	IS_CAST_EVENT[event] = true
-end
+local CAST_EVENTS = ns.Adapter.CAST_STAGES
 
 local keepTicker, flow
 local frame = CreateFrame("Frame")
@@ -50,9 +39,12 @@ local function keepFilteredEvents()
 	C_CombatLog.SetFilteredEventsEnabled(true)
 end
 
+-- A unit query such as UnitIsUnit can give a secret, which cannot be tested
+-- as a boolean. Shared as Events.IsTrue.
 local function isTrue(value)
 	return not issecretvalue(value) and value == true
 end
+Events.IsTrue = isTrue
 
 -- A unit's GUID can be secret, so a unit is named by the nameplate token that
 -- shows it. UnitIsUnit stays public in dungeons.
@@ -119,23 +111,27 @@ local function onEvent(_, event, ...)
 	elseif event == "UNIT_COMBAT" then
 		entry.own = ownerOf(unit)
 		if not entry.own then
-			entry.plate = plateFor(unit)
-			-- A report with no plate can be a late Hit on a Nameplate that just
-			-- hid, and only its GUID tells which (see Adapter.New).
-			if not entry.plate then
-				entry.guid = UnitGUID(unit)
-			end
 			-- Checked at each report, since a duel can make a unit attackable
 			-- mid-fight. A secret answer is left out, so the Hit stays.
 			local canAttack = UnitCanAttack("player", unit)
 			if not issecretvalue(canAttack) then
 				entry.canAttack = canAttack and true or false
 			end
+			-- The adapter drops a report on a unit the player cannot attack, so
+			-- only a Trace needs that unit's plate.
+			if entry.canAttack ~= false or ns.Recorder.IsRecording() then
+				entry.plate = plateFor(unit)
+				-- A report with no plate can be a late Hit on a Nameplate that just
+				-- hid, and only its GUID tells which (see Adapter.New).
+				if not entry.plate then
+					entry.guid = UnitGUID(unit)
+				end
+			end
 		end
 	elseif event == "COMBAT_LOG_MESSAGE" then
 		entry.colouring = lineColouring()
 		entry.hasPet = isTrue(UnitExists("pet"))
-	elseif IS_CAST_EVENT[event] and unit == "player" then
+	elseif CAST_EVENTS[event] and unit == "player" then
 		-- The Nameplate of the player's target at this cast event, which the
 		-- cast need not aim at. Pairing reads it for a Next-Swing Ability.
 		entry.target = plateFor("target")
@@ -143,19 +139,17 @@ local function onEvent(_, event, ...)
 
 	-- The Recorder goes first, so a Trace keeps the event that made Flow fail.
 	if ns.Recorder.IsRecording() then
-		local extra
-		if event == "NAME_PLATE_UNIT_REMOVED" then
-			-- No frame: a Trace cannot keep one.
-			extra = { guid = UnitGUID(unit), wasTarget = entry.wasTarget, classification = entry.classification,
-				isBoss = entry.isBoss, isPlayer = entry.isPlayer }
-		elseif isPlateEvent then
-			extra = { guid = UnitGUID(unit) }
-		elseif event == "UNIT_COMBAT" then
-			extra = { plate = entry.plate, own = entry.own, canAttack = entry.canAttack, guid = UnitGUID(unit) }
-		elseif event == "COMBAT_LOG_MESSAGE" then
-			extra = { colouring = entry.colouring, hasPet = entry.hasPet }
-		elseif IS_CAST_EVENT[event] and unit == "player" then
-			extra = { target = entry.target }
+		-- The live entry's named fields, so a replay sees what Flow saw, but no
+		-- frame: a Trace cannot keep one. A Trace also has the GUID of every
+		-- report and plate event, for reading it later.
+		local extra = {}
+		for key, value in pairs(entry) do
+			if type(key) == "string" and key ~= "frame" then
+				extra[key] = value
+			end
+		end
+		if isPlateEvent or event == "UNIT_COMBAT" then
+			extra.guid = UnitGUID(unit)
 		end
 		ns.Recorder.Record(now, event, extra, ...)
 	end
@@ -168,7 +162,7 @@ local function onUpdate()
 	flow.Tick(GetTime())
 end
 
--- show(hit, how, spellID, lineKind, late, pet) gets Your Hits on an enemy Nameplate, and
+-- show(hit, spellID, late, swinger, how, lineKind) gets Your Hits on an enemy Nameplate, and
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)
@@ -188,7 +182,7 @@ function Events.Start(show, noPlate, spellFacts)
 	for _, event in ipairs(GAME_EVENTS) do
 		frame:RegisterEvent(event)
 	end
-	for _, event in ipairs(CAST_EVENTS) do
+	for event in pairs(CAST_EVENTS) do
 		frame:RegisterUnitEvent(event, "player", "pet")
 	end
 end

@@ -25,46 +25,25 @@ function Amount.Format(amount, settings, eastAsiaLetter)
 		return AbbreviateNumbers(amount)
 	end
 
-	local text
-	if settings.truncateMethod == 'NONE' then
-		if (settings.commaSeperate) then
-			text = commaSeperate(amount)
-		else
-			text = tostring(amount)
-		end
-
-	elseif settings.truncateMethod == 'WESTERN' then
-		local unitLetter = ''
-		if settings.truncateLetter then
-			unitLetter = 'k'
-		end
-
+	local method = settings.truncateMethod
+	if method == 'NONE' and settings.commaSeperate then
+		return commaSeperate(amount)
+	elseif method == 'WESTERN' then
+		local letter = settings.truncateLetter and 'k' or ''
 		if amount >= 1000000 and settings.truncateLetter then
-			text = string.format("%.1fM", amount / 1000000)
+			return string.format("%.1fM", amount / 1000000)
 		elseif amount >= 10000 then
-			text = string.format("%.0f%s", amount / 1000, unitLetter)
+			return string.format("%.0f%s", amount / 1000, letter)
 		elseif amount >= 1000 then
-			text = string.format("%.1f%s", amount / 1000, unitLetter)
-		else
-			text = tostring(amount)
+			return string.format("%.1f%s", amount / 1000, letter)
 		end
-	elseif settings.truncateMethod == 'EASTASIA' then
-		local unitLetter = ''
-		if settings.truncateLetter then
-			unitLetter = eastAsiaLetter
-		end
-
+	elseif method == 'EASTASIA' then
+		local letter = settings.truncateLetter and eastAsiaLetter or ''
 		if amount >= 100000 then
-			text = string.format("%.0f%s", amount / 10000, unitLetter)
+			return string.format("%.0f%s", amount / 10000, letter)
 		elseif amount >= 10000 then
-			text = string.format("%.1f%s", amount / 10000, unitLetter)
-		else
-			text = tostring(amount)
+			return string.format("%.1f%s", amount / 10000, letter)
 		end
-	else
-		-- Never reach
-		text = tostring(amount)
 	end
-
-	return text
+	return tostring(amount)
 end

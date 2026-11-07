@@ -26,17 +26,20 @@ local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 
 local spells = {}
 ns.DirectSpells = spells
 
-local function hits(school, ids)
+-- The ranks of a spell share one table, as nothing changes an entry.
+local function addSpell(spell, ids)
 	for _, id in ipairs(ids) do
-		spells[id] = { school = school }
+		spells[id] = spell
 	end
+end
+
+local function hits(school, ids)
+	addSpell({ school = school }, ids)
 end
 
 -- A ranged attack: its Hits come with shot Log Lines, not direct ones.
 local function shoots(school, ids)
-	for _, id in ipairs(ids) do
-		spells[id] = { school = school, shot = true }
-	end
+	addSpell({ school = school, shot = true }, ids)
 end
 
 -- How long after its cast a Judgement's Hit can come. A live Paladin's 11 Hits and
@@ -45,9 +48,7 @@ end
 local JUDGEMENT_WINDOW = 0.2
 
 local function judges(ids)
-	for _, id in ipairs(ids) do
-		spells[id] = { school = HOLY, window = JUDGEMENT_WINDOW }
-	end
+	addSpell({ school = HOLY, window = JUDGEMENT_WINDOW }, ids)
 end
 
 -- The Seals, by the spell ID of their cast, from Forever's spell data, each with
@@ -81,9 +82,7 @@ ns.ConsecrationSpells = { [20116] = true, [20922] = true, [20923] = true, [20924
 -- players' Heroic Strikes in the open-world Traces. Unverified on Maul, Raptor
 -- Strike, and Cleave, which replace a swing in the same way.
 local function replacesSwing(ids)
-	for _, id in ipairs(ids) do
-		spells[id] = { school = PHYSICAL, nextSwing = true }
-	end
+	addSpell({ school = PHYSICAL, nextSwing = true }, ids)
 end
 
 do

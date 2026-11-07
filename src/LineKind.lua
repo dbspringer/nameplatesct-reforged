@@ -13,17 +13,18 @@ ns.LineKind = LineKind
 -- that kind.
 -- reports is the sort of Hit the kind comes with: "damage" (a WOUND), "miss"
 -- (an avoid action), or "heal". A killing blow line comes with no Hit of its
--- own.
+-- own. group is the sort of spell behind the line, a hit or its miss alike:
+-- "direct", "tick", or "shot", or none for a kind with no spell to tell.
 local KINDS = {
-	direct = { r = 1.00, g = 0.85, b = 0.25, reports = "damage" },
-	tick = { r = 0.75, g = 0.55, b = 1.00, reports = "damage" },
+	direct = { r = 1.00, g = 0.85, b = 0.25, reports = "damage", group = "direct" },
+	tick = { r = 0.75, g = 0.55, b = 1.00, reports = "damage", group = "tick" },
 	swing = { r = 0.85, g = 0.85, b = 0.85, reports = "damage", melee = true },
-	shot = { r = 0.90, g = 0.70, b = 0.45, reports = "damage" },
+	shot = { r = 0.90, g = 0.70, b = 0.45, reports = "damage", group = "shot" },
 	shield = { r = 1.00, g = 0.55, b = 0.20, reports = "damage" },
-	directMiss = { r = 0.55, g = 0.65, b = 0.85, reports = "miss" },
-	tickMiss = { r = 0.65, g = 0.50, b = 0.85, reports = "miss" },
+	directMiss = { r = 0.55, g = 0.65, b = 0.85, reports = "miss", group = "direct" },
+	tickMiss = { r = 0.65, g = 0.50, b = 0.85, reports = "miss", group = "tick" },
 	swingMiss = { r = 0.60, g = 0.60, b = 0.60, reports = "miss", melee = true },
-	shotMiss = { r = 0.75, g = 0.60, b = 0.50, reports = "miss" },
+	shotMiss = { r = 0.75, g = 0.60, b = 0.50, reports = "miss", group = "shot" },
 	shieldMiss = { r = 0.70, g = 0.55, b = 0.35, reports = "miss" },
 	heal = { r = 0.30, g = 1.00, b = 0.40, reports = "heal" },
 	hot = { r = 0.55, g = 0.85, b = 0.55, reports = "heal" },
@@ -34,6 +35,10 @@ local KINDS = {
 -- 0.70 grey (COMBATLOG_DEFAULT_COLORS unitColoring), so a line in any other
 -- colour is another unit's, or the player's highlighted killing blow.
 local OWN_BY_SOURCE = { r = 0.70, g = 0.70, b = 0.70 }
+LineKind.OWN_BY_SOURCE = OWN_BY_SOURCE
+-- The longest a melee Hit comes after its Log Line: one Swing Delay. Pairing's
+-- melee window ends here.
+LineKind.LONGEST_SWING_DELAY = 1.1
 -- The longest a Weapon Proc's Hit comes after its Log Line. Pairing keeps a proc
 -- line this long, and the adapter a Nameplate that hid, as the kill can hide it
 -- before the Hit comes. The longest seen is 1.41 s (a Shaman's Trace, issue #48).
@@ -73,10 +78,14 @@ for _, event in ipairs({ "SPELL_MISSED", "SPELL_PERIODIC_MISSED", "SWING_MISSED"
 	end
 end
 
-local function near(r, g, b, colour)
-	return math.abs(r - colour.r) <= TOLERANCE and math.abs(g - colour.g) <= TOLERANCE
-		and math.abs(b - colour.b) <= TOLERANCE
+-- Whether a public colour is within tolerance of colour in every channel, by
+-- default the tolerance of a Log Line's colour.
+local function near(r, g, b, colour, tolerance)
+	tolerance = tolerance or TOLERANCE
+	return math.abs(r - colour.r) <= tolerance and math.abs(g - colour.g) <= tolerance
+		and math.abs(b - colour.b) <= tolerance
 end
+LineKind.Near = near
 
 -- How a Log Filter, as Blizzard_CombatLog_Filters stores one, colours whole
 -- lines: "kind" (by event type, as the fix sets), "source", or nil when the
@@ -121,6 +130,12 @@ end
 -- "heal", or nil for a kind that comes with no Hit.
 function LineKind.Reports(kind)
 	return KINDS[kind] and KINDS[kind].reports
+end
+
+-- The sort of spell behind a line of this kind: "direct", "tick", "shot", or
+-- nil for a kind with no spell to tell or one that tells nothing.
+function LineKind.Group(kind)
+	return KINDS[kind] and KINDS[kind].group
 end
 
 -- Whether a line of this kind is melee, so it comes one Swing Delay early.
