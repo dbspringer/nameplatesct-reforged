@@ -106,8 +106,8 @@ describe("Spell Identity", function()
 			end
 		end)
 
-		it("gives the Active Seal to a miss on a direct miss line, which has no school of its own", function()
-			assert.are.equal(RIGHTEOUSNESS, of(sealed(), 5, "directMiss", PHYSICAL))
+		it("gives none to a miss, as another on-hit proc's miss looks the same", function()
+			assert.is_nil(of(sealed(), 5, "directMiss", PHYSICAL))
 		end)
 
 		it("gives none away from a swing line", function()
@@ -246,6 +246,22 @@ describe("Spell Identity", function()
 					{ castEntry(5, JUDGEMENT), hitEntry(5.05, "nameplate1", HOLY), lineEntry(5.05, "direct") })))
 				assert.are.same({ JUDGEMENT }, shownSpells({ castEntry(1, RIGHTEOUSNESS), castEntry(5, JUDGEMENT),
 					hitEntry(5, "nameplate1", HOLY), lineEntry(5, "direct") }))
+			end)
+
+			it("gives none to Holy Hits near a Judgement during Consecration, whichever comes first", function()
+				local function holy(time)
+					return { hitEntry(time, "nameplate1", HOLY), lineEntry(time, "direct") }
+				end
+				assert.are.same({ "none", "none" }, shownSpells(entriesOf({ castEntry(2, CONSECRATION), castEntry(5.95, JUDGEMENT) },
+					holy(6), holy(6.1))))
+				assert.are.same({ "none" }, shownSpells(entriesOf({ castEntry(2, CONSECRATION), castEntry(6, JUDGEMENT) },
+					holy(6))))
+			end)
+
+			it("still counts Consecration for a Hit decided after a later cast that could be Consecration", function()
+				local swingRecord, swingLine = swingEntries(5)
+				assert.are.same({ "none" }, shownSpells({ castEntry(1, RIGHTEOUSNESS), castEntry(2, CONSECRATION), swingRecord,
+					swingLine, hitEntry(5, "nameplate1", HOLY), castEntry(5.05, "<secret>"), lineEntry(5.1, "direct") }))
 			end)
 
 			it("keeps the Seal of the Hit's time for a Hit whose line came late", function()

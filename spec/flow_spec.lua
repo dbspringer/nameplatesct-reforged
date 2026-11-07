@@ -139,7 +139,24 @@ describe("Flow", function()
 				holyWithNone = holyWithNone + 1
 			end
 		end
-		assert.are.same({ 26, 10, 4 }, { counts[21084], counts[20271], holyWithNone })
+		assert.are.same({ 25, 10, 4 }, { counts[21084], counts[20271], holyWithNone })
+	end)
+
+	-- Counts alone hid a Touch of the Grave miss with the Seal's icon.
+	it("gives the Seal only to Holy Hits on direct lines, and not to another proc's miss before a real proc", function()
+		local spellOf = {}
+		for _, name in ipairs({ "paladin-seal", "paladin-judgement", "paladin-seal-fights" }) do
+			local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
+			for _, result in ipairs(run(trace.entries)) do
+				if name == "paladin-seal-fights" then
+					spellOf[result.hit.entry] = result.spellID or "none"
+				end
+				if result.spellID == 20154 or result.spellID == 21084 then
+					assert.are.same({ "WOUND", 2, "direct" }, { result.hit.action, result.hit.school, result.lineKind })
+				end
+			end
+		end
+		assert.are.same({ "none", 21084 }, { spellOf[275], spellOf[278] })
 	end)
 
 	-- A stand-in for a Nameplate frame, and the plate events that carry it.

@@ -143,8 +143,9 @@ function Identity.New(saved)
 	-- frame's casts to Identity before its Hits), so a Hit looks up the Seal of
 	-- its own moment.
 	local sealChanges = {}
-	-- The player's last cast of Consecration, or one that could be: { time, entry }.
-	local consecration
+	-- The player's recent casts of Consecration, or ones that could be, oldest
+	-- first. A late Hit can need an older one than the latest.
+	local consecrations = {}
 	-- The times of the player's latest swing lines that landed, oldest first.
 	local swingLines = {}
 
@@ -274,11 +275,24 @@ function Identity.New(saved)
 		return fitting
 	end
 
-	-- The Active Seal's spell if this direct Hit or miss could be its Seal Proc,
-	-- or nil: a proc has no cast and no Tick Rhythm, so only the Seal being on
-	-- the player and a landed swing just before tie it to the Seal.
-	local function sealProc(hit, school, miss)
-		if not (miss or school == SCHOOL_HOLY) then
+	-- Whether Consecration could be ticking at this Hit's moment. Its ticks are
+	-- direct Holy Hits with no cast, so they look like a Seal Proc or a Judgement.
+	local function consecrated(hit)
+		for _, cast in ipairs(consecrations) do
+			if cameBefore(cast, hit) and hit.time - cast.time <= CONSECRATION_DURATION then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- The Active Seal's spell if this direct Hit could be its Seal Proc, or nil: a
+	-- proc has no cast and no Tick Rhythm, so only the Seal being on the player and
+	-- a landed swing just before tie it to the Seal. A miss has no school, and
+	-- another on-hit proc's miss looks the same (Touch of the Grave's 21 and
+	-- Windfury's 4 to Seal of Command's 4 in the Traces), so it gets none.
+	local function sealProc(hit, school)
+		if school ~= SCHOOL_HOLY then
 			return nil
 		end
 		local seal
@@ -291,7 +305,7 @@ function Identity.New(saved)
 		if not seal or not seal.spellID or hit.time - seal.time > SEAL_DURATION then
 			return nil
 		end
-		if consecration and cameBefore(consecration, hit) and hit.time - consecration.time <= CONSECRATION_DURATION then
+		if consecrated(hit) then
 			return nil
 		end
 		for _, time in ipairs(swingLines) do
@@ -320,13 +334,19 @@ function Identity.New(saved)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
 		local found, fitting = castOf(hit, group, school, miss)
-		local seal = group == "direct" and sealProc(hit, school, miss)
+		local seal = group == "direct" and sealProc(hit, school)
 		if seal then
 			-- A cast that fits could have made the Hit too, so it gets none, and
 			-- that cast stays for its own Hit.
 			return fitting == 0 and seal or nil
 		end
 		if not found then
+			return nil
+		end
+		-- Judgement fits only by being near its cast, and so does a Consecration
+		-- tick, so during Consecration the Hit gets none and the cast stays.
+		local direct = not found.secret and ns.DirectSpells[found.spellID]
+		if direct and direct.window and consecrated(hit) then
 			return nil
 		end
 		found.used = true
@@ -432,6 +452,13 @@ function Identity.New(saved)
 		sealChanges[#sealChanges + 1] = { time = record.time, entry = record.entry, spellID = spellID }
 	end
 
+	local function noteConsecration(record)
+		while consecrations[1] and record.time - consecrations[1].time > CONSECRATION_DURATION + SEAL_CHANGE_AGE do
+			table.remove(consecrations, 1)
+		end
+		consecrations[#consecrations + 1] = record
+	end
+
 	-- Follows the Active Seal and Consecration from a cast of the player. A cast
 	-- whose spell ID is secret could be another Seal or Consecration, so it counts
 	-- as both. Judgement does not end a Seal on Forever: 26 of 77 Judgements in
@@ -439,7 +466,7 @@ function Identity.New(saved)
 	local function noteSealCast(record, secret)
 		if secret then
 			changeSeal(record, nil)
-			consecration = record
+			noteConsecration(record)
 			return
 		end
 		local spellID = record.spellID
@@ -447,7 +474,7 @@ function Identity.New(saved)
 		if proc ~= nil then
 			changeSeal(record, proc and spellID or nil)
 		elseif ns.ConsecrationSpells[spellID] then
-			consecration = record
+			noteConsecration(record)
 		end
 	end
 

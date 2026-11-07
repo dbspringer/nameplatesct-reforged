@@ -79,7 +79,7 @@ The Seal that the player's casts say is on them now.
 _Avoid_: Current seal, seal buff
 
 **Seal Proc**:
-Your Hit or miss made by the Active Seal when a melee swing lands, with no cast of its own.
+Your Hit made by the Active Seal when a melee swing lands, with no cast of its own.
 _Avoid_: Seal damage, seal hit
 
 **Spell Facts**:
