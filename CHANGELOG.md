@@ -1,5 +1,9 @@
 # Changelog
 
+## 5
+
+- In groups, your DoT ticks and wand shots show their own numbers more often. Before, another player's hit that landed at the same moment (a Shaman's Flametongue, say, or a Warrior's swing) could show as yours, and your real number went missing.
+
 ## 4
 
 - Your Thorns damage now shows its numbers, with no icon. The addon asks once more to fix your combat log, so it can see your Thorns. Press "Fix and reload" to accept.

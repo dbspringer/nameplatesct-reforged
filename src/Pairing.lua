@@ -39,6 +39,9 @@ local SCHOOL_PHYSICAL = 1
 -- and no Trace has a Shaman in a group to show how often that happens.
 local PROC_AFTER_SWING = 0.15
 local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
+-- How long after its longest duration a DoT still counts as active, for a
+-- cast that travels or a tick that drifts late.
+local DOT_SLACK = 1
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
@@ -174,14 +177,16 @@ end
 -- Takes from the lines of the Hit's frame the first one that suits the Hit, a
 -- shot line last: it can wait for its own Hit, and another line in the frame
 -- cannot. A melee line stays, as its Hit comes one Swing Delay later.
-local function takeSuited(hit, lines)
+-- accepts(hit, line), which is optional, can refuse a line that suits.
+local function takeSuited(hit, lines, accepts)
 	for i, line in ipairs(lines) do
-		if suits(hit, line) and not isShotLine(line) and not ns.LineKind.IsMelee(line.lineKind) then
+		if suits(hit, line) and not isShotLine(line) and not ns.LineKind.IsMelee(line.lineKind)
+			and (not accepts or accepts(hit, line)) then
 			return table.remove(lines, i)
 		end
 	end
 	for i, line in ipairs(lines) do
-		if suits(hit, line) and not ns.LineKind.IsMelee(line.lineKind) then
+		if suits(hit, line) and not ns.LineKind.IsMelee(line.lineKind) and (not accepts or accepts(hit, line)) then
 			return table.remove(lines, i)
 		end
 	end
@@ -214,9 +219,13 @@ end
 -- "melee" (a line one Swing Delay earlier, a melee line that its early Hit
 -- waited on, or a Weapon Proc's line), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
--- or one in a colour that is never the player's, pairs with none.
+-- or one in a colour that is never the player's, pairs with none. A tick or
+-- shot line goes first to a Hit of the right school (see rightSchool).
+-- options.schoolOf(spellID), which is optional, gives the known school of a
+-- spell's hits, such as a wand's from the Spell Facts.
 function Pairing.New(options)
 	local onDecision = options.onDecision
+	local schoolOf = options.schoolOf or function() end
 	local frameTime
 	local frameHits, frameLines = {}, {}
 	-- The cast of the player's latest Next-Swing Ability.
@@ -226,6 +235,41 @@ function Pairing.New(options)
 	local lastStrike
 	-- The player's ranged attacks that can still be in flight, oldest first.
 	local shots = {}
+	-- When the player's and the pet's DoTs of each school end, from their
+	-- casts. A cast does not say which Nameplate it was on.
+	local dotEnds = {}
+
+	-- Whether the Hit's school can be that of the line's spell: for a tick
+	-- line, the school of a DoT that is active, and for a shot line, of a
+	-- shot that can still fly. With none of these known, any school can be.
+	-- Only a WOUND's school counts, as misses and heals report school 1.
+	local function rightSchool(hit, line)
+		if hit.action ~= "WOUND" or issecretvalue(hit.school) then
+			return true
+		end
+		local group, known = ns.LineKind.Group(line.lineKind), false
+		if group == "tick" then
+			for school, ends in pairs(dotEnds) do
+				if hit.time <= ends then
+					if school == hit.school then
+						return true
+					end
+					known = true
+				end
+			end
+		elseif group == "shot" then
+			for _, shot in ipairs(shots) do
+				local school = hit.time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
+				if school then
+					if school == hit.school then
+						return true
+					end
+					known = true
+				end
+			end
+		end
+		return not known
+	end
 
 	local function isShotTarget(hit)
 		for _, shot in ipairs(shots) do
@@ -239,6 +283,36 @@ function Pairing.New(options)
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
 
+	-- Takes a line for a Hit. The Hits that waited on it are not Your Hits.
+	local function claim(line)
+		if line.early then
+			onDecision(line.early, nil)
+		end
+		if line.second then
+			onDecision(line.second, nil)
+		end
+		return line
+	end
+
+	-- A line that fits the Hit but for its school (see rightSchool), and that
+	-- no other Hit waits on, and how it fits. The Hit is its second choice: it
+	-- gets the line once the line's window is over, unless a Hit of the right
+	-- school takes it first. So a new wand's Hits still pair, and teach Spell
+	-- Identity the new school.
+	local function secondChoiceLine(hit, lines)
+		for _, line in ipairs(lines) do
+			if not line.second and not ns.LineKind.IsMelee(line.lineKind) and suits(hit, line) then
+				return line, "frame"
+			end
+		end
+		for _, line in ipairs(waitingLines) do
+			local how = not line.second and not ns.LineKind.IsMelee(line.lineKind) and fits(hit, line, isShotTarget)
+			if how then
+				return line, how
+			end
+		end
+	end
+
 	-- Ends the holds and drops the lines that are over by this time. A held
 	-- Hit takes the oldest waiting line that came after it within the hold,
 	-- but only once that line is too old to be a newer Hit's early line: in
@@ -247,6 +321,16 @@ function Pairing.New(options)
 	-- melee line never pairs here: its Hit comes one Swing Delay after it, so
 	-- a Hit just before the line is another unit's (warrior-retest).
 	local function advance(now)
+		local at = 1
+		while waitingLines[at] do
+			local line = waitingLines[at]
+			if line.second and now - line.time > earlyWindow(line) then
+				table.remove(waitingLines, at)
+				onDecision(line.second, line, line.secondHow)
+			else
+				at = at + 1
+			end
+		end
 		while heldHits[1] and heldHits[1].time + HOLD < now do
 			local hit = heldHits[1]
 			local index
@@ -261,7 +345,7 @@ function Pairing.New(options)
 				break
 			end
 			table.remove(heldHits, 1)
-			local found = index and table.remove(waitingLines, index) or nil
+			local found = index and claim(table.remove(waitingLines, index)) or nil
 			onDecision(hit, found, found and "late")
 		end
 		while waitingLines[1] and now - waitingLines[1].time > (waitingLines[1].mayBeProc and PROC_TO or MELEE_TO) do
@@ -277,9 +361,12 @@ function Pairing.New(options)
 			onDecision(hit, nil)
 		elseif OWN_UNITS[hit.unit] then
 			local found = OWN_ACTIONS[hit.action] and takeSuited(hit, lines) or nil
+			if found then
+				claim(found)
+			end
 			onDecision(hit, found, found and "frame")
 		else
-			local found, how = takeSuited(hit, lines), "frame"
+			local found, how = takeSuited(hit, lines, rightSchool), "frame"
 			if not found then
 				-- The oldest line that fits. When the player's and the pet's swing
 				-- lines wait at once, a Hit can take the other's: the Swing Delay
@@ -287,23 +374,25 @@ function Pairing.New(options)
 				-- mark (see Adapter.New) then goes with the wrong Hit.
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line, isShotTarget)
-					if how then
+					if how and rightSchool(hit, line) then
 						found = table.remove(waitingLines, i)
 						break
 					end
 				end
 			end
 			if found then
-				if found.early then
-					onDecision(found.early, nil)
-				end
-				onDecision(hit, found, how)
+				onDecision(hit, claim(found), how)
 			else
 				local line = earlyMeleeLine(hit, waitingLines) or earlyMeleeLine(hit, lines)
 				if line then
 					line.early = hit
 				else
-					heldHits[#heldHits + 1] = hit
+					local second, secondHow = secondChoiceLine(hit, lines)
+					if second then
+						second.second, second.secondHow = hit, secondHow
+					else
+						heldHits[#heldHits + 1] = hit
+					end
 				end
 			end
 		end
@@ -352,6 +441,10 @@ function Pairing.New(options)
 			endFrame()
 		end
 		if record.kind == "cast" then
+			local dot = record.stage == "SUCCEEDED" and not issecretvalue(record.spellID) and ns.TickSpells[record.spellID]
+			if dot and not dot.area then
+				dotEnds[dot.school] = math.max(dotEnds[dot.school] or 0, record.time + dot.duration + DOT_SLACK)
+			end
 			local spell = spellTakingEffect(record)
 			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
 				lastStrike = record.time

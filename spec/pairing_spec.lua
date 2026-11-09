@@ -7,6 +7,7 @@ local ns = {}
 assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Pairing.lua"))("NameplateSCT_Reforged", ns)
+assert(loadfile("src/TickSpells.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/DirectSpells.lua"))("NameplateSCT_Reforged", ns)
 local Adapter, Pairing = ns.Adapter, ns.Pairing
 local Trace = assert(loadfile("tools/trace.lua"))()
@@ -26,7 +27,7 @@ local function line(time, lineKind)
 	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
 end
 
-local HEROIC_STRIKE, FIREBALL, SHOOT = 78, 133, 5019
+local HEROIC_STRIKE, FIREBALL, SHOOT, CORRUPTION = 78, 133, 5019, 172
 
 local function cast(time, spellID, target)
 	entryCount = entryCount + 1
@@ -36,13 +37,15 @@ end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
 -- Log Line entry that each Hit got, by the Hit's entry (false for none).
-local function pair(records)
+-- schoolOf, which is optional, gives the known school of a spell's hits.
+local function pair(records, schoolOf)
 	local decided = {}
 	local pairing = Pairing.New({
 		onDecision = function(decidedHit, decidedLine)
 			assert(decided[decidedHit.entry] == nil, "a Hit was decided twice")
 			decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
 		end,
+		schoolOf = schoolOf,
 	})
 	for _, record in ipairs(records) do
 		pairing.Push(record)
@@ -433,6 +436,41 @@ describe("Pairing", function()
 		local decided = pair({ shoot, shot, tick, tickLine, wand })
 		assert.are.equal(tickLine.entry, decided[tick.entry])
 		assert.are.equal(shot.entry, decided[wand.entry])
+	end)
+
+	describe("the school check", function()
+		local FIRE, ARCANE, FROST = 4, 64, 16
+
+		local function wandOf(school)
+			return function(spellID)
+				return spellID == SHOOT and school or nil
+			end
+		end
+
+		it("gives a tick line to the Hit with an active DoT's school before another Hit in its frame", function()
+			local corruption, fire, tick, tickLine = cast(0, CORRUPTION), hit(5, "nameplate1", FIRE), hit(5), line(5, "tick")
+			local decided = pair({ corruption, fire, tick, tickLine })
+			assert.are.same({ false, tickLine.entry }, { decided[fire.entry], decided[tick.entry] })
+		end)
+
+		it("gives a tick line to a Hit of another school when no Hit of the right school comes", function()
+			local corruption, fire, tickLine = cast(0, CORRUPTION), hit(5, "nameplate1", FIRE), line(5, "tick")
+			local decided = pair({ corruption, fire, tickLine })
+			assert.are.equal(tickLine.entry, decided[fire.entry])
+		end)
+
+		it("gives a shot line to the Hit with the wand's school before an earlier Hit", function()
+			local shoot, shot = cast(0, SHOOT), line(1, "shot")
+			local swing, wand = hit(1.1, "nameplate1", 1), hit(1.25, "nameplate1", ARCANE)
+			local decided = pair({ shoot, shot, swing, wand }, wandOf(ARCANE))
+			assert.are.same({ false, shot.entry }, { decided[swing.entry], decided[wand.entry] })
+		end)
+
+		it("still gives a shot line to a new wand's Hit, so its school can be learned again", function()
+			local shoot, shot, wand = cast(0, SHOOT), line(1, "shot"), hit(1.25, "nameplate1", ARCANE)
+			local decided = pair({ shoot, shot, wand }, wandOf(FROST))
+			assert.are.equal(shot.entry, decided[wand.entry])
+		end)
 	end)
 
 	it("gives no direct line to a Hit 0.2 s after it", function()
