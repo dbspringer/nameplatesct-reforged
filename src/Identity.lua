@@ -224,7 +224,8 @@ end
 -- nil; Hits come in about the
 -- order of their time, a held Hit up to DECIDE_LATE late. crowded says that
 -- another tick that could be the same spell's came at the same time on the
--- same unit.
+-- same unit. SchoolOf(spellID) gives the school of a spell's hits, from a
+-- table or from the Spell Facts that count, or nil.
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
@@ -495,6 +496,7 @@ function Identity.New(saved)
 	local identity = {}
 
 	identity.Line = seals.Line
+	identity.SchoolOf = schoolOf
 
 	function identity.Cast(record)
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then

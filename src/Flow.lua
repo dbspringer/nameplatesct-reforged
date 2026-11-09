@@ -50,6 +50,7 @@ function Flow.New(options)
 				pending[#pending + 1] = { hit = hit, line = line, how = how }
 			end
 		end,
+		schoolOf = identity.SchoolOf,
 	})
 	-- A cast goes in after Pairing has decided the frames before it.
 	local adapter = ns.Adapter.New(function(record)

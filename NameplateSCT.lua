@@ -21,6 +21,8 @@ local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- The spell whose icon the player's swing shows. The pet's swing shows the
 -- pet Attack button's icon, PET_ATTACK_TEXTURE.
 local AUTO_ATTACK = 6603
+-- The wand's slot: 18 on Forever (tested in game, 2026-11-09).
+local RANGED_SLOT = GetInventorySlotInfo("RangedSlot")
 -- Forever has only the _v2 names of the Blizzard Target Text CVars.
 local blizzardCvar = "floatingCombatTextCombatDamage_v2"
 
@@ -499,6 +501,8 @@ function NameplateSCT:OnEnable()
 		hideTargetText()
 	end
 	ns.LogFilterWindow.Start()
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+	self:CheckRangedItem()
 	ns.Events.Start(function(hit, spellID, late, swinger)
 		self:ShowHit(hit, spellID, late, swinger)
 	end, function()
@@ -942,6 +946,30 @@ end
 function NameplateSCT:ForgetSpellFacts()
 	wipe(self.db.global.spellFacts)
 	ns.Say(L["Forgot your wand's school. Shoot's icon comes back from your second hit with it."])
+end
+
+-- The wand sets Shoot's school, so the Spell Facts belong to the ranged item
+-- that taught them. Another ranged item clears them: Pairing prefers Hits of
+-- the learned school, so a stale school lets other players' Hits take the
+-- new wand's shot lines and teach the old school again. The facts are
+-- account-wide, so this also covers a character with another wand. With no
+-- ranged item they stay, so a wand taken off and on keeps its school.
+function NameplateSCT:CheckRangedItem()
+	local itemID = GetInventoryItemID("player", RANGED_SLOT)
+	if not itemID or issecretvalue(itemID) then
+		return
+	end
+	local global = self.db.global
+	if global.spellFactsItem ~= itemID then
+		wipe(global.spellFacts)
+		global.spellFactsItem = itemID
+	end
+end
+
+function NameplateSCT:PLAYER_EQUIPMENT_CHANGED(_, slot)
+	if slot == RANGED_SLOT then
+		self:CheckRangedItem()
+	end
 end
 
 -- Shows a font string's icon, when it has one, and starts its animation on
