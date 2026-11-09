@@ -27,7 +27,7 @@ local function line(time, lineKind)
 	return { kind = "line", time = time, entry = entryCount, lineKind = lineKind }
 end
 
-local HEROIC_STRIKE, FIREBALL, SHOOT, CORRUPTION = 78, 133, 5019, 172
+local HEROIC_STRIKE, FIREBALL, SHOOT, CORRUPTION, GARROTE = 78, 133, 5019, 172, 703
 
 local function cast(time, spellID, target)
 	entryCount = entryCount + 1
@@ -439,7 +439,7 @@ describe("Pairing", function()
 	end)
 
 	describe("the school check", function()
-		local FIRE, ARCANE, FROST = 4, 64, 16
+		local FIRE, NATURE, ARCANE, FROST = 4, 8, 64, 16
 
 		local function wandOf(school)
 			return function(spellID)
@@ -457,6 +457,14 @@ describe("Pairing", function()
 			local corruption, fire, tickLine = cast(0, CORRUPTION), hit(5, "nameplate1", FIRE), line(5, "tick")
 			local decided = pair({ corruption, fire, tickLine })
 			assert.are.equal(tickLine.entry, decided[fire.entry])
+		end)
+
+		-- Deadly Poison ticks with no cast, so only Garrote's school is known.
+		it("gives a tick line to a Hit of another school at once, when no Hit of its frame has the right school", function()
+			local garrote, poison, tickLine = cast(0, GARROTE), hit(3, "nameplate1", NATURE), line(3, "tick")
+			local swing = hit(3.05, "nameplate1", 1)
+			local decided = pair({ garrote, poison, tickLine, swing })
+			assert.are.same({ tickLine.entry, false }, { decided[poison.entry], decided[swing.entry] })
 		end)
 
 		it("gives a shot line to the Hit with the wand's school before an earlier Hit", function()

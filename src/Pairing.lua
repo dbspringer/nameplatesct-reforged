@@ -220,7 +220,8 @@ end
 -- waited on, or a Weapon Proc's line), or "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none. A tick or
--- shot line goes first to a Hit of the right school (see rightSchool).
+-- shot line goes first to a Hit of the right school (see takesFromFrame and
+-- secondChoiceLine).
 -- options.schoolOf(spellID), which is optional, gives the known school of a
 -- spell's hits, such as a wand's from the Spell Facts.
 function Pairing.New(options)
@@ -239,36 +240,40 @@ function Pairing.New(options)
 	-- casts. A cast does not say which Nameplate it was on.
 	local dotEnds = {}
 
-	-- Whether the Hit's school can be that of the line's spell: for a tick
-	-- line, the school of a DoT that is active, and for a shot line, of a
-	-- shot that can still fly. With none of these known, any school can be.
-	-- Only a WOUND's school counts, as misses and heals report school 1.
-	local function rightSchool(hit, line)
-		if hit.action ~= "WOUND" or issecretvalue(hit.school) then
-			return true
-		end
-		local group, known = ns.LineKind.Group(line.lineKind), false
+	-- The schools that the spell of a tick or shot line can have at this
+	-- time, as a set, or nil when none is known: for a tick line, those of the
+	-- DoTs that are active, and for a shot line, those of the shots that can
+	-- still fly.
+	local function knownSchools(line, time)
+		local group, schools = ns.LineKind.Group(line.lineKind), nil
 		if group == "tick" then
 			for school, ends in pairs(dotEnds) do
-				if hit.time <= ends then
-					if school == hit.school then
-						return true
-					end
-					known = true
+				if time <= ends then
+					schools = schools or {}
+					schools[school] = true
 				end
 			end
 		elseif group == "shot" then
 			for _, shot in ipairs(shots) do
-				local school = hit.time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
+				local school = time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
 				if school then
-					if school == hit.school then
-						return true
-					end
-					known = true
+					schools = schools or {}
+					schools[school] = true
 				end
 			end
 		end
-		return not known
+		return schools
+	end
+
+	-- Whether the Hit's school is known to be, or known not to be, one that
+	-- the line's spell can have. Only a WOUND's school counts, as misses and
+	-- heals report school 1.
+	local function schoolIs(hit, line, right)
+		if hit.action ~= "WOUND" or issecretvalue(hit.school) then
+			return false
+		end
+		local schools = knownSchools(line, hit.time)
+		return schools ~= nil and (schools[hit.school] == true) == right
 	end
 
 	local function isShotTarget(hit)
@@ -294,19 +299,43 @@ function Pairing.New(options)
 		return line
 	end
 
-	-- A line that fits the Hit but for its school (see rightSchool), and that
-	-- no other Hit waits on, and how it fits. The Hit is its second choice: it
-	-- gets the line once the line's window is over, unless a Hit of the right
-	-- school takes it first. So a new wand's Hits still pair, and teach Spell
-	-- Identity the new school.
+	-- Whether an enemy Hit can take a line of its frame. Another player's Hit
+	-- can come in the same frame as a tick, so a tick line goes first to a Hit
+	-- of this frame with a DoT's school; with none, any Hit can take it at
+	-- once, as a tick with no cast of its own (Deadly Poison, Ignite) has a
+	-- school that no cast tells. A shot line with the wrong school waits (see
+	-- secondChoiceLine). later lists the frame's Hits from first on that are
+	-- still to be decided.
+	local function takesFromFrame(hit, line, later, first)
+		if not schoolIs(hit, line, false) then
+			return true
+		end
+		if isShotLine(line) then
+			return false
+		end
+		for i = first, #later do
+			local other = later[i]
+			if not OWN_UNITS[other.unit] and suits(other, line) and schoolIs(other, line, true) then
+				return false
+			end
+		end
+		return true
+	end
+
+	-- A shot line that fits the Hit but for its school, and that no other Hit
+	-- waits on, and how it fits. Most shots' Hits come after their line, and
+	-- another player's Hit can come first. So the Hit is the line's second
+	-- choice: it gets the line once the line's window is over, unless a Hit
+	-- of the right school takes it first. A new wand's Hits still pair this
+	-- way, and teach Spell Identity the new school.
 	local function secondChoiceLine(hit, lines)
 		for _, line in ipairs(lines) do
-			if not line.second and not ns.LineKind.IsMelee(line.lineKind) and suits(hit, line) then
+			if not line.second and isShotLine(line) and suits(hit, line) then
 				return line, "frame"
 			end
 		end
 		for _, line in ipairs(waitingLines) do
-			local how = not line.second and not ns.LineKind.IsMelee(line.lineKind) and fits(hit, line, isShotTarget)
+			local how = not line.second and isShotLine(line) and fits(hit, line, isShotTarget)
 			if how then
 				return line, how
 			end
@@ -356,7 +385,7 @@ function Pairing.New(options)
 		end
 	end
 
-	local function decide(hit, lines)
+	local function decide(hit, lines, later, first)
 		if isZeroWound(hit) or isOthersHeal(hit) then
 			onDecision(hit, nil)
 		elseif OWN_UNITS[hit.unit] then
@@ -366,7 +395,9 @@ function Pairing.New(options)
 			end
 			onDecision(hit, found, found and "frame")
 		else
-			local found, how = takeSuited(hit, lines, rightSchool), "frame"
+			local found, how = takeSuited(hit, lines, function(_, line)
+				return takesFromFrame(hit, line, later, first)
+			end), "frame"
 			if not found then
 				-- The oldest line that fits. When the player's and the pet's swing
 				-- lines wait at once, a Hit can take the other's: the Swing Delay
@@ -374,7 +405,7 @@ function Pairing.New(options)
 				-- mark (see Adapter.New) then goes with the wrong Hit.
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line, isShotTarget)
-					if how and rightSchool(hit, line) then
+					if how and not (isShotLine(line) and schoolIs(hit, line, false)) then
 						found = table.remove(waitingLines, i)
 						break
 					end
@@ -408,11 +439,11 @@ function Pairing.New(options)
 		frameTime, frameHits, frameLines = nil, {}, {}
 		advance(time)
 		local empty = nextSwing and nextSwing.time == time and emptyReportIn(hits, lines, nextSwing)
-		for _, hit in ipairs(hits) do
+		for i, hit in ipairs(hits) do
 			if hit == empty then
 				onDecision(hit, nil)
 			elseif not OWN_UNITS[hit.unit] then
-				decide(hit, lines)
+				decide(hit, lines, hits, i + 1)
 			end
 		end
 		for _, hit in ipairs(hits) do
