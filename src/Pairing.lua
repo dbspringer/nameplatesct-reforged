@@ -303,15 +303,23 @@ function Pairing.New(options)
 	-- can come in the same frame as a tick, so a tick line goes first to a Hit
 	-- of this frame with a DoT's school; with none, any Hit can take it at
 	-- once, as a tick with no cast of its own (Deadly Poison, Ignite) has a
-	-- school that no cast tells. A shot line with the wrong school waits (see
-	-- secondChoiceLine). later lists the frame's Hits from first on that are
-	-- still to be decided.
-	local function takesFromFrame(hit, line, later, first)
+	-- school that no cast tells. When the frame also has a line of another
+	-- kind that the Hit suits, such as a direct line, the Hit can be one of
+	-- several of the player's, so no line goes past it. A shot line with the
+	-- wrong school waits (see secondChoiceLine). later lists the frame's Hits
+	-- from first on that are still to be decided.
+	local function takesFromFrame(hit, line, lines, later, first)
 		if not schoolIs(hit, line, false) then
 			return true
 		end
 		if isShotLine(line) then
 			return false
+		end
+		for _, other in ipairs(lines) do
+			if ns.LineKind.Group(other.lineKind) ~= "tick" and not isShotLine(other)
+				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other) then
+				return true
+			end
 		end
 		for i = first, #later do
 			local other = later[i]
@@ -396,7 +404,7 @@ function Pairing.New(options)
 			onDecision(hit, found, found and "frame")
 		else
 			local found, how = takeSuited(hit, lines, function(_, line)
-				return takesFromFrame(hit, line, later, first)
+				return takesFromFrame(hit, line, lines, later, first)
 			end), "frame"
 			if not found then
 				-- The oldest line that fits. When the player's and the pet's swing

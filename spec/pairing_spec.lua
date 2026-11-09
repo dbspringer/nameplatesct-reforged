@@ -467,6 +467,13 @@ describe("Pairing", function()
 			assert.are.same({ tickLine.entry, false }, { decided[poison.entry], decided[swing.entry] })
 		end)
 
+		it("leaves a tick line to the first Hit when the frame also has a direct line it suits", function()
+			local garrote, poison, strike = cast(0, GARROTE), hit(3, "nameplate1", NATURE), hit(3, "nameplate1", 1)
+			local tickLine, directLine = line(3, "tick"), line(3, "direct")
+			local decided = pair({ garrote, poison, strike, tickLine, directLine })
+			assert.are.same({ tickLine.entry, directLine.entry }, { decided[poison.entry], decided[strike.entry] })
+		end)
+
 		it("gives a shot line to the Hit with the wand's school before an earlier Hit", function()
 			local shoot, shot = cast(0, SHOOT), line(1, "shot")
 			local swing, wand = hit(1.1, "nameplate1", 1), hit(1.25, "nameplate1", ARCANE)
