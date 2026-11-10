@@ -208,22 +208,47 @@ local function findSavedVariables(wowDir)
 	return files[1]
 end
 
--- The newest Combat Log File that started before the Trace. Its name holds
+-- Seconds since the epoch at which a Combat Log File started. Its name holds
 -- the local time that /combatlog turned on.
-local function findCombatLog(wowDir, trace)
-	local traceStart = Trace.StartedToSeconds(trace.header.started)
-	local best, bestStart
-	for _, path in ipairs(listFiles(shellQuote(wowDir) .. "/Logs/WoWCombatLog-*.txt")) do
-		local month, day, year, hour, min, sec = path:match("WoWCombatLog%-(%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)%.txt$")
-		if month then
-			local fileStart = os.time({ year = 2000 + year, month = month, day = day, hour = hour, min = min, sec = sec })
-			if fileStart <= traceStart and (not bestStart or fileStart > bestStart) then
-				best, bestStart = path, fileStart
-			end
+local function fileStart(path)
+	local month, day, year, hour, min, sec = path:match("WoWCombatLog%-(%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)%.txt$")
+	return month and os.time({ year = 2000 + year, month = month, day = day, hour = hour, min = min, sec = sec })
+end
+
+-- The Combat Log File that holds the most of the time from the Trace's first
+-- entry to its last, taking each file to run until the next one starts. The
+-- newest file that started before the Trace is not always it: a Trace can
+-- start a few seconds before /combatlog makes its file.
+function Import.PickCombatLog(paths, trace)
+	local traceStart = Trace.StartedToSeconds(trace.header.started) - trace.header.startTime
+	local first = traceStart + trace.entries[1][1]
+	-- The header's start time has whole seconds only.
+	local last = traceStart + trace.entries[#trace.entries][1] + 1
+	local files = {}
+	for _, path in ipairs(paths) do
+		local start = fileStart(path)
+		if start then
+			files[#files + 1] = { path = path, start = start }
 		end
 	end
+	table.sort(files, function(a, b)
+		return a.start < b.start
+	end)
+	local best, bestOverlap = nil, 0
+	for i, file in ipairs(files) do
+		local stop = files[i + 1] and files[i + 1].start or math.huge
+		local overlap = math.min(stop, last) - math.max(file.start, first)
+		if overlap > bestOverlap then
+			best, bestOverlap = file.path, overlap
+		end
+	end
+	return best
+end
+
+local function findCombatLog(wowDir, trace)
+	local best = Import.PickCombatLog(listFiles(shellQuote(wowDir) .. "/Logs/WoWCombatLog-*.txt"), trace)
 	if not best then
-		fail("no Combat Log File in " .. wowDir .. "/Logs started before the Trace; give its path")
+		fail("no Combat Log File in " .. wowDir .. "/Logs covers the time of the Trace; give its path")
 	end
 	return best
 end

@@ -87,6 +87,14 @@ describe("Import", function()
 		assert.are.equal("", scrubbed.entries[1][4])
 	end)
 
+	it("picks the Combat Log File that holds the Trace, which can start a few seconds after it", function()
+		-- The Trace runs from 10:49:21 to 10:50:21, and /combatlog made its file
+		-- 4 s after the Trace started.
+		local paths = { "Logs/WoWCombatLog-102026_093000.txt", "Logs/WoWCombatLog-102026_104925.txt",
+			"Logs/WoWCombatLog-102126_080000.txt" }
+		assert.are.equal(paths[2], Import.PickCombatLog(paths, trace(100, { { 100 }, { 160 } })))
+	end)
+
 	it("keeps the format line and the lines from 10 s before the Trace to 10 s after it", function()
 		local window = {
 			FORMAT,
