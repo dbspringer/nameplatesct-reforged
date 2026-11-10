@@ -56,16 +56,22 @@ local function newGuidMap(recorder)
 	end
 end
 
-local function scrubLine(line, replaceGuids)
+-- Returns the log line with every unit name emptied. A unit's name follows its
+-- GUID: the source and destination, and others such as SPELL_ABSORBED's
+-- absorber, which comes after the swing or spell fields. Zone and spell names
+-- follow no GUID.
+function Import.ScrubNames(line)
 	local stamp, tokens = parseLine(line)
-	-- Source and destination names follow a GUID. Other events, such as
-	-- ZONE_CHANGE, have no names there.
-	for _, at in ipairs({ 2, 6 }) do
-		if tokens[at] and isGuid(tokens[at]) and tokens[at + 1] and tokens[at + 1]:sub(1, 1) == '"' then
+	for at = 1, #tokens - 1 do
+		if isGuid(tokens[at]) and tokens[at + 1]:sub(1, 1) == '"' then
 			tokens[at + 1] = '""'
 		end
 	end
-	return replaceGuids(stamp .. "  " .. table.concat(tokens, ","))
+	return stamp .. "  " .. table.concat(tokens, ",")
+end
+
+local function scrubLine(line, replaceGuids)
+	return replaceGuids(Import.ScrubNames(line))
 end
 
 local function scrubValue(value, replaceGuids)
@@ -100,14 +106,18 @@ function Import.Scrub(trace, lines)
 	return scrubbed, scrubbedLines
 end
 
--- Keeps the format line and the lines from MARGIN_MS before the Trace to
--- MARGIN_MS after it.
+-- Keeps the format line and the lines from MARGIN_MS before the Trace's first
+-- entry to MARGIN_MS after its last. The first entry can come long after the
+-- start, when the recorder dropped the earlier ones.
 function Import.Cut(lines, trace)
 	local entries = trace.entries
-	local durationMs = math.floor((entries[#entries][1] - trace.header.startTime) * 1000 + 0.5)
+	local function msAfterStart(entry)
+		return math.floor((entry[1] - trace.header.startTime) * 1000 + 0.5)
+	end
 	-- The header's start time has whole seconds only.
 	local startMs = Trace.StartedToSeconds(trace.header.started) * 1000
-	local first, last = startMs - MARGIN_MS, startMs + 1000 + durationMs + MARGIN_MS
+	local first = startMs + msAfterStart(entries[1]) - MARGIN_MS
+	local last = startMs + 1000 + msAfterStart(entries[#entries]) + MARGIN_MS
 	local kept = { lines[1] }
 	for i = 2, #lines do
 		local ms = Trace.StampToMs(parseLine(lines[i]))
