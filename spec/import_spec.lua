@@ -82,4 +82,15 @@ describe("Import", function()
 		local kept = Import.Cut(window, trace(100, { { 100 }, { 143.5 } }))
 		assert.are.same({ FORMAT, window[3], window[4] }, kept)
 	end)
+
+	it("starts 10 s before the first entry when the recorder dropped the earlier ones", function()
+		local window = {
+			FORMAT,
+			line("10:49:40.999", "SPELL_DAMAGE,too early"),
+			line("10:49:41.000", "SPELL_DAMAGE,first kept"),
+		}
+		-- Started in the second 10:49:21; the first kept entry came 30 s later.
+		local kept = Import.Cut(window, trace(100, { { 130 }, { 143.5 } }))
+		assert.are.same({ FORMAT, window[3] }, kept)
+	end)
 end)
