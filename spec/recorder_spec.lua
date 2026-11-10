@@ -38,9 +38,9 @@ local function record(count)
 end
 
 describe("Recorder", function()
-	it("keeps the newest 10000 entries, oldest first, when a recording runs long", function()
-		local trace = record(10003)
-		assert.are.equal(10000, #trace.entries)
+	it("keeps the newest 40000 entries, oldest first, when a recording runs long", function()
+		local trace = record(40003)
+		assert.are.equal(40000, #trace.entries)
 		assert.are.equal(3, trace.dropped)
 		for i, entry in ipairs(trace.entries) do
 			assert.are.equal(i + 3, entry[1])
@@ -48,10 +48,10 @@ describe("Recorder", function()
 	end)
 
 	it("keeps every entry in order when the ring is exactly full", function()
-		local trace = record(10000)
+		local trace = record(40000)
 		assert.are.equal(0, trace.dropped)
 		assert.are.equal(1, trace.entries[1][1])
-		assert.are.equal(10000, trace.entries[10000][1])
+		assert.are.equal(40000, trace.entries[40000][1])
 	end)
 
 	it("saves secrets and nils as placeholders, since SavedVariables cannot hold a secret", function()

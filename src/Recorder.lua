@@ -6,7 +6,7 @@ ns.Recorder = Recorder
 
 -- A ring buffer, so a long recording keeps the newest events and the saved
 -- file stays a bounded size.
-local MAX_ENTRIES = 10000
+local MAX_ENTRIES = 40000
 
 -- Placeholders, because a secret cannot be saved and a nil leaves a hole in
 -- an entry.
