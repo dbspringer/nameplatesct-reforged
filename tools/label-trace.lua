@@ -128,6 +128,9 @@ local function parseEvents(lines)
 				-- absorbed, critical, glancing, crushing; a heal's critical comes
 				-- after its base amount, overheal, and absorbed.
 				if suffix == "DAMAGE" then
+					-- The damage's own school: a swing can deal frost, and a shot
+					-- deals its wand's school.
+					event.school = tonumber(tokens[amountAt + 3]) or event.school
 					event.blocked = (tonumber(tokens[amountAt + 5]) or 0) > 0
 					event.critical = tokens[amountAt + 7] == "1"
 					event.glancing = tokens[amountAt + 8] == "1"
@@ -329,8 +332,10 @@ local function fits(hit, event)
 	if not descriptorFits(hit, event) then
 		return false
 	end
-	-- A damaging Hit comes in its file event's school (all rows with one fit in
-	-- spec/traces/), except a shot, which comes in the wand's school.
+	-- A damaging Hit comes in its file event's damage school (all rows with one
+	-- fit in spec/traces/). Shots stay out of this check: every chosen shot in
+	-- warlock-bfd-group has its Hit's school, but checking shots too moves the
+	-- swings chosen on other rows there, which no one has checked.
 	if hit.action == "WOUND" and hit.school and event.school and not event.name:find("^RANGE_")
 		and event.school ~= hit.school then
 		return false
@@ -389,10 +394,9 @@ local function onTimeOnly(hit, events, delays)
 	return (#timed > 0 and #timed < #events) and timed or events
 end
 
--- The events of the Hit's school, when only some of them have it. For a shot,
--- a miss, or a heal the school only breaks ties: Forever reports a wand's
--- Shoot in the wand's school and many misses and heals as physical, which the
--- file does not.
+-- The events of the Hit's school, when only some of them have it. For a shot
+-- (see fits), a miss, or a heal the school only breaks ties: Forever reports
+-- many misses and heals as physical, which the file does not.
 local function sameSchool(hit, events)
 	local same = {}
 	for _, event in ipairs(events) do
@@ -476,14 +480,14 @@ function Label.Make(trace, lines)
 			table.sort(left, function(a, b)
 				return math.abs(hit.time - a.time) < math.abs(hit.time - b.time)
 			end)
-			local untimed = #sameSchool(hit, left)
+			local fitCount, untimed = #left, sameSchool(hit, left)
 			left = sameSchool(hit, onTimeOnly(hit, left, delays))
 			if #left > 1 then
 				unsure = ("%d file events fit"):format(#left)
-			elseif #left == 1 and untimed > 1 then
-				-- Another order of the same Hits can be on time too, so a person
-				-- checks it.
-				unsure = ("on time, of %d file events"):format(untimed)
+			elseif #left == 1 and (#untimed > 1 or untimed[1] ~= left[1]) then
+				-- Timing chose the event. Another order of the same Hits can be on
+				-- time too, so a person checks it.
+				unsure = ("on time, of %d file events"):format(fitCount)
 			elseif #left == 0 then
 				local outside = hit.time - EARLIEST < fileStart or hit.time + LATEST > fileEnd
 				unsure = outside and "outside the Combat Log File" or "no file event fits"
