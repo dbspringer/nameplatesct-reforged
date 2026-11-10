@@ -549,6 +549,36 @@ describe("Pairing", function()
 			assert.are.equal(swing.entry, decided[offDelay.entry])
 		end)
 
+		it("learns no Swing Delay from a Hit that took another Log Line", function()
+			-- Four swings whose Hit never came, each with a physical spell's Hit
+			-- and line 0.8 s later, in the swing's window.
+			local records = {}
+			for i = 0, 3 do
+				records[#records + 1] = line(1 + 2 * i, "swing")
+				records[#records + 1] = line(1.8 + 2 * i, "direct")
+				records[#records + 1] = hit(1.8 + 2 * i, "nameplate1", 1)
+			end
+			local swing, real, rival = line(20, "swing"), hit(20.6, "nameplate1", 1), hit(20.8, "nameplate2", 1)
+			records[#records + 1], records[#records + 2], records[#records + 3] = swing, real, rival
+			local decided = pair(records)
+			assert.are.same({ swing.entry, false }, { decided[real.entry], decided[rival.entry] })
+		end)
+
+		it("gives a swing line its Hit off the Swing Delay before a Weapon Proc's line can take it", function()
+			local records = swings({}, 1, 0.6, 6)
+			entryCount = entryCount + 1
+			records[#records + 1] = { kind = "swing", time = 20, entry = entryCount, swingType = 0 }
+			local swingLine = line(20, "swing")
+			local first, second = line(20.101, "direct"), line(20.101, "direct")
+			local hits = { hit(20.244, nil, 1), hit(20.852, nil, 1), hit(21.506, nil, 1) }
+			for _, record in ipairs({ swingLine, first, second, hits[1], hits[2], hits[3] }) do
+				records[#records + 1] = record
+			end
+			local decided = pair(records)
+			assert.are.same({ first.entry, swingLine.entry, second.entry },
+				{ decided[hits[1].entry], decided[hits[2].entry], decided[hits[3].entry] })
+		end)
+
 		it("learns the pet's Swing Delay apart from the player's", function()
 			local records = swings(swings({}, 1, 0.4, 6), 20, 0.9, 6, true)
 			local swing, rival, real = line(40, "swing"), hit(40.4, "nameplate2", 1), hit(40.9, "nameplate1", 1)

@@ -245,7 +245,14 @@ end
 -- options.schoolOf(spellID), which is optional, gives the known school of a
 -- spell's hits, such as a wand's from the Spell Facts.
 function Pairing.New(options)
-	local onDecision = options.onDecision
+	-- A Hit that took a Log Line other than a melee one is that line's, so no
+	-- swing learns its delay from it (see learnSwingDelays).
+	local function onDecision(hit, line, how)
+		if line and not ns.LineKind.IsMelee(line.lineKind) then
+			hit.tookOtherLine = true
+		end
+		options.onDecision(hit, line, how)
+	end
 	local schoolOf = options.schoolOf or function() end
 	local frameTime
 	local frameHits, frameLines = {}, {}
@@ -332,13 +339,15 @@ function Pairing.New(options)
 	-- Learns from the melee lines whose window ended by this frame, counts the
 	-- frame's Hits in the windows still open, and opens a window for each of
 	-- the frame's melee lines. Any physical Hit or avoid on an enemy counts,
-	-- paired or not, as another player's Hit makes a swing unclean. Two melee
+	-- paired or not, as another player's Hit makes a swing unclean. A swing's
+	-- one Hit teaches nothing when it took another kind of line by the time
+	-- the window ends: the swing's own Hit did not come. Two melee
 	-- lines of one sort whose windows overlap are both unclean: the Hits cannot
 	-- tell which is whose. The frame's Empty Report, empty, does not count.
 	local function learnSwingDelays(time, hits, lines, empty)
 		while openSwings[1] and time - openSwings[1].line.time > MELEE_TO do
 			local swing = table.remove(openSwings, 1)
-			if swing.hits == 1 and not swing.crowded then
+			if swing.hits == 1 and not swing.crowded and not swing.hit.tookOtherLine then
 				local delays = delaysOf(swing.line)
 				delays[#delays + 1] = swing.delay
 				if #delays > SWING_DELAY_KEEP then
@@ -352,7 +361,7 @@ function Pairing.New(options)
 				for _, swing in ipairs(openSwings) do
 					local age = hit.time - swing.line.time
 					if age >= MELEE_FROM and age <= MELEE_TO and swing.reports == reportOf(hit) then
-						swing.hits, swing.delay = swing.hits + 1, age
+						swing.hits, swing.hit, swing.delay = swing.hits + 1, hit, age
 					end
 				end
 			end
@@ -518,21 +527,26 @@ function Pairing.New(options)
 			local found, how = takeSuited(hit, lines, function(_, line)
 				return takesFromFrame(hit, line, lines, later, first)
 			end), "frame"
+			local offDelay
 			if not found then
 				-- The oldest line that fits. When the player's and the pet's swing
 				-- lines wait at once, a Hit can take the other's: until one of them
 				-- has SWING_DELAY_MIN samples, its line takes any Hit in the window,
 				-- and a line's pet mark (see Adapter.New) then goes with the wrong
-				-- Hit.
+				-- Hit. A Weapon Proc's line comes after its swing's, so a Hit in an
+				-- older swing line's window, though off its Swing Delay, waits on
+				-- that line and leaves the proc's line for the proc's own Hit.
+				offDelay = offDelayLine(hit)
 				for i, line in ipairs(waitingLines) do
 					how = fits(hit, line, isShotTarget, atSwingDelay)
 					if how and not (isShotLine(line) and schoolIs(hit, line, false)) then
-						found = table.remove(waitingLines, i)
+						if not (line.mayBeProc and offDelay and offDelay.time < line.time) then
+							found = table.remove(waitingLines, i)
+						end
 						break
 					end
 				end
 			end
-			local offDelay = not found and offDelayLine(hit)
 			if found then
 				onDecision(hit, claim(found), how)
 			elseif offDelay then
