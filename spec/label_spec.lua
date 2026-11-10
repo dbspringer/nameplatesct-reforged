@@ -33,8 +33,8 @@ local SPELLS = {
 }
 
 -- A damage event in the advanced format: a spell, or a melee swing when the
--- spell is nil.
-local function damage(time, source, dest, amount, spell)
+-- spell is nil. A swing deals physical damage unless school says otherwise.
+local function damage(time, source, dest, amount, spell, critical, school)
 	local fields = base(spell and "SPELL_DAMAGE" or "SWING_DAMAGE", source, dest)
 	if spell then
 		for _, field in ipairs({ SPELLS[spell][1], '"' .. spell .. '"', SPELLS[spell][2] }) do
@@ -44,7 +44,8 @@ local function damage(time, source, dest, amount, spell)
 	for _ = 1, 19 do
 		fields[#fields + 1] = "0"
 	end
-	for _, field in ipairs({ amount, amount, "-1", "4", "0", "0", "0", "nil", "nil", "nil" }) do
+	school = school or (spell and tostring(tonumber(SPELLS[spell][2])) or "1")
+	for _, field in ipairs({ amount, amount, "-1", school, "0", "0", "0", critical and "1" or "nil", "nil", "nil" }) do
 		fields[#fields + 1] = field
 	end
 	return fileLine(time, fields)
@@ -59,8 +60,8 @@ local function missed(time, source, dest, missType)
 end
 
 -- A report with no school fits a file event of any school.
-local function report(time, unit, plate, action, amount, school)
-	return { time, "UNIT_COMBAT", unit, action, "", amount, school, plate = plate, guid = "<secret>" }
+local function report(time, unit, plate, action, amount, school, descriptor)
+	return { time, "UNIT_COMBAT", unit, action, descriptor or "", amount, school, plate = plate, guid = "<secret>" }
 end
 
 local function logLine(time, grey)
@@ -222,6 +223,79 @@ describe("Labels", function()
 			damage(105, ME, MOB_A, 12, "Corruption"),
 		})
 		assert.are.equal("2 file events fit", rows[4].unsure)
+	end)
+
+	it("gives a critical Hit only a critical file event", function()
+		local rows = label({
+			logLine(105),
+			report(105, "nameplate1", "nameplate1", "WOUND", "<secret>", nil, "CRITICAL"),
+		}, {
+			damage(105, OTHER, MOB_A, 40, "Fireball"),
+			damage(105, ME, MOB_A, 80, "Immolate", true),
+		})
+		assert.are.same({ 1, "secret amount" }, { rows[2].line, rows[2].unsure })
+	end)
+
+	it("gives a damaging Hit no file event of another school", function()
+		local rows = label({
+			logLine(101),
+			report(101, "nameplate1", "nameplate1", "WOUND", 29),
+			report(105, "nameplate1", "nameplate1", "WOUND", "<secret>", 32),
+		}, {
+			damage(101, ME, MOB_A, 29, "Immolate"),
+			damage(105, OTHER, MOB_A, 40, "Fireball"),
+			-- The file must cover the whole time in which the event could come.
+			damage(106, OTHER, MOB_B, 5, "Fireball"),
+		})
+		assert.are.same({ false, "no file event fits" }, { rows[3].line, rows[3].unsure })
+	end)
+
+	it("gives a Hit from an elemental swing the swing's file event", function()
+		local rows = label({
+			logLine(101),
+			report(101, "nameplate1", "nameplate1", "WOUND", 29),
+			report(105, "player", nil, "WOUND", "<secret>", 16),
+		}, {
+			damage(101, ME, MOB_A, 29, "Immolate"),
+			damage(105, MOB_A, ME, 12, nil, false, "16"),
+		})
+		assert.are.same({ false, "secret amount" }, { rows[3].line, rows[3].unsure })
+	end)
+
+	it("marks a Hit unsure when timing picks another event than the school does", function()
+		-- Five clean pet swings teach the pet's delay of 0.55 s. Then a physical
+		-- miss has a pet swing, off that delay, and an on-time Immolate to
+		-- choose from.
+		local entries, fileLines = {}, {}
+		for i = 0, 4 do
+			local time = 101 + 2 * i
+			entries[#entries + 1] = logLine(time)
+			entries[#entries + 1] = report(time + 0.55, "nameplate1", "nameplate1", "WOUND", 10 + i)
+			fileLines[#fileLines + 1] = damage(time, PET, MOB_A, 10 + i)
+		end
+		entries[#entries + 1] = report(111.55, "nameplate1", "nameplate1", "MISS", 0, 1)
+		fileLines[#fileLines + 1] = fileLine(111.2, { "SWING_MISSED", PET[1], '""', PET[2], "0x0", MOB_A[1], '""',
+			MOB_A[2], "0x0", "MISS", "nil" })
+		fileLines[#fileLines + 1] = missed(111.55, ME, MOB_A, "MISS")
+		local rows = label(entries, fileLines, true)
+		assert.matches("^on time", rows[11].unsure)
+	end)
+
+	it("prefers a swing at its source's Swing Delay to a nearer one, and marks it unsure", function()
+		-- Five clean pet swings teach the pet's delay of 0.55 s.
+		local entries, fileLines = {}, {}
+		for i = 0, 4 do
+			local time = 101 + 2 * i
+			entries[#entries + 1] = logLine(time)
+			entries[#entries + 1] = report(time + 0.55, "nameplate1", "nameplate1", "WOUND", 10 + i)
+			fileLines[#fileLines + 1] = damage(time, PET, MOB_A, 10 + i)
+		end
+		entries[#entries + 1] = logLine(111)
+		entries[#entries + 1] = report(111.55, "nameplate1", "nameplate1", "WOUND", "<secret>")
+		fileLines[#fileLines + 1] = damage(111, PET, MOB_A, 20)
+		fileLines[#fileLines + 1] = damage(111.35, OTHER, MOB_A, 21)
+		local rows = label(entries, fileLines, true)
+		assert.are.same({ 11, "on time, of 2 file events" }, { rows[12].line, rows[12].unsure })
 	end)
 
 	it("marks a Hit unsure when no file event fits it", function()

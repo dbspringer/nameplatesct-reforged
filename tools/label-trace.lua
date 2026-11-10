@@ -1,7 +1,10 @@
 -- Writes the Labels of a Trace: for each Hit, the Log Line it pairs with, or
 -- none. A Label comes from a chain through the Combat Log File: the Hit's file
 -- event says who made it, and the alignment gives that event's Log Line. No
--- Pairing rule is used, so the Labels can test Pairing.
+-- Pairing rule is used, so the Labels can test Pairing. When several file
+-- events fit a Hit, it prefers the one on time, which for a swing means at
+-- one of its source's Swing Delays: a timing rule like Pairing's, but the file
+-- names each swing's source, which Pairing cannot see (see ADR 0002).
 --
 -- Usage: luajit tools/label-trace.lua <name>
 
@@ -25,6 +28,17 @@ local LATEST = 0.1
 local CAST_OF = { [1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678 }
 -- A delay past this is longer than any seen in the Warlock Traces.
 local LATE = 1.0
+-- A spell's file event comes within this of its Hit, except a shot's or a
+-- Weapon Proc's, which can come later.
+local SPELL_NEAR = 0.04
+-- A source's Swing Delays, from the rows where only its swing fits: a swing
+-- event is on time when at least SWING_SAMPLES_NEAR of them are within
+-- SWING_NEAR of its delay. Each source's delays sit in clusters 10 to 30 ms
+-- wide (warlock-bfd-group). A source with fewer than SWING_SAMPLES is not
+-- known, so none of its swings is on time: only a known delay counts.
+local SWING_NEAR = 0.02
+local SWING_SAMPLES_NEAR = 3
+local SWING_SAMPLES = 5
 -- Blizzard's grey for an event with no colour under colours by kind
 -- (COMBATLOG_DEFAULT_COLORS). A highlighted line is this much brighter.
 local UNCOLOURED = 0.5
@@ -108,7 +122,22 @@ local function parseEvents(lines)
 				event.kind = tokens[first]
 			else
 				event.kind = suffix == "DAMAGE" and "WOUND" or "HEAL"
-				event.amount = tonumber(tokens[first + (advanced and ADVANCED_FIELDS or 0)])
+				local amountAt = first + (advanced and ADVANCED_FIELDS or 0)
+				event.amount = tonumber(tokens[amountAt])
+				-- After the amount: base amount, overkill, school, resisted, blocked,
+				-- absorbed, critical, glancing, crushing; a heal's critical comes
+				-- after its base amount, overheal, and absorbed.
+				if suffix == "DAMAGE" then
+					-- The damage's own school: a swing can deal frost, and a shot
+					-- deals its wand's school.
+					event.school = tonumber(tokens[amountAt + 3]) or event.school
+					event.blocked = (tonumber(tokens[amountAt + 5]) or 0) > 0
+					event.critical = tokens[amountAt + 7] == "1"
+					event.glancing = tokens[amountAt + 8] == "1"
+					event.crushing = tokens[amountAt + 9] == "1"
+				else
+					event.critical = tokens[amountAt + 4] == "1"
+				end
 			end
 		end
 		events[#events + 1] = event
@@ -270,6 +299,29 @@ end
 
 local DEST_OF_UNIT = { player = "you", pet = "pet" }
 
+-- The file event flag that each descriptor needs.
+local FLAG_OF_DESCRIPTOR = {
+	CRITICAL = "critical",
+	GLANCING = "glancing",
+	CRUSHING = "crushing",
+	BLOCK_REDUCED = "blocked",
+	BLOCK = "blocked",
+}
+
+-- Whether the Hit's descriptor agrees with the file event's flags: a
+-- descriptor needs its flag, and no descriptor needs no critical, glancing,
+-- or crushing flag. All rows with one fit in spec/traces/ agree. Which flag
+-- wins when an event has two is known only for critical over blocked, so
+-- another descriptor, such as ABSORB, is not checked.
+local function descriptorFits(hit, event)
+	local descriptor = hit.descriptor
+	if descriptor == "" or descriptor == nil then
+		return not (event.critical or event.glancing or event.crushing)
+	end
+	local flag = FLAG_OF_DESCRIPTOR[descriptor]
+	return not flag or event[flag] ~= false
+end
+
 local function fits(hit, event)
 	if event.time < hit.time - EARLIEST or event.time > hit.time + LATEST then
 		return false
@@ -277,12 +329,74 @@ local function fits(hit, event)
 	if event.dstWho ~= (DEST_OF_UNIT[hit.unit] or "creature") or event.kind ~= hit.action then
 		return false
 	end
+	if not descriptorFits(hit, event) then
+		return false
+	end
+	-- A damaging Hit comes in its file event's damage school (all rows with one
+	-- fit in spec/traces/). Shots stay out of this check: every chosen shot in
+	-- warlock-bfd-group has its Hit's school, but checking shots too moves the
+	-- swings chosen on other rows there, which no one has checked.
+	if hit.action == "WOUND" and hit.school and event.school and not event.name:find("^RANGE_")
+		and event.school ~= hit.school then
+		return false
+	end
 	return event.amount == nil or hit.amount == "<secret>" or event.amount == hit.amount
 end
 
--- The events of the Hit's school, when only some of them have it. The school
--- only breaks ties: Forever reports a wand's Shoot in the wand's school and a
--- heal as physical, which the file does not.
+local function isSwing(event)
+	return event.name:find("^SWING_") ~= nil
+end
+
+-- Each source's Swing Delays: the delays of the Hits that only its swing
+-- fits.
+local function swingDelays(hits, fitting)
+	local delays = {}
+	for _, hit in ipairs(hits) do
+		local only = #fitting[hit] == 1 and fitting[hit][1]
+		if only and isSwing(only) then
+			delays[only.src] = delays[only.src] or {}
+			table.insert(delays[only.src], hit.time - only.time)
+		end
+	end
+	return delays
+end
+
+-- Whether the file event comes when its Hit should: a spell's at the Hit's
+-- time, a swing's one of its source's Swing Delays before.
+local function onTime(hit, event, delays)
+	local delay = hit.time - event.time
+	if not isSwing(event) then
+		return math.abs(delay) <= SPELL_NEAR
+	end
+	local known = delays[event.src]
+	if not known or #known < SWING_SAMPLES then
+		return false
+	end
+	local near = 0
+	for _, sample in ipairs(known) do
+		if math.abs(sample - delay) <= SWING_NEAR then
+			near = near + 1
+		end
+	end
+	return near >= SWING_SAMPLES_NEAR
+end
+
+-- The events that come on time, when only some of them do. A shot, a Weapon
+-- Proc, or a swing outside its source's known delays is late but can still
+-- be the Hit's, so timing only breaks ties, as the school does.
+local function onTimeOnly(hit, events, delays)
+	local timed = {}
+	for _, event in ipairs(events) do
+		if onTime(hit, event, delays) then
+			timed[#timed + 1] = event
+		end
+	end
+	return (#timed > 0 and #timed < #events) and timed or events
+end
+
+-- The events of the Hit's school, when only some of them have it. For a shot
+-- (see fits), a miss, or a heal the school only breaks ties: Forever reports
+-- many misses and heals as physical, which the file does not.
 local function sameSchool(hit, events)
 	local same = {}
 	for _, event in ipairs(events) do
@@ -334,6 +448,7 @@ function Label.Make(trace, lines)
 			end
 		end
 	end
+	local delays = swingDelays(hits, fitting)
 
 	-- Clear matches first, so they teach each nameplate its creature.
 	local eventOf, used, creatureOf, clash = {}, {}, {}, {}
@@ -365,9 +480,14 @@ function Label.Make(trace, lines)
 			table.sort(left, function(a, b)
 				return math.abs(hit.time - a.time) < math.abs(hit.time - b.time)
 			end)
-			left = sameSchool(hit, left)
+			local fitCount, untimed = #left, sameSchool(hit, left)
+			left = sameSchool(hit, onTimeOnly(hit, left, delays))
 			if #left > 1 then
 				unsure = ("%d file events fit"):format(#left)
+			elseif #left == 1 and (#untimed > 1 or untimed[1] ~= left[1]) then
+				-- Timing chose the event. Another order of the same Hits can be on
+				-- time too, so a person checks it.
+				unsure = ("on time, of %d file events"):format(fitCount)
 			elseif #left == 0 then
 				local outside = hit.time - EARLIEST < fileStart or hit.time + LATEST > fileEnd
 				unsure = outside and "outside the Combat Log File" or "no file event fits"
