@@ -219,11 +219,25 @@ end
 -- entry to its last, taking each file to run until the next one starts. The
 -- newest file that started before the Trace is not always it: a Trace can
 -- start a few seconds before /combatlog makes its file.
+local function mostOverlap(files, first, last)
+	local best, bestOverlap = nil, -math.huge
+	for i, file in ipairs(files) do
+		local stop = files[i + 1] and files[i + 1].start or math.huge
+		local overlap = math.min(stop, last) - math.max(file.start, first)
+		if overlap >= 0 and overlap > bestOverlap then
+			best, bestOverlap = file.path, overlap
+		end
+	end
+	return best
+end
+
+-- The header's start time has whole seconds only, so the Trace's time is
+-- known to within a second. When the file differs across that second, there
+-- is none to pick.
 function Import.PickCombatLog(paths, trace)
 	local traceStart = Trace.StartedToSeconds(trace.header.started) - trace.header.startTime
 	local first = traceStart + trace.entries[1][1]
-	-- The header's start time has whole seconds only.
-	local last = traceStart + trace.entries[#trace.entries][1] + 1
+	local last = traceStart + trace.entries[#trace.entries][1]
 	local files = {}
 	for _, path in ipairs(paths) do
 		local start = fileStart(path)
@@ -234,21 +248,14 @@ function Import.PickCombatLog(paths, trace)
 	table.sort(files, function(a, b)
 		return a.start < b.start
 	end)
-	local best, bestOverlap = nil, 0
-	for i, file in ipairs(files) do
-		local stop = files[i + 1] and files[i + 1].start or math.huge
-		local overlap = math.min(stop, last) - math.max(file.start, first)
-		if overlap > bestOverlap then
-			best, bestOverlap = file.path, overlap
-		end
-	end
-	return best
+	local early = mostOverlap(files, first, last)
+	return early == mostOverlap(files, first + 1, last + 1) and early or nil
 end
 
 local function findCombatLog(wowDir, trace)
 	local best = Import.PickCombatLog(listFiles(shellQuote(wowDir) .. "/Logs/WoWCombatLog-*.txt"), trace)
 	if not best then
-		fail("no Combat Log File in " .. wowDir .. "/Logs covers the time of the Trace; give its path")
+		fail("no one Combat Log File in " .. wowDir .. "/Logs surely covers the time of the Trace; give its path")
 	end
 	return best
 end

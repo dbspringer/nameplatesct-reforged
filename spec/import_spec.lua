@@ -95,6 +95,13 @@ describe("Import", function()
 		assert.are.equal(paths[2], Import.PickCombatLog(paths, trace(100, { { 100 }, { 160 } })))
 	end)
 
+	it("picks no Combat Log File when the Trace's start second leaves the choice open", function()
+		-- The header gives whole seconds, so a Trace that started at 10:49:21.9
+		-- has its entries after 10:49:22, in the newer file.
+		local paths = { "Logs/WoWCombatLog-102026_093000.txt", "Logs/WoWCombatLog-102026_104922.txt" }
+		assert.is_nil(Import.PickCombatLog(paths, trace(100, { { 100.2 }, { 100.4 } })))
+	end)
+
 	it("keeps the format line and the lines from 10 s before the Trace to 10 s after it", function()
 		local window = {
 			FORMAT,
