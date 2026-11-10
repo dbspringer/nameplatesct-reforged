@@ -3,6 +3,7 @@
 ## 5
 
 - In groups, your DoT ticks and wand shots show their own numbers more often. Before, another player's hit that landed at the same moment (a Shaman's Flametongue, say, or a Warrior's swing) could show as yours, and your real number went missing.
+- A recording (`/nsctr record`) now keeps your last 40,000 combat events, up from 10,000. That's about an hour of a dungeon run, less in a busy fight. When it's full, the oldest events make room for new ones.
 
 ## 4
 
