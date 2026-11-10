@@ -22,6 +22,23 @@ local SHOT_WINDOW = 0.35
 local SHOT_FLIGHT = 2.5
 Pairing.SHOT_FLIGHT = SHOT_FLIGHT
 local MELEE_FROM, MELEE_TO = 0.25, ns.LineKind.LONGEST_SWING_DELAY
+-- The Swing Delays of the player and of the pet, learned in the session from
+-- their clean swings: a melee line with one Hit in its window and no other
+-- melee line near. Each unit's delays sit in clusters 10 to 30 ms wide, one or
+-- two per unit (warlock-bfd-group: an Incubus at 0.95 s, a Protection Warrior
+-- at 0.46 and 0.99 s), so in a group a melee line prefers a Hit at one of its
+-- owner's delays to another player's Hit in its window. A Hit is at one of
+-- them when at least SWING_DELAY_PAIR of the SWING_DELAY_KEEP latest samples,
+-- and SWING_DELAY_SHARE of them, are within SWING_DELAY_NEAR of its delay.
+-- Until SWING_DELAY_MIN samples are in, any Hit in the window is. These are
+-- first guesses, not tuned. Replayed on all Traces, they cut the wrong numbers
+-- in warlock-bfd-group from 123 to 52 and kept 494 of 496 right on the checked
+-- solo Traces, as before.
+local SWING_DELAY_KEEP = 20
+local SWING_DELAY_MIN = 4
+local SWING_DELAY_NEAR = 0.02
+local SWING_DELAY_PAIR = 2
+local SWING_DELAY_SHARE = 0.1
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
 local HOLD = 0.15
@@ -153,8 +170,10 @@ end
 -- "melee", or nil when it does not fit. Only a melee line, one of unknown kind,
 -- or a Weapon Proc's comes one Swing Delay early. A shot line past SHORT_WINDOW fits only a
 -- Hit on a recent shot's target, as all live shots' Hits in the Traces were, so another
--- unit's Hit cannot take it. Another player's Hit on that unit still can.
-local function fits(hit, line, isShotTarget)
+-- unit's Hit cannot take it. Another player's Hit on that unit still can. A
+-- melee line fits only a Hit at one of its owner's Swing Delays, which
+-- atSwingDelay(line, age) tells.
+local function fits(hit, line, isShotTarget, atSwingDelay)
 	if not suits(hit, line) then
 		return nil
 	end
@@ -169,7 +188,7 @@ local function fits(hit, line, isShotTarget)
 		return "melee"
 	end
 	if age >= MELEE_FROM and age <= MELEE_TO and isPhysical(hit)
-		and (not line.lineKind or ns.LineKind.IsMelee(line.lineKind)) then
+		and (not line.lineKind or (ns.LineKind.IsMelee(line.lineKind) and atSwingDelay(line, age))) then
 		return "melee"
 	end
 end
@@ -217,7 +236,8 @@ end
 -- frame, but never decides a Hit twice. how tells which rule paired it: "frame" (a
 -- line in the Hit's frame), "short" (a line up to SHORT_WINDOW earlier, or SHOT_WINDOW for a shot),
 -- "melee" (a line one Swing Delay earlier, a melee line that its early Hit
--- waited on, or a Weapon Proc's line), or "late" (a line after the Hit).
+-- or a Hit off its Swing Delays waited on, or a Weapon Proc's line), or
+-- "late" (a line after the Hit).
 -- A line pairs only with a Hit that its Line Kind suits; a killing blow line,
 -- or one in a colour that is never the player's, pairs with none. A tick or
 -- shot line goes first to a Hit of the right school (see takesFromFrame and
@@ -285,6 +305,72 @@ function Pairing.New(options)
 		return false
 	end
 
+	-- The delays of the latest clean swings of the player and of the pet,
+	-- oldest first, and the melee lines whose window is still open, to learn
+	-- from (see SWING_DELAY_KEEP). They last for the session.
+	local swingDelays = { player = {}, pet = {} }
+	local openSwings = {}
+
+	local function delaysOf(line)
+		return swingDelays[line.pet and "pet" or "player"]
+	end
+
+	local function atSwingDelay(line, age)
+		local delays = delaysOf(line)
+		if #delays < SWING_DELAY_MIN then
+			return true
+		end
+		local near = 0
+		for _, delay in ipairs(delays) do
+			if math.abs(delay - age) <= SWING_DELAY_NEAR then
+				near = near + 1
+			end
+		end
+		return near >= SWING_DELAY_PAIR and near >= SWING_DELAY_SHARE * #delays
+	end
+
+	-- Learns from the melee lines whose window ended by this frame, counts the
+	-- frame's Hits in the windows still open, and opens a window for each of
+	-- the frame's melee lines. Any physical Hit or avoid on an enemy counts,
+	-- paired or not, as another player's Hit makes a swing unclean. Two melee
+	-- lines of one sort whose windows overlap are both unclean: the Hits cannot
+	-- tell which is whose. The frame's Empty Report, empty, does not count.
+	local function learnSwingDelays(time, hits, lines, empty)
+		while openSwings[1] and time - openSwings[1].line.time > MELEE_TO do
+			local swing = table.remove(openSwings, 1)
+			if swing.hits == 1 and not swing.crowded then
+				local delays = delaysOf(swing.line)
+				delays[#delays + 1] = swing.delay
+				if #delays > SWING_DELAY_KEEP then
+					table.remove(delays, 1)
+				end
+			end
+		end
+		for _, hit in ipairs(hits) do
+			if hit ~= empty and not OWN_UNITS[hit.unit] and hit.action ~= "HEAL"
+				and (hit.action ~= "WOUND" or isPhysical(hit)) then
+				for _, swing in ipairs(openSwings) do
+					local age = hit.time - swing.line.time
+					if age >= MELEE_FROM and age <= MELEE_TO and swing.reports == reportOf(hit) then
+						swing.hits, swing.delay = swing.hits + 1, age
+					end
+				end
+			end
+		end
+		for _, line in ipairs(lines) do
+			if ns.LineKind.IsMelee(line.lineKind) then
+				local swing = { line = line, reports = ns.LineKind.Reports(line.lineKind), hits = 0 }
+				for _, other in ipairs(openSwings) do
+					if other.reports == swing.reports and line.time - other.line.time <= MELEE_TO then
+						other.crowded, swing.crowded = true, true
+						break
+					end
+				end
+				openSwings[#openSwings + 1] = swing
+			end
+		end
+	end
+
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
 
@@ -296,7 +382,26 @@ function Pairing.New(options)
 		if line.second then
 			onDecision(line.second, nil)
 		end
+		if line.offDelay then
+			onDecision(line.offDelay, nil)
+		end
 		return line
+	end
+
+	-- The oldest waiting melee line whose window the Hit is in, though not at
+	-- one of the line's Swing Delays, and that no other such Hit waits on. The
+	-- Hit waits on it: a Hit at a Swing Delay takes the line, and if none
+	-- comes, this Hit gets the line once the line is over. Without this, a
+	-- swing whose delay the addon has not learned yet, or that came off it,
+	-- would show nothing when no other player is near.
+	local function offDelayLine(hit)
+		for _, line in ipairs(waitingLines) do
+			local age = hit.time - line.time
+			if not line.offDelay and ns.LineKind.IsMelee(line.lineKind) and suits(hit, line)
+				and age >= MELEE_FROM and age <= MELEE_TO then
+				return line
+			end
+		end
 	end
 
 	-- Whether an enemy Hit can take a line of its frame. Another player's Hit
@@ -343,7 +448,7 @@ function Pairing.New(options)
 			end
 		end
 		for _, line in ipairs(waitingLines) do
-			local how = not line.second and isShotLine(line) and fits(hit, line, isShotTarget)
+			local how = not line.second and isShotLine(line) and fits(hit, line, isShotTarget, atSwingDelay)
 			if how then
 				return line, how
 			end
@@ -387,7 +492,14 @@ function Pairing.New(options)
 		end
 		while waitingLines[1] and now - waitingLines[1].time > (waitingLines[1].mayBeProc and PROC_TO or MELEE_TO) do
 			local line = table.remove(waitingLines, 1)
-			if line.early then
+			-- A Hit in the line's window is likelier the line's than one that
+			-- came too early for it.
+			if line.offDelay then
+				if line.early then
+					onDecision(line.early, nil)
+				end
+				onDecision(line.offDelay, line, "melee")
+			elseif line.early then
 				onDecision(line.early, line, "melee")
 			end
 		end
@@ -408,19 +520,23 @@ function Pairing.New(options)
 			end), "frame"
 			if not found then
 				-- The oldest line that fits. When the player's and the pet's swing
-				-- lines wait at once, a Hit can take the other's: the Swing Delay
-				-- of each varies too much to tell them apart, and a line's pet
-				-- mark (see Adapter.New) then goes with the wrong Hit.
+				-- lines wait at once, a Hit can take the other's: until one of them
+				-- has SWING_DELAY_MIN samples, its line takes any Hit in the window,
+				-- and a line's pet mark (see Adapter.New) then goes with the wrong
+				-- Hit.
 				for i, line in ipairs(waitingLines) do
-					how = fits(hit, line, isShotTarget)
+					how = fits(hit, line, isShotTarget, atSwingDelay)
 					if how and not (isShotLine(line) and schoolIs(hit, line, false)) then
 						found = table.remove(waitingLines, i)
 						break
 					end
 				end
 			end
+			local offDelay = not found and offDelayLine(hit)
 			if found then
 				onDecision(hit, claim(found), how)
+			elseif offDelay then
+				offDelay.offDelay = hit
 			else
 				local line = earlyMeleeLine(hit, waitingLines) or earlyMeleeLine(hit, lines)
 				if line then
@@ -447,6 +563,7 @@ function Pairing.New(options)
 		frameTime, frameHits, frameLines = nil, {}, {}
 		advance(time)
 		local empty = nextSwing and nextSwing.time == time and emptyReportIn(hits, lines, nextSwing)
+		learnSwingDelays(time, hits, lines, empty)
 		for i, hit in ipairs(hits) do
 			if hit == empty then
 				onDecision(hit, nil)

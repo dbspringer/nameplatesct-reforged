@@ -520,6 +520,45 @@ describe("Pairing", function()
 		assert.are.same({ swing.entry, false }, { decided[first.entry], decided[second.entry] })
 	end)
 
+	describe("with Swing Delays learned", function()
+		-- Clean swings: a swing line every 2 s from start, each with one physical
+		-- Hit delay later, the pet's when pet is true.
+		local function swings(records, start, delay, count, pet)
+			for i = 0, count - 1 do
+				local swing = line(start + 2 * i, "swing")
+				swing.pet = pet
+				records[#records + 1] = swing
+				records[#records + 1] = hit(start + 2 * i + delay, "nameplate1", 1)
+			end
+			return records
+		end
+
+		it("gives a melee line to the Hit at its Swing Delay, not to an earlier one off it", function()
+			local records = swings({}, 1, 0.6, 6)
+			local swing, rival, real = line(20, "swing"), hit(20.3, "nameplate2", 1), hit(20.6, "nameplate1", 1)
+			records[#records + 1], records[#records + 2], records[#records + 3] = swing, rival, real
+			local decided = pair(records)
+			assert.are.same({ false, swing.entry }, { decided[rival.entry], decided[real.entry] })
+		end)
+
+		it("gives a melee line to a Hit off its Swing Delay once the line is over, when none at it came", function()
+			local records = swings({}, 1, 0.6, 6)
+			local swing, offDelay = line(20, "swing"), hit(20.8, "nameplate1", 1)
+			records[#records + 1], records[#records + 2] = swing, offDelay
+			local decided = pair(records)
+			assert.are.equal(swing.entry, decided[offDelay.entry])
+		end)
+
+		it("learns the pet's Swing Delay apart from the player's", function()
+			local records = swings(swings({}, 1, 0.4, 6), 20, 0.9, 6, true)
+			local swing, rival, real = line(40, "swing"), hit(40.4, "nameplate2", 1), hit(40.9, "nameplate1", 1)
+			swing.pet = true
+			records[#records + 1], records[#records + 2], records[#records + 3] = swing, rival, real
+			local decided = pair(records)
+			assert.are.same({ false, swing.entry }, { decided[rival.entry], decided[real.entry] })
+		end)
+	end)
+
 	it("gives no late melee line to a Hit, as a melee line comes before its Hit", function()
 		local other, swing, real = hit(1, "nameplate2", 1), line(1.1, "swing"), hit(1.6, "nameplate1", 1)
 		local decided = pair({ other, swing, real })
@@ -673,5 +712,35 @@ describe("Pairing", function()
 				assert.are.same({}, wrong)
 			end)
 		end
+	end)
+
+	-- A floor that catches a regression in a group, where many players' Hits
+	-- come in a swing line's window. It needs no Label: the Combat Log File
+	-- names the source of each Log Line, and of the Incubus's 157 swing lines
+	-- in this Trace, 128 have a physical Hit 0.95 s later, which is about 3%
+	-- likely to be another player's (see the Group Pairing plan). Learned Swing
+	-- Delays give 122 of them that Hit on a Nameplate; Pairing without them
+	-- gave 49.
+	it("gives most of the pet's swing lines in a dungeon group the Hit one Swing Delay later", function()
+		local Label = assert(loadfile("tools/label-trace.lua"))()
+		local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/warlock-bfd-group.lua")), ns.LineKind.ColouringOf)
+		local _, _, eventAt = Label.Make(trace, Trace.LoadLog("warlock-bfd-group"))
+		local onDelay = 0
+		local pairing = Pairing.New({
+			onDecision = function(decidedHit, decidedLine)
+				local event = decidedLine and decidedHit.unit:match("^nameplate%d+$") and eventAt[decidedLine.entry]
+				local age = decidedLine and decidedHit.time - decidedLine.time
+				if event and event.srcWho == "pet" and event.name == "SWING_DAMAGE" and age >= 0.94 and age <= 0.975 then
+					onDelay = onDelay + 1
+				end
+			end,
+		})
+		local adapter = Adapter.New(pairing.Push)
+		for _, entry in ipairs(trace.entries) do
+			adapter.Push(entry)
+		end
+		adapter.Tick(math.huge)
+		pairing.Tick(math.huge)
+		assert.is_true(onDelay >= 118, ("%d of 157 pet swing lines"):format(onDelay))
 	end)
 end)

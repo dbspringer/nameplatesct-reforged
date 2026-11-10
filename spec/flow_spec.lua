@@ -495,7 +495,9 @@ describe("Flow", function()
 
 		-- Pairing gives a melee Hit the oldest melee line that fits, so when the
 		-- player's and the pet's swing lines wait at once, their Hits can swap
-		-- them: once in the Traces, the two wrong owners expected here.
+		-- them: once in the Traces, the two wrong owners expected here. The pet's
+		-- Hit came 0.567 s after its line, off the pet's learned 0.533 s, and
+		-- the player had too few swings yet to refuse it.
 		it("tells the player's swings from the pet's, as the Combat Log File does", function()
 			local seen, wrong = { you = 0, pet = 0 }, {}
 			for _, name in ipairs(Trace.NAMES) do
@@ -518,7 +520,7 @@ describe("Flow", function()
 				end
 			end
 			assert.is_true(seen.you > 0 and seen.pet > 0)
-			assert.are.same({ "warlock-spells hit 243", "warlock-spells hit 245" }, wrong)
+			assert.are.same({ "warlock-line-kind hit 229", "warlock-line-kind hit 231" }, wrong)
 		end)
 	end)
 end)

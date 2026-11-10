@@ -59,8 +59,8 @@ A Hit that the player or their pet made, as proven by Pairing.
 _Avoid_: My hit, own damage, player damage
 
 **Swing Delay**:
-The time by which a melee Log Line comes before its Hit. It changes with the weapon.
-_Avoid_: Melee lag, offset
+The time by which a melee Log Line comes before its Hit. It depends on the unit that attacks, and one unit can have more than one. Each stays nearly constant.
+_Avoid_: Melee lag, offset, cluster, learned window
 
 **Weapon Proc**:
 An extra attack from a weapon enchant, such as Windfury Weapon. Its Log Line looks like a direct spell's, but its Hit comes about as late as a swing's, and its Plate Text looks like a swing.
