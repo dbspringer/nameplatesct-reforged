@@ -45,6 +45,23 @@ describe("Import", function()
 		end
 	end)
 
+	it("empties the absorber's name, after a swing or after a spell", function()
+		local absorbed = {
+			FORMAT,
+			line("10:49:34.000", "SPELL_ABSORBED," .. MOB .. ',"Enraged Apparition-Onlyfans",0xa28,0x80000000,'
+				.. ME .. ',"Harold-Baalsagna-ClassicBetaPvP-",0x548,0x80000000,'
+				.. OTHER .. ',"Abaron-Abaron-ClassicBetaPvP-",0x548,0x80000000,3747,"Power Word: Shield",0x2,38,69,nil'),
+			line("10:49:35.000", "SPELL_ABSORBED," .. MOB .. ',"Enraged Apparition-Onlyfans",0xa48,0x80000000,'
+				.. ME .. ',"Harold-Baalsagna-ClassicBetaPvP-",0x548,0x80000000,9672,"Frostbolt",0x10,'
+				.. OTHER .. ',"Abaron-Abaron-ClassicBetaPvP-",0x548,0x80000000,3747,"Power Word: Shield",0x2,68,68,nil'),
+		}
+		local _, scrubbed = Import.Scrub(trace(100, {}), absorbed)
+		local text = table.concat(scrubbed, "\n")
+		assert.is_nil(text:find("Abaron", 1, true))
+		assert.is_truthy(text:find('"Frostbolt"', 1, true))
+		assert.is_truthy(text:find('"Power Word: Shield"', 1, true))
+	end)
+
 	it("gives the recorder and each other player one placeholder GUID in both files", function()
 		local entries = {
 			{ 101, "UNIT_COMBAT", "player", "HEAL", "", 50, 1, guid = ME },

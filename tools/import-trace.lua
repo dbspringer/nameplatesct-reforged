@@ -56,16 +56,22 @@ local function newGuidMap(recorder)
 	end
 end
 
-local function scrubLine(line, replaceGuids)
+-- Returns the log line with every unit name emptied. A unit's name follows its
+-- GUID: the source and destination, and others such as SPELL_ABSORBED's
+-- absorber, which comes after the swing or spell fields. Zone and spell names
+-- follow no GUID.
+function Import.ScrubNames(line)
 	local stamp, tokens = parseLine(line)
-	-- Source and destination names follow a GUID. Other events, such as
-	-- ZONE_CHANGE, have no names there.
-	for _, at in ipairs({ 2, 6 }) do
-		if tokens[at] and isGuid(tokens[at]) and tokens[at + 1] and tokens[at + 1]:sub(1, 1) == '"' then
+	for at = 1, #tokens - 1 do
+		if isGuid(tokens[at]) and tokens[at + 1]:sub(1, 1) == '"' then
 			tokens[at + 1] = '""'
 		end
 	end
-	return replaceGuids(stamp .. "  " .. table.concat(tokens, ","))
+	return stamp .. "  " .. table.concat(tokens, ",")
+end
+
+local function scrubLine(line, replaceGuids)
+	return replaceGuids(Import.ScrubNames(line))
 end
 
 local function scrubValue(value, replaceGuids)
