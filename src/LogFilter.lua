@@ -152,7 +152,8 @@ end
 -- Turns on in the filter named myActions what Check needs, and picks it. It
 -- adds message types, makes whole lines take their event's colour, writes
 -- each Line Kind's colour for its events, and turns off highlighting for
--- those events. Done By becomes only "Me" and "My pet", and any other part
+-- those events; another event it sends whose lines would come near a kind's
+-- colour goes back to Blizzard's grey (LineKind.ClearClashes). Done By becomes only "Me" and "My pet", and any other part
 -- that asks for other units' lines (such as Done To "Me") asks for none, as
 -- those lines would pass for the player's (Forever Combat Text also limits
 -- Done By). The player's other choices stay. Returns false, and changes
@@ -194,5 +195,6 @@ function LogFilter.Fix(saved, myActions)
 		eventColoring[event] = colour
 		highlightedEvents[event] = nil
 	end
+	ns.LineKind.ClearClashes(filter)
 	return true
 end

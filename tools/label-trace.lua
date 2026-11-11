@@ -219,11 +219,17 @@ end
 -- time, so only their colours tell which line reports which event: under
 -- colours by kind, by the Line Kind that Events.lua read from the colour, as
 -- the filter can be another addon's, in colours of its own (ADR 0005), and
--- an event of no kind comes in a colour of no kind; under colours by source,
--- by the colour itself; under any other colouring, a line fits any event.
+-- an event of no kind comes in a colour of no kind, or of the kind it is an
+-- alias of (LineKind.AliasOf); under colours by source, by the colour itself;
+-- under any other colouring, or for a secret colour, a line fits any event.
 local function colourFits(entry, event, filter)
-	if entry.colouring == "kind" then
-		return entry.lineKind == (load().LineKind.OfEvent(event.name) or "other")
+	if entry.colouring == "kind" and entry.lineKind ~= nil then
+		local LineKind = load().LineKind
+		local kind = LineKind.OfEvent(event.name)
+		if kind then
+			return entry.lineKind == kind
+		end
+		return entry.lineKind == "other" or entry.lineKind == LineKind.AliasOf(event.name)
 	end
 	if entry.colouring == "source" and type(entry[4]) == "number" then
 		return load().LineKind.Near(entry[4], entry[5], entry[6], sourceColourOf(event, filter))

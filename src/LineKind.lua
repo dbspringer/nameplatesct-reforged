@@ -89,6 +89,12 @@ for _, event in ipairs({ "SPELL_MISSED", "SPELL_PERIODIC_MISSED", "SWING_MISSED"
 	end
 end
 
+-- Events of no Line Kind that a filter may colour as one, whose lines then
+-- read as that kind: MikScrollingBattleText colours a hit on a building as a
+-- direct hit, and a heal on one as a heal. Any other event in a kind's colour
+-- would pass for that kind, as an interrupt would pass for a direct hit.
+local ALIASES = { SPELL_BUILDING_DAMAGE = "direct", SPELL_BUILDING_HEAL = "heal" }
+
 -- Whether a public colour is within tolerance of colour in every channel, by
 -- default the tolerance of a Log Line's colour.
 local function near(r, g, b, colour, tolerance)
@@ -125,6 +131,30 @@ local function savedColour(eventColoring, event)
 	end
 end
 
+-- The events a saved filter highlights, by name.
+local function highlightedOf(filter)
+	local colors = filter.colors
+	return filter.settings.lineHighlighting and type(colors.highlightedEvents) == "table"
+		and colors.highlightedEvents or {}
+end
+
+-- The events a saved filter sends: those on in the event list of any of its
+-- parts. A part that asks for no unit sends none, but its events count here
+-- too, which errs on the safe side.
+local function sentEvents(filter)
+	local sent = {}
+	for _, part in pairs(type(filter.filters) == "table" and filter.filters or {}) do
+		if type(part) == "table" and type(part.eventList) == "table" then
+			for event, on in pairs(part.eventList) do
+				if on == true then
+					sent[event] = true
+				end
+			end
+		end
+	end
+	return sent
+end
+
 -- The colour of a saved filter's event lines: its own, or Blizzard's grey;
 -- and brighter when the filter highlights it.
 local function shownColour(colors, highlighted, event)
@@ -136,22 +166,33 @@ local function shownColour(colors, highlighted, event)
 		b = math.min(colour.b * HIGHLIGHT, 1) }
 end
 
+-- Whether the lines of an event of no Line Kind come within APART of a kind's
+-- colour, other than in exactly the colour of the kind it is an alias of.
+local function clashes(palette, event, colour)
+	for kind, kindColour in pairs(palette) do
+		if near(colour.r, colour.g, colour.b, kindColour, APART)
+			and not (ALIASES[event] == kind and near(colour.r, colour.g, colour.b, kindColour, SAVED_TOLERANCE)) then
+			return true
+		end
+	end
+	return false
+end
+
 -- The colour of each Line Kind under a Log Filter, as Blizzard_CombatLog_Filters
 -- stores one: { [kind] = { r, g, b } }, when the filter colours whole lines by
 -- event type and its colours tell every kind apart; otherwise nil. Every kind
 -- needs a colour, given to each of its events and to none of them brightened
 -- by highlighting, and more than APART from every other kind's colour and
--- from Blizzard's grey for an event with no colour. Another event's colour
--- must be that far from it too, or the same: such an event's lines read as
--- that kind, as MikScrollingBattleText colours a hit on a building as a
--- direct hit.
+-- from Blizzard's grey for an event with no colour. The lines of every other
+-- event the filter sends, in its colour or grey and brightened when it is
+-- highlighted, must be that far from them too, except an alias in exactly
+-- its kind's colour (see ALIASES).
 function LineKind.PaletteOf(filter)
 	local colors = type(filter) == "table" and filter.colors
 	if LineKind.ColouringOf(filter) ~= "kind" or type(colors) ~= "table" or type(colors.eventColoring) ~= "table" then
 		return nil
 	end
-	local highlighted = filter.settings.lineHighlighting and type(colors.highlightedEvents) == "table"
-		and colors.highlightedEvents or {}
+	local highlighted = highlightedOf(filter)
 	local palette = {}
 	for event, kind in pairs(EVENT_KINDS) do
 		local colour = savedColour(colors.eventColoring, event)
@@ -173,15 +214,28 @@ function LineKind.PaletteOf(filter)
 				return nil
 			end
 		end
-		for event in pairs(colors.eventColoring) do
-			local other = not EVENT_KINDS[event] and shownColour(colors, highlighted, event)
-			if other and near(colour.r, colour.g, colour.b, other, APART)
-				and not near(colour.r, colour.g, colour.b, other, SAVED_TOLERANCE) then
-				return nil
-			end
+	end
+	for event in pairs(sentEvents(filter)) do
+		if not EVENT_KINDS[event] and clashes(palette, event, shownColour(colors, highlighted, event)) then
+			return nil
 		end
 	end
 	return palette
+end
+
+-- Gives each event the filter sends that is of no Line Kind, and whose lines
+-- would come near a kind's colour, Blizzard's grey with no highlight, which
+-- is far from every kind's colour here. For the fix, once it has written
+-- these colours, so the filter it leaves tells every kind apart.
+function LineKind.ClearClashes(filter)
+	local colors = filter.colors
+	local highlighted = highlightedOf(filter)
+	for event in pairs(sentEvents(filter)) do
+		if not EVENT_KINDS[event] and clashes(KINDS, event, shownColour(colors, highlighted, event)) then
+			colors.eventColoring[event] = nil
+			highlighted[event] = nil
+		end
+	end
 end
 
 -- The Line Kind of a Log Line in this colour, read as reading says: by a
@@ -209,6 +263,12 @@ end
 -- no kind.
 function LineKind.OfEvent(event)
 	return EVENT_KINDS[event]
+end
+
+-- The Line Kind that an event of no kind can read as, when its filter gives it
+-- that kind's colour (see ALIASES), or nil.
+function LineKind.AliasOf(event)
+	return ALIASES[event]
 end
 
 -- The sort of Hit that a line of this kind comes with: "damage", "miss",

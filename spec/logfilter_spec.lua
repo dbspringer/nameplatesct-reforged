@@ -227,6 +227,23 @@ describe("LogFilter", function()
 		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
 	end)
 
+	it("finds MikScrollingBattleText's filter foreign when an interrupt there would pass for a direct hit", function()
+		local saved = withMsbt()
+		local colouring = saved.filters[3].colors.eventColoring
+		colouring.SPELL_INTERRUPT = colouring.SPELL_DAMAGE
+		assert.are.equal("foreign", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("leaves a filter that suits once fixed, when another event it sends had a colour near a kind's", function()
+		local saved = fixedFilters()
+		saved.filters[1].filters[1].eventList.SPELL_INTERRUPT = true
+		saved.filters[1].colors.eventColoring.SPELL_INTERRUPT = { r = 1, g = 0.83, b = 0.25, a = 1 }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_nil(saved.filters[1].colors.eventColoring.SPELL_INTERRUPT)
+	end)
+
 	it("reads every line as another unit's under a filter that colours by kind but does not suit", function()
 		local saved = withMsbt()
 		local swing = saved.filters[3].colors.eventColoring.SWING_DAMAGE

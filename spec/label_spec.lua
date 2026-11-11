@@ -155,6 +155,16 @@ describe("Labels", function()
 		assert.are.same({ 3, 1120 }, { rows[2].line, rows[2].spell })
 	end)
 
+	it("lines up a hit on a building with its line in the direct hit's colour, as MikScrollingBattleText colours it", function()
+		local building = damage(101, ME, MOB_A, 26, "Immolate"):gsub("SPELL_DAMAGE", "SPELL_BUILDING_DAMAGE")
+		assert.has_no.errors(function()
+			label({ logLine(101, nil, { colouring = "kind", lineKind = "direct" }) }, { building }, false, {
+				settings = { lineColoring = true, lineColorPriority = 3 },
+				filters = { { eventList = { SPELL_BUILDING_DAMAGE = true }, sourceFlags = { [0x4511] = true } } },
+			})
+		end)
+	end)
+
 	it("lets the school of a Hit choose between two file events", function()
 		local rows = label({
 			logLine(105),

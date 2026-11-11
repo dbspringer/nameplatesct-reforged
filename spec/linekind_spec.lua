@@ -18,11 +18,14 @@ local function of(colour, reading)
 	return LineKind.Of(colour[1], colour[2], colour[3], reading)
 end
 
--- A Log Filter that colours lines by kind in the fix's colours.
+-- A Log Filter that colours lines by kind in the fix's colours, and also
+-- sends some events of no kind.
 local function kindFilter()
 	return {
 		settings = { lineColoring = true, lineColorPriority = 3 },
 		colors = { eventColoring = LineKind.EventColours(), highlightedEvents = {} },
+		filters = { { eventList = { SPELL_DAMAGE = true, UNIT_DIED = true, SPELL_INTERRUPT = true,
+			SPELL_BUILDING_DAMAGE = true } } },
 	}
 end
 
@@ -76,6 +79,15 @@ describe("LineKind", function()
 			"two kinds 0.03 apart")
 		assert.is_nil(broken(function(colours) colours.UNIT_DIED = shade(0.88, 0.85, 0.85) end),
 			"another event 0.03 from a kind")
+		assert.is_nil(broken(function(colours) colours.SPELL_INTERRUPT = colours.SPELL_DAMAGE end),
+			"another event in a kind's own colour, which would pass for that kind")
+		assert.is_nil(broken(function(colours, filter)
+			recolour(colours, "swing", shade(0.78, 0.78, 0.78))
+			filter.settings.lineHighlighting = true
+			filter.colors.highlightedEvents.SPELL_INTERRUPT = true
+		end), "another event with no colour, highlighted from grey to 0.75, 0.03 from a kind")
+		assert.is_table(broken(function(colours) colours.SPELL_DISPEL = shade(1, 0.83, 0.25) end),
+			"an event the filter does not send, 0.02 from a kind")
 		assert.is_nil(broken(function(colours) recolour(colours, "swingMiss", shade(0.53, 0.53, 0.53)) end),
 			"a kind 0.03 from Blizzard's grey")
 		assert.is_nil(broken(function(_, filter)
@@ -83,7 +95,7 @@ describe("LineKind", function()
 			filter.colors.highlightedEvents.SPELL_DAMAGE = true
 		end), "a highlighted kind")
 		assert.is_table(broken(function(colours) colours.SPELL_BUILDING_DAMAGE = colours.SPELL_DAMAGE end),
-			"another event in a kind's own colour")
+			"a hit on a building in the direct hit's colour")
 		assert.is_nil(LineKind.PaletteOf({ settings = { lineColoring = true, lineColorPriority = 1 } }))
 	end)
 
