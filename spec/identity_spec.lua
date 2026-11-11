@@ -288,6 +288,13 @@ describe("Spell Identity", function()
 			assert.are.same({}, saved)
 		end)
 
+		it("gives Forever's own Ferocious Bite, a cast ID that Classic lacks, to its Hit", function()
+			local FEROCIOUS_BITE = 1328618
+			local identity = Identity.New({})
+			cast(identity, 1, FEROCIOUS_BITE)
+			assert.are.equal(FEROCIOUS_BITE, of(identity, 1, "direct", PHYSICAL))
+		end)
+
 		it("gives Shoot to a shot that lands after a long flight, but no direct spell after that long", function()
 			local identity = Identity.New({ [SHOOT] = { school = FIRE, hits = 2 } })
 			cast(identity, 1, SHOOT)

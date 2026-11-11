@@ -1,5 +1,9 @@
 # Changelog
 
+## 6
+
+- Ferocious Bite now shows its icon. A recent Forever patch gave it a new spell ID, which the addon didn't know yet. Shank, Death Mark, and the Druid's new Lacerate ranks from that patch should show their icons too.
+
 ## 5
 
 - In groups, your swings and your pet's show their own numbers far more often. The addon learns how long each of your swings takes to land, so another player's hit that lands first no longer takes your number. Now and then a swing's number shows up to a second late.
