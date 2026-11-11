@@ -8,7 +8,7 @@ local _, ns = ...
 -- an area spell, whose ticks come as direct Log Lines. Spell Identity reads
 -- ticks only from this table (ADR 0004).
 --
--- From Forever's spell data (wago.tools DB2, build 1.60.1.70532: SpellEffect
+-- From Forever's spell data (wago.tools DB2, build 1.60.1.70888: SpellEffect
 -- periodic damage and leech auras and school damage effects, SpellMisc school
 -- and missile speed, SpellDuration), for the cast of every spell in a class
 -- or pet skill line or a talent (TraitDefinition), also where no trainer or
@@ -63,7 +63,7 @@ do
 	ticks(1, NATURE, 10, { area = true }, { 16914, 17401, 17402 }) -- Hurricane
 	ticks(3, PHYSICAL, 15, {}, { 414644 }) -- Lacerate
 	ticks(3, PHYSICAL, 18, {}, { 9005, 9823, 9827 }) -- Pounce; its ticks are Pounce Bleed's
-	ticks(3, PHYSICAL, 15, {}, { 1235826, 1235827 }) -- Lacerate, Forever's ranks (interval untested)
+	ticks(3, PHYSICAL, 15, {}, { 1235826, 1235827, 1328616, 1328617 }) -- Lacerate, Forever's ranks (interval untested)
 
 	-- Hunter
 	ticks(1, ARCANE, 6, { travels = true, area = true }, { 1510, 14294, 14295 }) -- Volley
@@ -90,6 +90,7 @@ do
 	-- Rogue
 	ticks(3, PHYSICAL, 18, {}, { 703, 8631, 8632, 8633, 11289, 11290 }) -- Garrote
 	ticks(2, PHYSICAL, 16, {}, { 1943, 8639, 8640, 11273, 11274, 11275 }) -- Rupture
+	ticks(6, PHYSICAL, 6, {}, { 1316709, 1325756, 1325757, 1325758 }) -- Death Mark, Forever only (one tick as it ends; untested)
 
 	-- Shaman
 	ticks(3, FIRE, 12, { hits = true }, { 8050, 8052, 8053, 10447, 10448, 29228 }) -- Flame Shock
