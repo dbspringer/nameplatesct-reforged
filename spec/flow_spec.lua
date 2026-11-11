@@ -46,7 +46,7 @@ describe("Flow", function()
 		local shown = run({
 			{ 0.5, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
 			{ 1, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast", 5176, nil, target = "nameplate1" },
-			{ 1.083, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind" },
+			{ 1.083, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind", lineKind = "direct" },
 			{ 1.2, "UNIT_COMBAT", "nameplate1", "WOUND", "", 10, 8, plate = "nameplate1", canAttack = true },
 		})
 		assert.are.equal(1, #shown)
@@ -56,7 +56,7 @@ describe("Flow", function()
 
 	describe("a Weapon Proc", function()
 		local function directLine(time)
-			return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind" }
+			return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", 1, 0.85, 0.25, 0, colouring = "kind", lineKind = "direct" }
 		end
 
 		it("shows as a swing with no spell", function()
@@ -129,7 +129,7 @@ describe("Flow", function()
 		local swing = ns.LineKind.EventColours().SWING_DAMAGE
 		local shown = run({
 			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
-			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind", lineKind = "swing" },
 		})
 		assert.are.equal(1, #shown)
 		assert.are.equal("swing", shown[1].lineKind)
@@ -151,7 +151,7 @@ describe("Flow", function()
 		local swing = ns.LineKind.EventColours().SWING_DAMAGE
 		for _, gap in ipairs({ 0, 0.041 }) do
 			local shown = run({
-				{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+				{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind", lineKind = "swing" },
 				{ 1 + gap, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
 			})
 			assert.are.equal(1, #shown)
@@ -162,7 +162,7 @@ describe("Flow", function()
 	it("shows the later Hit, not the early one, when both could be the swing's", function()
 		local swing = ns.LineKind.EventColours().SWING_DAMAGE
 		local shown = run({
-			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind" },
+			{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", swing.r, swing.g, swing.b, 0, colouring = "kind", lineKind = "swing" },
 			{ 1, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 1, plate = "nameplate1" },
 			{ 1.37, "UNIT_COMBAT", "nameplate1", "WOUND", "", 50, 1, plate = "nameplate1" },
 		})
@@ -467,7 +467,7 @@ describe("Flow", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
-				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
+				local trace, labels = Trace.LoadChecked(name)
 				local unitOf = {}
 				for _, hit in ipairs((Label.Adapt(trace))) do
 					unitOf[hit.entry] = hit.unit
@@ -501,7 +501,7 @@ describe("Flow", function()
 		it("tells the player's swings from the pet's, as the Combat Log File does", function()
 			local seen, wrong = { you = 0, pet = 0 }, {}
 			for _, name in ipairs(Trace.NAMES) do
-				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
+				local trace, labels = Trace.LoadChecked(name)
 				local _, _, eventAt = Label.Make(trace, Trace.LoadLog(name))
 				local lineOf = {}
 				for _, row in ipairs(labels) do

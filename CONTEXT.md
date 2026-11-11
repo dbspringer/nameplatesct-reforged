@@ -43,11 +43,11 @@ One line of the player's own combat log that the game sends to addons. The addon
 _Avoid_: Combat log event, CLEU, chat message
 
 **Line Kind**:
-What a Log Line reports: a direct hit, a tick, a swing, a shot, or a damage shield's hit, a miss of one of these, a heal or a heal over time, or a killing blow. The Log Line's colour tells it.
+What a Log Line reports: a direct hit, a tick, a swing, a shot, or a damage shield's hit, a miss of one of these, a heal or a heal over time, or a killing blow. The Log Line's colour tells it, read by the colours of the Log Filter that sent it.
 _Avoid_: Event type, line type
 
 **Log Filter**:
-The player's Blizzard combat log filter, which decides which Log Lines come and their colours. Pairing needs a Log Filter that sends only the player's and their pet's lines, with their damage and misses, each in the colour of its Line Kind.
+The player's Blizzard combat log filter, which decides which Log Lines come and their colours. Pairing needs a Log Filter that sends only the player's and their pet's lines, with their damage and misses, and gives each Line Kind a colour of its own, far from every other colour in the filter. The filter can be Blizzard's or another addon's.
 _Avoid_: Combat log settings, chat filter
 
 **Pairing**:

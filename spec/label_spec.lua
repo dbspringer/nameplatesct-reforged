@@ -64,8 +64,13 @@ local function report(time, unit, plate, action, amount, school, descriptor)
 	return { time, "UNIT_COMBAT", unit, action, descriptor or "", amount, school, plate = plate, guid = "<secret>" }
 end
 
-local function logLine(time, grey)
-	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", grey or 0.7, grey or 0.7, grey or 0.7, 0 }
+-- named holds the fields that Events.lua adds, such as colouring and lineKind.
+local function logLine(time, grey, named)
+	local entry = { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", grey or 0.7, grey or 0.7, grey or 0.7, 0 }
+	for key, value in pairs(named or {}) do
+		entry[key] = value
+	end
+	return entry
 end
 
 -- Labels the Trace entries against the file lines, and returns the rows by
@@ -119,9 +124,9 @@ describe("Labels", function()
 		-- Under colours by source the killing blow line is highlighted white, and
 		-- it can come before the line of the hit that killed.
 		local rows = label({
-			logLine(101, 1),
+			logLine(101, 1, { colouring = "source", lineKind = "other" }),
 			report(101, "nameplate1", "nameplate1", "WOUND", 26),
-			logLine(101),
+			logLine(101, nil, { colouring = "source" }),
 		}, {
 			damage(101, ME, MOB_A, 26, "Drain Soul"),
 			fileLine(101, base("PARTY_KILL", ME, MOB_A)),
@@ -129,6 +134,24 @@ describe("Labels", function()
 			settings = { lineColoring = true, lineColorPriority = 1, lineHighlighting = true },
 			colors = { highlightedEvents = { PARTY_KILL = true } },
 		})
+		assert.are.same({ 3, 1120 }, { rows[2].line, rows[2].spell })
+	end)
+
+	it("gives each Log Line of a frame the file event of its Line Kind, in another addon's colours", function()
+		-- MikScrollingBattleText's colours for a direct hit and a killing blow.
+		local function line(colour, kind)
+			local entry = logLine(101, nil, { colouring = "kind", lineKind = kind })
+			entry[4], entry[5], entry[6] = colour[1], colour[2], colour[3]
+			return entry
+		end
+		local rows = label({
+			line({ 1, 1, 1 }, "kill"),
+			report(101, "nameplate1", "nameplate1", "WOUND", 26),
+			line({ 1, 0.8, 0.3 }, "direct"),
+		}, {
+			damage(101, ME, MOB_A, 26, "Drain Soul"),
+			fileLine(101, base("PARTY_KILL", ME, MOB_A)),
+		}, false, { settings = { lineColoring = true, lineColorPriority = 3 } })
 		assert.are.same({ 3, 1120 }, { rows[2].line, rows[2].spell })
 	end)
 

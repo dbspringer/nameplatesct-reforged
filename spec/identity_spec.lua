@@ -50,7 +50,7 @@ end
 local LINE_EVENTS = { direct = "SPELL_DAMAGE", tick = "SPELL_PERIODIC_DAMAGE", swing = "SWING_DAMAGE" }
 local function lineEntry(time, lineKind)
 	local colour = ns.LineKind.EventColours()[LINE_EVENTS[lineKind]]
-	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind" }
+	return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind", lineKind = lineKind }
 end
 
 -- The spells that Flow shows with the Hits of these entries, "none" for none.
@@ -907,7 +907,7 @@ describe("Spell Identity", function()
 				if not carryFacts then
 					facts = {}
 				end
-				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
+				local trace, labels = Trace.LoadChecked(name)
 				local spellOf = {}
 				for _, row in ipairs(labels) do
 					spellOf[row.hit] = row.spell

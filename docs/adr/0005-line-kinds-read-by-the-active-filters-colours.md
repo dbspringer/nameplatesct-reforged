@@ -1,0 +1,13 @@
+# Line Kinds are read by the active filter's colours
+
+Only one Log Filter is active at a time, and MikScrollingBattleText (New API) colours lines by event type too, in its own "MSBT combat" filter with its own colours. It writes that filter, and makes it the active one, at every logout where it is not, with no prompt; its check also wants its own filter name and event list, so it never accepts ours. With both addons, the fix of ADR 0003 and MSBT's write took turns at each reload, and each addon asked for another reload (a player's report, MSBT v12.047). So the addon no longer asks for its own colours: it reads each Log Line's Line Kind by the colours of the filter that is active when the line comes. A filter suits Pairing when it sends the player's and the pet's damage and misses from only "Me" and "My pet" (as before), colours whole lines by event type with none of those events highlighted, gives the events of every Line Kind one colour per kind, and keeps each kind's colour more than twice the line tolerance (0.04) from every other kind's colour and Blizzard's 0.5 grey for an event with no colour. Another event's colour must be that far from it too, or the same colour, as such lines read as that kind: MSBT gives a hit on a building the direct hit's colour. MSBT's filter passes; its nearest two colours are about 0.07 apart. The fix still writes the addon's own colours into "My actions". Under a filter that colours by event type and fails the check, every line is read as no Line Kind's and pairs with no Hit, even where its colours alone could be read, as such a filter can also send other units' lines; colours by source are read as ADR 0003 says.
+
+The Line Kind is read in `Events.lua` as the line comes, and the entry and a Trace keep it as `lineKind`, since the player can switch filters during a recording and a colour then no longer tells its kind on replay. The Traces made before this got their `lineKind` once, from the addon's own colours, the only ones they could have. Replays therefore never run the colour reading, so it has specs of its own.
+
+When the active filter colours lines by event type, fails the check, and is not "My actions", the window explains that another filter sets the colours and offers no fix, as a fix would start the same loop with whichever addon wrote that filter. A player who picks "My actions" gets the fix offered again.
+
+## Considered Options
+
+- MSBT's colours as a second fixed palette, found by its filter name: smaller, but it breaks when MSBT changes a colour.
+- No window while MSBT is loaded: it covers one addon only.
+- The palette kept in the Trace header, read on replay: wrong when the player switches filters during a recording.

@@ -71,10 +71,9 @@ local function ownerOf(unit)
 	end
 end
 
--- How the picked Log Filter colours whole lines (see LineKind.ColouringOf).
--- The player can switch the filter at any time, so each Log Line reads it.
-local function lineColouring()
-	local saved = Blizzard_CombatLog_Filters
+-- How the picked Log Filter colours whole lines (see LineKind.ColouringOf),
+-- which a Trace keeps for the label tool.
+local function lineColouring(saved)
 	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
 		return nil
 	end
@@ -129,7 +128,12 @@ local function onEvent(_, event, ...)
 			end
 		end
 	elseif event == "COMBAT_LOG_MESSAGE" then
-		entry.colouring = lineColouring()
+		-- The player, or another addon, can switch the filter or its colours at
+		-- any time, so each Log Line reads its Line Kind by the filter's colours
+		-- as it comes, and a Trace keeps the kind (see ADR 0005).
+		local saved = Blizzard_CombatLog_Filters
+		entry.colouring = lineColouring(saved)
+		entry.lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6], ns.LogFilter.Reading(saved))
 		entry.hasPet = isTrue(UnitExists("pet"))
 	elseif CAST_EVENTS[event] and unit == "player" then
 		-- The Nameplate of the player's target at this cast event, which the

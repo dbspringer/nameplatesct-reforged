@@ -55,8 +55,9 @@ end
 -- closes it until the next login or reload.
 local function offer()
 	local myActions = QUICKBUTTON_NAME_MY_ACTIONS
-	local state = ns.LogFilter.Check(Blizzard_CombatLog_Filters, myActions)
-	if state ~= "fixable" and state ~= "gone" then
+	local saved = Blizzard_CombatLog_Filters
+	local state = ns.LogFilter.Check(saved, myActions)
+	if state ~= "fixable" and state ~= "gone" and state ~= "foreign" then
 		return
 	end
 	if not window then
@@ -65,6 +66,11 @@ local function offer()
 	if state == "fixable" then
 		text:SetText(L["Your combat log needs a few changes so the addon can tell which hits are yours and your pet's.\n\nFix and reload updates Blizzard's \"%s\" filter, including its line colours, and switches your combat log to it."]:format(myActions))
 		fixButton:Show()
+	elseif state == "foreign" then
+		-- Another addon's filter, which that addon writes back at each logout,
+		-- so a fix would only take turns with it (see ADR 0005).
+		text:SetText(L["Your combat log uses the \"%s\" filter, and this addon can't read its colours, so your numbers can't show.\n\nTo use this addon, pick \"%s\" in your combat log. The addon then offers its fix at your next reload."]:format(tostring(saved.filters[saved.currentFilter].name), myActions))
+		fixButton:Hide()
 	else
 		text:SetText(L["Your combat log has no \"%s\" filter, so some numbers can't show.\n\nPress Defaults in the combat log settings to get it back."]:format(myActions))
 		fixButton:Hide()

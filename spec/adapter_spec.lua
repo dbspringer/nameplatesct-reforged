@@ -269,15 +269,6 @@ describe("Adapter", function()
 			assert.are.same({ kind = "line", time = 1, entry = 1 }, records[1])
 		end)
 
-		it("reads each Log Line's Line Kind from its colour, by the colouring it came under", function()
-			local records = run({
-				{ 1, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.74902, 0.54902, 1, 0, colouring = "kind" },
-				{ 2, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.74902, 0.54902, 1, 0 },
-			})
-			assert.are.equal("tick", records[1].lineKind)
-			assert.is_nil(records[2].lineKind)
-		end)
-
 		it("drops the old lines that the game sends again to fill a new chat frame", function()
 			local records = run({ logLine(1, Enum.CombatLogMessageOrder.Oldest), logLine(1) })
 			assert.are.equal(1, #records)
@@ -329,7 +320,8 @@ describe("Adapter", function()
 			-- A Log Line in the colour of this event's kind.
 			local function kindLine(time, event)
 				local colour = ns.LineKind.EventColours()[event]
-				return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind" }
+				return { time, "COMBAT_LOG_MESSAGE", "|Ky1|k", colour.r, colour.g, colour.b, 0, colouring = "kind",
+					lineKind = ns.LineKind.OfEvent(event) }
 			end
 			local function swingLine(time)
 				return kindLine(time, "SWING_DAMAGE")

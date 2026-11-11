@@ -39,9 +39,7 @@ local SPELL_NEAR = 0.04
 local SWING_NEAR = 0.02
 local SWING_SAMPLES_NEAR = 3
 local SWING_SAMPLES = 5
--- Blizzard's grey for an event with no colour under colours by kind
--- (COMBATLOG_DEFAULT_COLORS). A highlighted line is this much brighter.
-local UNCOLOURED = 0.5
+-- How much brighter a highlighted line is under colours by source.
 local HIGHLIGHT = 1.5
 
 -- Fields between the event name and an event's own fields. Advanced logging
@@ -205,34 +203,32 @@ local function lineEvents(trace, events)
 	return result
 end
 
--- The colour Blizzard gives the Log Line of a file event under a colouring
--- (see LineKind.ColouringOf) and a Log Filter, as
--- Blizzard_CombatLogProcessor.lua GenerateMessage colours lines: by kind, the
--- event's colour, or grey for an event with no colour; by source, the
--- player's and the pet's grey; a highlighted event's line brighter, at most
--- white. nil under any other colouring, which tells nothing.
-local function colourOf(event, colouring, filter)
-	local colour
-	if colouring == "kind" then
-		colour = load().LineKind.EventColours()[event.name]
-			or { r = UNCOLOURED, g = UNCOLOURED, b = UNCOLOURED }
-	elseif colouring == "source" then
-		colour = load().LineKind.OWN_BY_SOURCE
-	else
-		return nil
-	end
+-- The colour Blizzard gives the Log Line of a file event under colours by
+-- source and a Log Filter, as Blizzard_CombatLogProcessor.lua GenerateMessage
+-- colours lines: the player's and the pet's grey, and a highlighted event's
+-- line brighter, at most white.
+local function sourceColourOf(event, filter)
+	local colour = load().LineKind.OWN_BY_SOURCE
 	local settings, colors = filter.settings or {}, filter.colors or {}
 	local scale = settings.lineHighlighting and colors.highlightedEvents
 		and colors.highlightedEvents[event.name] and HIGHLIGHT or 1
 	return { r = math.min(colour.r * scale, 1), g = math.min(colour.g * scale, 1), b = math.min(colour.b * scale, 1) }
 end
 
--- Whether a Log Line's colour is the one of this file event's line. Lines of
--- one frame share a time, so only their colours tell which line reports
--- which event.
+-- Whether a Log Line can report this file event. Lines of one frame share a
+-- time, so only their colours tell which line reports which event: under
+-- colours by kind, by the Line Kind that Events.lua read from the colour, as
+-- the filter can be another addon's, in colours of its own (ADR 0005), and
+-- an event of no kind comes in a colour of no kind; under colours by source,
+-- by the colour itself; under any other colouring, a line fits any event.
 local function colourFits(entry, event, filter)
-	local colour = type(entry[4]) == "number" and colourOf(event, entry.colouring, filter)
-	return not colour or load().LineKind.Near(entry[4], entry[5], entry[6], colour)
+	if entry.colouring == "kind" then
+		return entry.lineKind == (load().LineKind.OfEvent(event.name) or "other")
+	end
+	if entry.colouring == "source" and type(entry[4]) == "number" then
+		return load().LineKind.Near(entry[4], entry[5], entry[6], sourceColourOf(event, filter))
+	end
+	return true
 end
 
 -- Pairs each Log Line with the file event it reports, by the one time offset
@@ -423,7 +419,6 @@ end
 -- each Log Line by the line's entry number; or nil and a message.
 function Label.Make(trace, lines)
 	local events = parseEvents(lines)
-	Trace.FillColouring(trace, load().LineKind.ColouringOf)
 	local hits, logLines = Label.Adapt(trace)
 	local candidates, message = lineEvents(trace, events)
 	if not candidates then

@@ -163,8 +163,8 @@ local function addHits(reports, records)
 end
 
 -- Turns raw events, in the shape of Trace entries, into Hits, Log Lines (with
--- their Line Kind, read by the colouring that Events.lua records, and pet on
--- the pet's swing lines), casts, and swings. All events of one frame share a
+-- the Line Kind that Events.lua read from the line's colour, and pet on the
+-- pet's swing lines), casts, and swings. All events of one frame share a
 -- GetTime(), so a frame's records leave together through onRecord, in entry
 -- order, once a later event or tick shows that the frame is over.
 function Adapter.New(onRecord)
@@ -282,8 +282,7 @@ function Adapter.New(onRecord)
 			end
 		elseif event == "COMBAT_LOG_MESSAGE" then
 			if not isRefill(entry[7]) then
-				add(entry, { kind = "line", lineKind = ns.LineKind.Of(entry[4], entry[5], entry[6], entry.colouring),
-					hasPet = entry.hasPet })
+				add(entry, { kind = "line", lineKind = entry.lineKind, hasPet = entry.hasPet })
 			end
 		elseif event == "UNIT_SPELLCAST_SENT" then
 			-- entry[4] is the target's name, which can be secret.

@@ -14,8 +14,6 @@ ns.LogFilter = LogFilter
 
 -- Done By "Me" and "My pet" (COMBATLOG_FILTER_MINE, COMBATLOG_FILTER_MY_PET).
 local OWN_SOURCES = { [0x4511] = true, [0x3111] = true }
--- Saved colours are the floats the fix wrote, or 8-bit ones after an edit.
-local SAVED_TOLERANCE = 0.005
 -- A damage shield's Hit, such as Thorns, comes in the frame of its line (a
 -- live Druid recording, 2026-11-07: 9 of 9), and with no line it is lost.
 local EVENTS = {
@@ -37,29 +35,6 @@ local function indexOf(saved, name)
 			return index
 		end
 	end
-end
-
-local function sameColour(saved, colour)
-	return type(saved) == "table" and type(saved.r) == "number" and type(saved.g) == "number"
-		and type(saved.b) == "number" and ns.LineKind.Near(saved.r, saved.g, saved.b, colour, SAVED_TOLERANCE)
-end
-
--- Whether the filter colours each line by its Line Kind. Highlighting makes a
--- highlighted event's line 1.5 times brighter, so none of those events may
--- be highlighted.
-local function coloursByKind(filter)
-	local settings, colors = filter.settings, filter.colors
-	if ns.LineKind.ColouringOf(filter) ~= "kind" or type(colors) ~= "table" or type(colors.eventColoring) ~= "table" then
-		return false
-	end
-	local highlighted = settings.lineHighlighting and type(colors.highlightedEvents) == "table"
-		and colors.highlightedEvents or {}
-	for event, colour in pairs(ns.LineKind.EventColours()) do
-		if not sameColour(colors.eventColoring[event], colour) or highlighted[event] then
-			return false
-		end
-	end
-	return true
 end
 
 -- What a part's sourceFlags or destFlags table asks for, as Blizzard's
@@ -105,49 +80,73 @@ local function asksOnlyOwn(part)
 	return true
 end
 
--- Whether a filter sends what Pairing needs through its first part, asks for
--- no other units' lines through any part, and colours each line by its Line
--- Kind.
-local function suitsPairing(filter)
+-- The filter's palette (LineKind.PaletteOf), in the fix's colours or
+-- another's, when the filter sends what Pairing needs through its first part,
+-- asks for no other units' lines through any part, and colours each line so
+-- its Line Kind reads back; otherwise nil.
+local function pairingPalette(filter)
 	local parts = type(filter) == "table" and filter.filters
 	local part = type(parts) == "table" and parts[1]
 	if type(part) ~= "table" or type(part.sourceFlags) ~= "table" or type(part.eventList) ~= "table"
 		or flagsOf(part.destFlags) == "none" then
-		return false
+		return nil
 	end
 	for flag in pairs(OWN_SOURCES) do
 		if part.sourceFlags[flag] ~= true then
-			return false
+			return nil
 		end
 	end
 	for _, event in ipairs(EVENTS) do
 		if part.eventList[event] ~= true then
-			return false
+			return nil
 		end
 	end
 	-- With lines coloured by kind, other units' lines look like the player's.
 	for _, each in pairs(parts) do
 		if not asksOnlyOwn(each) then
-			return false
+			return nil
 		end
 	end
-	return coloursByKind(filter)
+	return ns.LineKind.PaletteOf(filter)
 end
 
 -- How the saved Log Filters (Blizzard_CombatLog_Filters) suit Pairing: "ok",
 -- when the picked filter sends what Pairing needs, and only lines it can tell
--- apart, whatever its name;
--- otherwise "fixable", when a filter named myActions exists to fix and pick,
--- or "gone", when none does; or nil, when the game has not loaded its Log
--- Filters.
+-- apart, whatever its name or colours; "foreign", when the picked filter is
+-- not myActions and colours lines by event type in a way that does not suit,
+-- as another addon's can, so a fix would only take turns with that addon
+-- (see ADR 0005); otherwise "fixable", when a filter named myActions exists
+-- to fix and pick, or "gone", when none does; or nil, when the game has not
+-- loaded its Log Filters.
 function LogFilter.Check(saved, myActions)
 	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
 		return nil
 	end
-	if suitsPairing(saved.filters[saved.currentFilter]) then
+	local picked = saved.filters[saved.currentFilter]
+	if pairingPalette(picked) then
 		return "ok"
 	end
+	if ns.LineKind.ColouringOf(picked) == "kind" and picked.name ~= myActions then
+		return "foreign"
+	end
 	return indexOf(saved, myActions) and "fixable" or "gone"
+end
+
+-- How to read the colour of a Log Line under the picked Log Filter, for
+-- LineKind.Of: its palette when the filter colours by event type and suits
+-- Pairing, or an empty one, under which every line is "other", when such a
+-- filter does not suit, as it may send other units' lines; "source" under
+-- colours by source; or nil, when the colour tells nothing.
+function LogFilter.Reading(saved)
+	if type(saved) ~= "table" or type(saved.filters) ~= "table" then
+		return nil
+	end
+	local picked = saved.filters[saved.currentFilter]
+	local colouring = ns.LineKind.ColouringOf(picked)
+	if colouring == "kind" then
+		return pairingPalette(picked) or {}
+	end
+	return colouring
 end
 
 -- Turns on in the filter named myActions what Check needs, and picks it. It

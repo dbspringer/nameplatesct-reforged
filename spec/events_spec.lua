@@ -49,8 +49,15 @@ local ns = { Recorder = {
 	Record = function(_, event, extra) recorded[event] = extra end,
 } }
 for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua",
-	"src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua", "src/Events.lua" }) do
+	"src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua", "src/Events.lua", "src/LogFilter.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
+end
+
+-- Blizzard_CombatLog_Filters with the fix's "My actions" picked.
+local function fixedFilters()
+	local saved = { currentFilter = 1, filters = { { name = "My actions", filters = { {} } } } }
+	assert(ns.LogFilter.Fix(saved, "My actions"))
+	return saved
 end
 
 local function start()
@@ -87,7 +94,7 @@ describe("Events, with no recording on", function()
 	end)
 
 	it("shows a wand's Hit 0.283 s after its shot line, on the shot's target", function()
-		_G.Blizzard_CombatLog_Filters = { currentFilter = 1, filters = { { settings = { lineColoring = true, lineColorPriority = 3 } } } }
+		_G.Blizzard_CombatLog_Filters = fixedFilters()
 		local shown = start()
 		fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 5019)
 		now = 2.5
@@ -102,7 +109,7 @@ describe("Events, with no recording on", function()
 
 	describe("under a Log Filter that colours lines by kind", function()
 		before_each(function()
-			_G.Blizzard_CombatLog_Filters = { currentFilter = 1, filters = { { settings = { lineColoring = true, lineColorPriority = 3 } } } }
+			_G.Blizzard_CombatLog_Filters = fixedFilters()
 		end)
 		after_each(function()
 			_G.Blizzard_CombatLog_Filters = nil
@@ -169,6 +176,24 @@ describe("Events, with a recording on", function()
 		fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
 		assert.is_nil(recorded.NAME_PLATE_UNIT_REMOVED.frame)
 		assert.are.equal("normal", recorded.NAME_PLATE_UNIT_REMOVED.classification)
+	end)
+
+	it("reads a Log Line's Line Kind by the colours of the filter picked as it comes, and keeps it in the Trace", function()
+		local saved = fixedFilters()
+		saved.filters[2] = dofile("spec/msbt_filter.lua")()
+		saved.currentFilter = 2
+		_G.Blizzard_CombatLog_Filters = saved
+		finally(function()
+			_G.Blizzard_CombatLog_Filters = nil
+		end)
+		start()
+		-- MikScrollingBattleText's colour for a swing, as it reaches an addon.
+		fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 0.90196, 0.90196, 0.90196, 0)
+		assert.are.same({ "kind", "swing" }, { recorded.COMBAT_LOG_MESSAGE.colouring, recorded.COMBAT_LOG_MESSAGE.lineKind })
+
+		saved.currentFilter = 1
+		fire("COMBAT_LOG_MESSAGE", "|Ky2|k", 0.90196, 0.90196, 0.90196, 0)
+		assert.are.equal("other", recorded.COMBAT_LOG_MESSAGE.lineKind)
 	end)
 
 	it("keeps the plate and the GUID of a report on a unit the player cannot attack", function()
