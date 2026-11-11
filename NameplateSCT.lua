@@ -1418,9 +1418,8 @@ local menu = {
 						},
 						showSwingIcon = {
 							type = 'toggle',
-							name = L["Display Auto Attack Icon"],
+							name = L["Display Auto Attacks"],
 							desc = L["Show an icon on your auto attacks and your pet's: the Auto Attack icon on yours, the pet Attack icon on your pet's."],
-							disabled = function() return not NameplateSCT.db.global.showIcon end,
 							get = function() return NameplateSCT.db.global.showSwingIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.showSwingIcon = newValue end,
 							order = 2,
