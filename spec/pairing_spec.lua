@@ -707,7 +707,7 @@ describe("Pairing", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
-				local trace, labels = Trace.LoadChecked(name, ns.LineKind.ColouringOf)
+				local trace, labels = Trace.LoadChecked(name)
 				local decided, lineOf = {}, {}
 				local pairing = Pairing.New({
 					onDecision = function(decidedHit, decidedLine)
@@ -753,7 +753,7 @@ describe("Pairing", function()
 	-- gave 49.
 	it("gives most of the pet's swing lines in a dungeon group the Hit one Swing Delay later", function()
 		local Label = assert(loadfile("tools/label-trace.lua"))()
-		local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/warlock-bfd-group.lua")), ns.LineKind.ColouringOf)
+		local trace = assert(Trace.Load("spec/traces/warlock-bfd-group.lua"))
 		local _, _, eventAt = Label.Make(trace, Trace.LoadLog("warlock-bfd-group"))
 		local onDelay = 0
 		local pairing = Pairing.New({

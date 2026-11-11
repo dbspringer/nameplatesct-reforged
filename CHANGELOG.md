@@ -4,6 +4,7 @@
 
 - In groups, your swings and your pet's show their own numbers far more often. The addon learns how long each of your swings takes to land, so another player's hit that lands first no longer takes your number. Now and then a swing's number shows up to a second late.
 - In groups, your DoT ticks and wand shots show their own numbers more often. Before, another player's hit that landed at the same moment (a Shaman's Flametongue, say, or a Warrior's swing) could show as yours, and your real number went missing.
+- The addon now works alongside MikScrollingBattleText (New API). Before, each addon kept switching your combat log to its own filter, so they took turns asking you to reload. Now this addon reads MSBT's combat log colours too, and the reload prompts stop once MSBT is set up. If another addon's combat log colours are ones this addon can't read, it tells you so and doesn't offer its fix.
 - A recording (`/nsctr record`) now keeps your last 40,000 combat events, up from 10,000. That's about an hour of a dungeon run, less in a busy fight. When it's full, the oldest events make room for new ones.
 
 ## 4

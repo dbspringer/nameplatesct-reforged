@@ -31,23 +31,9 @@ function Trace.Load(path)
 	return env.NameplateSCTReforgedTraces
 end
 
--- Gives each Log Line of a Trace from before Events.lua recorded the
--- colouring the one of the Log Filter in its header, which was picked when the
--- recording started. colouringOf is LineKind.ColouringOf.
-function Trace.FillColouring(trace, colouringOf)
-	local colouring = colouringOf(trace.header.logFilter and trace.header.logFilter.filter)
-	for _, entry in ipairs(trace.entries) do
-		if entry[2] == "COMBAT_LOG_MESSAGE" and entry.colouring == nil then
-			entry.colouring = colouring
-		end
-	end
-	return trace
-end
-
--- The checked Trace of this name in spec/traces/, with its colouring filled
--- in (see FillColouring), and its Labels.
-function Trace.LoadChecked(name, colouringOf)
-	local trace = Trace.FillColouring(assert(Trace.Load("spec/traces/" .. name .. ".lua")), colouringOf)
+-- The checked Trace of this name in spec/traces/, and its Labels.
+function Trace.LoadChecked(name)
+	local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 	local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
 	return trace, labels
 end

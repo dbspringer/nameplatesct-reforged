@@ -153,9 +153,10 @@ describe("LogFilter", function()
 			SPELL_PERIODIC_HEAL = "hot", PARTY_KILL = "kill", DAMAGE_SHIELD = "shield",
 			DAMAGE_SHIELD_MISSED_RESIST = "shieldMiss", SPELL_LEECH = "direct", SPELL_PERIODIC_LEECH = "tick",
 		}
+		local reading = LogFilter.Reading(saved)
 		for event, kind in pairs(expected) do
 			local r, g, b = arrived(colouring[event])
-			assert.are.equal(kind, LineKind.Of(r, g, b, "kind"), event)
+			assert.are.equal(kind, LineKind.Of(r, g, b, reading), event)
 		end
 	end)
 
@@ -195,6 +196,71 @@ describe("LogFilter", function()
 		assert.is_true(saved.filters[1].settings.fullText)
 		assert.are.same(blue, saved.filters[1].colors.eventColoring.UNIT_DIED)
 		assert.is_true(saved.filters[1].colors.highlightedEvents.UNIT_DIED)
+	end)
+
+	-- Blizzard_CombatLog_Filters after MikScrollingBattleText has written its
+	-- filter and picked it.
+	local function withMsbt()
+		local saved = savedFilters()
+		saved.filters[3] = dofile("spec/msbt_filter.lua")()
+		saved.currentFilter = 3
+		return saved
+	end
+
+	it("accepts MikScrollingBattleText's filter, and reads its lines by its colours", function()
+		local saved = withMsbt()
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		local reading = LogFilter.Reading(saved)
+		local colouring = saved.filters[3].colors.eventColoring
+		for _, event in ipairs({ "SWING_DAMAGE", "SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE", "RANGE_MISSED", "PARTY_KILL" }) do
+			local r, g, b = arrived(colouring[event])
+			assert.are.equal(LineKind.OfEvent(event), LineKind.Of(r, g, b, reading), event)
+		end
+	end)
+
+	it("offers no fix for another filter that colours by kind but cannot be read, as its addon would undo it", function()
+		local saved = withMsbt()
+		saved.filters[3].colors.eventColoring.SPELL_DAMAGE = { r = 1, g = 0.75, b = 0.3, a = 1 }
+		assert.are.equal("foreign", LogFilter.Check(saved, MY_ACTIONS))
+
+		saved.filters[3].name = MY_ACTIONS
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("finds MikScrollingBattleText's filter foreign when an interrupt there would pass for a direct hit", function()
+		local saved = withMsbt()
+		local colouring = saved.filters[3].colors.eventColoring
+		colouring.SPELL_INTERRUPT = colouring.SPELL_DAMAGE
+		assert.are.equal("foreign", LogFilter.Check(saved, MY_ACTIONS))
+	end)
+
+	it("leaves a filter that suits once fixed, when another event it sends had a colour near a kind's", function()
+		local saved = fixedFilters()
+		saved.filters[1].filters[1].eventList.SPELL_INTERRUPT = true
+		saved.filters[1].colors.eventColoring.SPELL_INTERRUPT = { r = 1, g = 0.83, b = 0.25, a = 1 }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_nil(saved.filters[1].colors.eventColoring.SPELL_INTERRUPT)
+
+		-- Blizzard colours a dispel's line by SPELL_DISPEL_DEBUFF.
+		saved.filters[1].filters[1].eventList.SPELL_DISPEL = true
+		saved.filters[1].colors.eventColoring.SPELL_DISPEL_DEBUFF = { r = 1, g = 0.85, b = 0.25, a = 1 }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_nil(saved.filters[1].colors.eventColoring.SPELL_DISPEL_DEBUFF)
+	end)
+
+	it("reads every line as another unit's under a filter that colours by kind but does not suit", function()
+		local saved = withMsbt()
+		local swing = saved.filters[3].colors.eventColoring.SWING_DAMAGE
+		saved.filters[3].filters[1].sourceFlags[PARTY] = true
+		assert.are.equal("other", LineKind.Of(swing.r, swing.g, swing.b, LogFilter.Reading(saved)))
+
+		saved.currentFilter = 2
+		saved.filters[2].settings = { lineColoring = true, lineColorPriority = 1 }
+		assert.are.equal("source", LogFilter.Reading(saved))
 	end)
 
 	it("cannot fix a combat log that has no My actions filter, and changes nothing", function()
