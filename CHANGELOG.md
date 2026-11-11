@@ -3,6 +3,7 @@
 ## 6
 
 - Ferocious Bite now shows its icon. A recent Forever patch gave it a new spell ID, which the addon didn't know yet. Shank, Death Mark, and the Druid's new Lacerate ranks from that patch should show their icons too.
+- A new "Display Auto Attack Icon" option in the Icons options turns off the icon on your and your pet's auto attacks, so a white hit shows only its number. Windfury hits, which look like auto attacks, lose the icon too. Your spells keep theirs. It's on by default, so nothing changes until you turn it off.
 
 ## 5
 

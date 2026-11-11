@@ -74,6 +74,10 @@ _Avoid_: On-next-hit ability, queued attack
 Your Hit from the pet's melee swing, not the player's. Its Plate Text has the pet's colour and icon.
 _Avoid_: Pet melee, pet auto attack
 
+**Swing Icon**:
+The icon on a swing's Plate Text: the Auto Attack icon for the player's swing, the pet Attack icon for a Pet Swing. A Weapon Proc shows it too.
+_Avoid_: Weapon icon, melee icon, white hit icon
+
 **Spell Identity**:
 Which spell made Your Hit. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
