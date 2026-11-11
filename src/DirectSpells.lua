@@ -9,7 +9,7 @@ local _, ns = ...
 -- one. The pets' spells are here so that they compete with the player's,
 -- though they never win. Spells that also tick are in TickSpells.lua.
 --
--- From Forever's spell data (wago.tools DB2, build 1.60.1.70532: SpellEffect
+-- From Forever's spell data (wago.tools DB2, build 1.60.1.70888: SpellEffect
 -- school damage, health leech and weapon damage effects, SpellMisc school),
 -- for the cast of every spell in a class or pet skill line or a talent
 -- (TraitDefinition), also where no trainer or talent is known to teach it,
@@ -20,6 +20,10 @@ local _, ns = ...
 -- Shock, whose damage a script makes, is in, so that its Hit on an enemy gets its icon; the cost is
 -- that its cast on a friend, which heals, competes with the casts that could
 -- have made a Holy Hit.
+--
+-- Build 70888 took some IDs out of the skill lines (Primal Bite 1238073, Frost
+-- Blast, and Forever's Lava Burst ranks). They stay, as a cast that no player
+-- makes costs nothing.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 
@@ -100,6 +104,7 @@ do
 	hits(PHYSICAL, { 6785, 6787, 9866, 9867 }) -- Ravage
 	replacesSwing({ 6807, 6808, 6809, 8972, 9745, 9880, 9881 }) -- Maul
 	hits(PHYSICAL, { 22568, 22827, 22828, 22829, 31018 }) -- Ferocious Bite
+	hits(PHYSICAL, { 1328618 }) -- Ferocious Bite, Forever only (a Druid's cast in the BFD group Trace)
 	hits(PHYSICAL, { 407995, 1238069, 1238070, 1238073 }) -- Primal Bite, Forever only (the first rank is Mangle's ID)
 
 	-- Hunter
@@ -161,6 +166,7 @@ do
 	hits(PHYSICAL, { 14251 }) -- Riposte
 	hits(PHYSICAL, { 14278 }) -- Ghostly Strike
 	hits(PHYSICAL, { 16511 }) -- Hemorrhage
+	hits(PHYSICAL, { 1329283, 1329549 }) -- Shank, Forever only
 	-- The casts. Each one makes two Hits, a main-hand and an off-hand strike
 	-- (untested), and a cast gives its spell to one Hit, so only the first
 	-- gets the icon.
