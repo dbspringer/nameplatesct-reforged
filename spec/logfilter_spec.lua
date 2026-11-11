@@ -242,6 +242,14 @@ describe("LogFilter", function()
 		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
 		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
 		assert.is_nil(saved.filters[1].colors.eventColoring.SPELL_INTERRUPT)
+
+		-- Blizzard colours a dispel's line by SPELL_DISPEL_DEBUFF.
+		saved.filters[1].filters[1].eventList.SPELL_DISPEL = true
+		saved.filters[1].colors.eventColoring.SPELL_DISPEL_DEBUFF = { r = 1, g = 0.85, b = 0.25, a = 1 }
+		assert.are.equal("fixable", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_true(LogFilter.Fix(saved, MY_ACTIONS))
+		assert.are.equal("ok", LogFilter.Check(saved, MY_ACTIONS))
+		assert.is_nil(saved.filters[1].colors.eventColoring.SPELL_DISPEL_DEBUFF)
 	end)
 
 	it("reads every line as another unit's under a filter that colours by kind but does not suit", function()

@@ -25,7 +25,7 @@ local function kindFilter()
 		settings = { lineColoring = true, lineColorPriority = 3 },
 		colors = { eventColoring = LineKind.EventColours(), highlightedEvents = {} },
 		filters = { { eventList = { SPELL_DAMAGE = true, UNIT_DIED = true, SPELL_INTERRUPT = true,
-			SPELL_BUILDING_DAMAGE = true } } },
+			SPELL_BUILDING_DAMAGE = true, SPELL_STOLEN = true } } },
 	}
 end
 
@@ -86,6 +86,8 @@ describe("LineKind", function()
 			filter.settings.lineHighlighting = true
 			filter.colors.highlightedEvents.SPELL_INTERRUPT = true
 		end), "another event with no colour, highlighted from grey to 0.75, 0.03 from a kind")
+		assert.is_nil(broken(function(colours) colours.SPELL_STOLEN_DEBUFF = colours.SPELL_DAMAGE end),
+			"a sent event's suffixed line in a kind's colour")
 		assert.is_table(broken(function(colours) colours.SPELL_DISPEL = shade(1, 0.83, 0.25) end),
 			"an event the filter does not send, 0.02 from a kind")
 		assert.is_nil(broken(function(colours) recolour(colours, "swingMiss", shade(0.53, 0.53, 0.53)) end),

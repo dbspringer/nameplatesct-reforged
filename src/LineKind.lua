@@ -140,7 +140,10 @@ end
 
 -- The events a saved filter sends: those on in the event list of any of its
 -- parts. A part that asks for no unit sends none, but its events count here
--- too, which errs on the safe side.
+-- too, which errs on the safe side. Blizzard colours some lines by the event
+-- name with a suffix, such as SPELL_DISPEL_DEBUFF for a sent SPELL_DISPEL, so
+-- any colour or highlight key that starts with a sent event's name and "_"
+-- counts as sent too.
 local function sentEvents(filter)
 	local sent = {}
 	for _, part in pairs(type(filter.filters) == "table" and filter.filters or {}) do
@@ -151,6 +154,19 @@ local function sentEvents(filter)
 				end
 			end
 		end
+	end
+	local suffixed = {}
+	for _, keys in ipairs({ filter.colors.eventColoring, filter.colors.highlightedEvents }) do
+		for key in pairs(type(keys) == "table" and keys or {}) do
+			for event in pairs(sent) do
+				if type(key) == "string" and key:sub(1, #event + 1) == event .. "_" then
+					suffixed[key] = true
+				end
+			end
+		end
+	end
+	for key in pairs(suffixed) do
+		sent[key] = true
 	end
 	return sent
 end
