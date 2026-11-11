@@ -1,5 +1,9 @@
 # Changelog
 
+## 6
+
+- A new "Display Auto Attack Icon" option in the Icons options turns off the icon on your and your pet's auto attacks, so a white hit shows only its number. Windfury hits, which look like auto attacks, lose the icon too. Your spells keep theirs. It's on by default, so nothing changes until you turn it off.
+
 ## 5
 
 - In groups, your swings and your pet's show their own numbers far more often. The addon learns how long each of your swings takes to land, so another player's hit that lands first no longer takes your number. Now and then a swing's number shows up to a second late.

@@ -140,6 +140,7 @@ local defaults = {
 		missColor = "ffffff",
 
 		showIcon = true,
+		showSwingIcon = true,
 		enableMSQ = true,
 		iconScale = 1,
 		iconPosition = "RIGHT",
@@ -892,8 +893,9 @@ function NameplateSCT:MissEvent(where, missType, texture)
 end
 
 -- Plate Text for Your Hit on an enemy Nameplate. A swing gets the autoattack
--- animation, and the colour and icon of who swung: swinger is "player", "pet",
--- or nil for a Hit that is no swing. spellID, from Spell Identity, gives the
+-- animation, the colour of who swung, and its Swing Icon unless the player
+-- turned that off: swinger is "player", "pet", or nil for a Hit that is no
+-- swing. spellID, from Spell Identity, gives the
 -- icon, and is nil when the spell is not known. late is the Nameplate as it
 -- hid, for a late Hit (see Flow.New).
 function NameplateSCT:ShowHit(hit, spellID, late, swinger)
@@ -927,10 +929,8 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger)
 	if self.db.global.showIcon then
 		if spellID then
 			texture = GetSpellTexture(spellID)
-		elseif swinger == "pet" then
-			texture = PET_ATTACK_TEXTURE
-		elseif swinger then
-			texture = GetSpellTexture(AUTO_ATTACK)
+		elseif swinger and self.db.global.showSwingIcon then
+			texture = swinger == "pet" and PET_ATTACK_TEXTURE or GetSpellTexture(AUTO_ATTACK)
 		end
 	end
 	if hit.action == "WOUND" then
@@ -1416,13 +1416,23 @@ local menu = {
 							order = 1,
 							width = "Half"
 						},
+						showSwingIcon = {
+							type = 'toggle',
+							name = L["Display Auto Attack Icon"],
+							desc = L["Show an icon on your auto attacks and your pet's: the Auto Attack icon on yours, the pet Attack icon on your pet's."],
+							disabled = function() return not NameplateSCT.db.global.showIcon end,
+							get = function() return NameplateSCT.db.global.showSwingIcon end,
+							set = function(_, newValue) NameplateSCT.db.global.showSwingIcon = newValue end,
+							order = 2,
+							width = "Half"
+						},
 						iconOnly = {
 							type = 'toggle',
 							name = L["Display Icon Only"],
 							desc = L["Display only the icon for damage.\nWill not change Miss, Dodge, Parry, etc displays"],
 							get = function() return NameplateSCT.db.global.showIconOnly end,
 							set = function(_, newValue) NameplateSCT.db.global.showIconOnly = newValue end,
-							order = 2,
+							order = 3,
 							width = "Half"
 						},
 						removeBorders = {
@@ -1431,7 +1441,7 @@ local menu = {
 							desc = L["Zoom a bit into the icon to remove default blizzard border"],
 							get = function() return NameplateSCT.db.global.removeBorder end,
 							set = function(_, newValue) NameplateSCT.db.global.removeBorder = newValue end,
-							order = 3,
+							order = 4,
 							width = "Half"
 						},
 						enableMSQ = {
@@ -1441,7 +1451,7 @@ local menu = {
 							hidden = function() return not NameplateSCT.db.global.showIcon end,
 							get = function() return NameplateSCT.db.global.enableMSQ end,
 							set = function(_, newValue) NameplateSCT.db.global.enableMSQ = newValue end,
-							order = 4,
+							order = 5,
 							width = "Half"
 						},
 						iconScale = {
@@ -1455,7 +1465,7 @@ local menu = {
 							hidden = function() return not NameplateSCT.db.global.showIcon end,
 							get = function() return NameplateSCT.db.global.iconScale end,
 							set = function(_, newValue) NameplateSCT.db.global.iconScale = newValue end,
-							order = 5,
+							order = 6,
 							width = "Half"
 						},
 						iconPosition = {
@@ -1466,7 +1476,7 @@ local menu = {
 							get = function() return NameplateSCT.db.global.iconPosition end,
 							set = function(_, newValue) NameplateSCT.db.global.iconPosition = newValue end,
 							values = positionValues,
-							order = 6,
+							order = 7,
 						},
 						xOffsetIcon = {
 							type = 'range',
@@ -1477,7 +1487,7 @@ local menu = {
 							step = 1,
 							get = function() return NameplateSCT.db.global.xOffsetIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.xOffsetIcon = newValue end,
-							order = 7,
+							order = 8,
 							width = "Half",
 						},
 						yOffsetIcon = {
@@ -1489,7 +1499,7 @@ local menu = {
 							step = 1,
 							get = function() return NameplateSCT.db.global.yOffsetIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.yOffsetIcon = newValue end,
-							order = 8,
+							order = 9,
 							width = "Half",
 						},
 						forgetSpellFacts = {
@@ -1497,7 +1507,7 @@ local menu = {
 							name = L["Forget learned spells"],
 							desc = L["Forget the school the addon learned for your wand's Shoot. It learns it again from your next shots."],
 							func = function() NameplateSCT:ForgetSpellFacts() end,
-							order = 9,
+							order = 10,
 						},
 					},
 				},
