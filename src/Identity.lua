@@ -252,10 +252,18 @@ function Identity.New(saved)
 	end
 
 	-- A Hit teaches its spell's school; one that disagrees starts it again.
+	-- A fact that counts starts again only at the second Hit in a row of one
+	-- other school (facts.other holds the first): a new wand's Hits all
+	-- disagree, but one Hit that does can be another player's that took the
+	-- shot's line (warlock-rfk: 4 such Hits in 55 min, each of which cost the
+	-- wand's school for 14 s or more).
 	local function teach(spellID, school)
 		local facts = saved[spellID]
 		if facts and facts.school == school then
 			facts.hits = facts.hits + 1
+			facts.other = nil
+		elseif facts and facts.hits >= AGREEING_HITS and facts.other ~= school then
+			facts.other = school
 		else
 			saved[spellID] = { school = school, hits = 1 }
 		end

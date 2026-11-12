@@ -456,11 +456,34 @@ describe("Spell Identity", function()
 			assert.are.same({ IMMOLATE, nil }, { fire, of(identity, 6.6, "direct", SHADOW) })
 		end)
 
-		it("starts a school again when a Hit disagrees with it", function()
-			local saved = { [SHOOT] = { school = FIRE, hits = 2 } }
+		it("starts a school that does not count yet again when a Hit disagrees with it", function()
+			local saved = { [SHOOT] = { school = FIRE, hits = 1 } }
 			local identity = Identity.New(saved)
 			cast(identity, 1, SHOOT)
 			assert.is_nil(of(identity, 1.3, "shot", SHADOW))
+			assert.are.same({ school = SHADOW, hits = 1 }, saved[SHOOT])
+		end)
+
+		it("keeps a school that counts when one Hit disagrees with it, as another player's Hit can take a shot's line", function()
+			local saved = { [SHOOT] = { school = FIRE, hits = 2 } }
+			local identity = Identity.New(saved)
+			cast(identity, 1, SHOOT)
+			of(identity, 1.3, "shot", SHADOW)
+			assert.are.equal(FIRE, identity.SchoolOf(SHOOT))
+			cast(identity, 3, SHOOT)
+			of(identity, 3.3, "shot", FIRE)
+			cast(identity, 5, SHOOT)
+			of(identity, 5.3, "shot", SHADOW)
+			assert.are.equal(FIRE, identity.SchoolOf(SHOOT))
+		end)
+
+		it("starts a school that counts again at the second Hit in a row of one other school, as a new wand changes it", function()
+			local saved = { [SHOOT] = { school = FIRE, hits = 2 } }
+			local identity = Identity.New(saved)
+			cast(identity, 1, SHOOT)
+			of(identity, 1.3, "shot", SHADOW)
+			cast(identity, 3, SHOOT)
+			of(identity, 3.3, "shot", SHADOW)
 			assert.are.same({ school = SHADOW, hits = 1 }, saved[SHOOT])
 		end)
 

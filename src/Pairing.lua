@@ -39,6 +39,9 @@ local SWING_DELAY_MIN = 4
 local SWING_DELAY_NEAR = 0.02
 local SWING_DELAY_PAIR = 2
 local SWING_DELAY_SHARE = 0.1
+-- How long Pairing remembers that a Nameplate hid: longer than any melee
+-- line waits.
+local HIDE_KEEP = 5
 -- How long a Hit with no Log Line waits for a late one. No Trace has a late
 -- line, but Forever Combat Text waits this long for a late spell line.
 local HOLD = 0.15
@@ -317,6 +320,8 @@ function Pairing.New(options)
 	-- from (see SWING_DELAY_KEEP). They last for the session.
 	local swingDelays = { player = {}, pet = {} }
 	local openSwings = {}
+	-- When Nameplates hid of late, oldest first.
+	local hides = {}
 
 	local function delaysOf(line)
 		return swingDelays[line.pet and "pet" or "player"]
@@ -382,6 +387,35 @@ function Pairing.New(options)
 
 	-- Unpaired Log Lines and Hits that wait for a late line, oldest first.
 	local waitingLines, heldHits = {}, {}
+
+	-- Whether the line's swing likely lost its Hit: a Nameplate hid in the
+	-- line's window, and the owner's latest SWING_DELAY_MIN samples lie within
+	-- SWING_DELAY_NEAR, so a Hit off them is not a new delay. The game sends no
+	-- Hit for a swing whose target dies before the Hit's time (warlock-rfk: 44
+	-- of 44 pet swings whose target died within 0.7 s), and the Hit in the
+	-- window is then another player's. Either sign alone is common in solo
+	-- play. Replayed on all Traces, the two together took 16 of 27 such wrong
+	-- numbers from warlock-rfk and 5 of 11 from warlock-bfd-group, and 2 right
+	-- ones from the 25 other Traces.
+	local function lostItsHit(line)
+		local delays = delaysOf(line)
+		if #delays < SWING_DELAY_MIN then
+			return false
+		end
+		local least, most = math.huge, -math.huge
+		for i = #delays - SWING_DELAY_MIN + 1, #delays do
+			least, most = math.min(least, delays[i]), math.max(most, delays[i])
+		end
+		if most - least > SWING_DELAY_NEAR then
+			return false
+		end
+		for _, time in ipairs(hides) do
+			if time >= line.time and time <= line.time + MELEE_TO then
+				return true
+			end
+		end
+		return false
+	end
 
 	-- Takes a line for a Hit. The Hits that waited on it are not Your Hits.
 	local function claim(line)
@@ -502,12 +536,17 @@ function Pairing.New(options)
 		while waitingLines[1] and now - waitingLines[1].time > (waitingLines[1].mayBeProc and PROC_TO or MELEE_TO) do
 			local line = table.remove(waitingLines, 1)
 			-- A Hit in the line's window is likelier the line's than one that
-			-- came too early for it.
+			-- came too early for it, unless the swing lost its Hit. Until now
+			-- the Hit waited on the line, so it took no other line.
 			if line.offDelay then
 				if line.early then
 					onDecision(line.early, nil)
 				end
-				onDecision(line.offDelay, line, "melee")
+				if lostItsHit(line) then
+					onDecision(line.offDelay, nil)
+				else
+					onDecision(line.offDelay, line, "melee")
+				end
 			elseif line.early then
 				onDecision(line.early, line, "melee")
 			end
@@ -633,6 +672,11 @@ function Pairing.New(options)
 		elseif record.kind == "line" then
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
+		elseif record.kind == "hide" then
+			while hides[1] and record.time - hides[1] > HIDE_KEEP do
+				table.remove(hides, 1)
+			end
+			hides[#hides + 1] = record.time
 		elseif record.kind == "swing" and record.swingType ~= ns.Adapter.RANGED_SWING then
 			lastStrike = record.time
 		end

@@ -12,6 +12,12 @@ Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN = 0x2000
 Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind",
 	"warlock-spells", "warlock-rain-of-fire" }
 
+-- Your Hits in those Traces that Pairing is known to give no Log Line, by
+-- Trace and Hit entry. warlock-spells 302: the pet's swing came off its
+-- settled Swing Delay while another Nameplate hid, which in a group is the
+-- sign of another player's Hit (see lostItsHit in src/Pairing.lua).
+Trace.LOST = { ["warlock-spells"] = { [302] = true } }
+
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111
 

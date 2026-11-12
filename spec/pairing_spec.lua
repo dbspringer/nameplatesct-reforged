@@ -549,6 +549,29 @@ describe("Pairing", function()
 			assert.are.equal(swing.entry, decided[offDelay.entry])
 		end)
 
+		it("gives a melee line to no Hit off its settled Swing Delay when a Nameplate hid in the line's window", function()
+			-- The swing's target died before its Hit could come, so the Hit in
+			-- the window is another player's (warlock-rfk).
+			local records = swings({}, 1, 0.6, 6)
+			local swing, rival = line(20, "swing"), hit(20.8, "nameplate2", 1)
+			entryCount = entryCount + 1
+			local hide = { kind = "hide", time = 20.4, entry = entryCount }
+			records[#records + 1], records[#records + 2], records[#records + 3] = swing, hide, rival
+			local decided = pair(records)
+			assert.is_false(decided[rival.entry])
+		end)
+
+		it("still gives a melee line to a Hit off its Swing Delay after a hide while the delay is not settled", function()
+			-- The latest swings came at two delays, as after a weapon change.
+			local records = swings(swings({}, 1, 0.6, 4), 9, 0.9, 2)
+			local swing, offDelay = line(20, "swing"), hit(20.4, "nameplate1", 1)
+			entryCount = entryCount + 1
+			local hide = { kind = "hide", time = 20.5, entry = entryCount }
+			records[#records + 1], records[#records + 2], records[#records + 3] = swing, offDelay, hide
+			local decided = pair(records)
+			assert.are.equal(swing.entry, decided[offDelay.entry])
+		end)
+
 		it("learns no Swing Delay from a Hit that took another Log Line", function()
 			-- Four swings whose Hit never came, each with a physical spell's Hit
 			-- and line 0.8 s later, in the swing's window.
@@ -733,9 +756,12 @@ describe("Pairing", function()
 				-- spell, so any melee line of that kind is equal; a line taken
 				-- from the wrong Hit still leaves that Hit wrong.
 				local wrong = {}
+				local lost = Trace.LOST[name] or {}
 				for _, row in ipairs(labels) do
 					local got = decided[row.hit]
-					if not (got == row.line or (got and row.line and lineOf[got] == lineOf[row.line])) then
+					if lost[row.hit] then
+						assert.is_false(got)
+					elseif not (got == row.line or (got and row.line and lineOf[got] == lineOf[row.line])) then
 						wrong[#wrong + 1] = ("hit %d: Label %s, Pairing %s"):format(row.hit, tostring(row.line), tostring(got))
 					end
 				end
