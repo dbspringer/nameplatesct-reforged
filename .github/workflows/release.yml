@@ -17,6 +17,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # The packager sends all of CHANGELOG.md as the release notes, so cut the
+      # checkout's copy down to this release's section. The repo keeps the full
+      # file. A tag with no section stops the release.
+      - name: Keep only this release's section of the changelog
+        run: |
+          awk -v heading="## $GITHUB_REF_NAME" '
+            $0 == heading { inSection = 1; next }
+            /^## / { inSection = 0 }
+            inSection && (started || NF) { started = 1; print }
+          ' CHANGELOG.md > release-notes.md
+          grep -q . release-notes.md
+          mv release-notes.md CHANGELOG.md
       # Pinned to a commit, because this step runs with a token that can write
       # to the repo. Dependabot opens a PR when the packager has a new release.
       - uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
