@@ -475,7 +475,9 @@ describe("Flow", function()
 				local onPlate, noPlate = {}, {}
 				for _, row in ipairs(labels) do
 					local unit = unitOf[row.hit]
-					if row.line and unit:match("^nameplate%d+$") then
+					if (Trace.LOST[name] or {})[row.hit] then
+						assert.is_truthy(row.line)
+					elseif row.line and unit:match("^nameplate%d+$") then
 						onPlate[#onPlate + 1] = row.hit
 					elseif row.line and unit ~= "player" and unit ~= "pet" then
 						noPlate[#noPlate + 1] = row.hit

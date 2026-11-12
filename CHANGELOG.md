@@ -1,5 +1,10 @@
 # Changelog
 
+## 7
+
+- In groups, another player's hit shows as your or your pet's swing less often. When your swing's target dies before the swing lands, the game sends no hit for it, and the addon used to give that swing's number to someone else's hit. Now it mostly shows nothing. Once in a while a real swing loses its number this way.
+- In groups, your wand's shots keep their numbers and icon. One stray hit from another player used to make the addon forget your wand's damage school for 14 seconds or more. After you equip a new wand, the addon now needs three shots to learn it, up from two.
+
 ## 6
 
 - Ferocious Bite now shows its icon. A recent Forever patch gave it a new spell ID, which the addon didn't know yet. Shank, Death Mark, and the Druid's new Lacerate ranks from that patch should show their icons too.

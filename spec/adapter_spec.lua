@@ -34,13 +34,24 @@ end
 
 -- Pushes the entries through a new adapter, closes the last frame, and returns
 -- the records in the order they left.
-local function run(entries)
+-- The adapter's records for the entries, without the hides of Nameplates
+-- unless withHides is true.
+local function run(entries, withHides)
 	local adapter, records = collect()
 	for _, entry in ipairs(entries) do
 		adapter.Push(entry)
 	end
 	adapter.Tick(math.huge)
-	return records
+	if withHides then
+		return records
+	end
+	local rest = {}
+	for _, record in ipairs(records) do
+		if record.kind ~= "hide" then
+			rest[#rest + 1] = record
+		end
+	end
+	return rest
 end
 
 local function report(time, unit, plate, action, amount)
@@ -249,6 +260,15 @@ describe("Adapter", function()
 			})
 			assert.are.same({ "hit", "line", "swing" }, kinds(records))
 			assert.are.same({ 1, 2, 4 }, { records[1].entry, records[2].entry, records[3].entry })
+		end)
+
+		it("tells when a Nameplate hid", function()
+			local records = run({
+				report(1, "nameplate1", "nameplate1"),
+				{ 2, "NAME_PLATE_UNIT_REMOVED", "nameplate1", guid = "<secret>" },
+			}, true)
+			assert.are.same({ "hit", "hide" }, kinds(records))
+			assert.are.equal(2, records[2].time)
 		end)
 
 		it("counts every pushed entry, ignored ones too, so entry numbers match the Trace", function()

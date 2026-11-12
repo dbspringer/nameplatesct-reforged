@@ -264,6 +264,7 @@ function Adapter.New(onRecord)
 			end
 			lives[entry[3]] = nil
 			rememberHidden(entry, life)
+			add(entry, { kind = "hide" })
 		elseif event == "UNIT_COMBAT" then
 			local unit = unitOf(entry)
 			if unit then
