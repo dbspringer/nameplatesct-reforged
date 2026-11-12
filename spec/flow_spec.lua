@@ -525,4 +525,42 @@ describe("Flow", function()
 			assert.are.same({ "warlock-line-kind hit 229", "warlock-line-kind hit 231" }, wrong)
 		end)
 	end)
+
+	-- Floors that catch a regression in a group, where many players' Hits come
+	-- in a line's window. warlock-rfk is a 55 minute dungeon run in a party of
+	-- five. Its Labels are all unsure, so these counts need none. Every swing
+	-- line is the Incubus's, and its Hit comes one Swing Delay (0.95 s) later;
+	-- a swing Hit shown at another time is most likely another player's. Of 741
+	-- swing lines, 662 show a Hit on the delay and 44 show another (60 before
+	-- a fallback Hit could lose its line). Of 231 shot lines, 221 show as
+	-- Shoot (207 when one Hit of another school restarted the Spell Fact).
+	it("keeps the pet's swings and the wand's shots through a long dungeon run", function()
+		local trace = assert(Trace.Load("spec/traces/warlock-rfk.lua"))
+		local swingLines = {}
+		for _, entry in ipairs(trace.entries) do
+			if entry.lineKind == "swing" then
+				swingLines[#swingLines + 1] = entry[1]
+			end
+		end
+		local onDelay, offDelay, shots = 0, 0, 0
+		local from = 1
+		for _, result in ipairs(run(trace.entries)) do
+			if result.lineKind == "swing" then
+				local time = result.hit.time
+				while swingLines[from] and time - swingLines[from] > 0.975 do
+					from = from + 1
+				end
+				if swingLines[from] and time - swingLines[from] >= 0.94 then
+					onDelay = onDelay + 1
+				else
+					offDelay = offDelay + 1
+				end
+			elseif result.lineKind == "shot" and result.spellID == 5019 then
+				shots = shots + 1
+			end
+		end
+		assert.is_true(onDelay >= 658, ("%d swing Hits on the delay"):format(onDelay))
+		assert.is_true(offDelay <= 48, ("%d swing Hits off the delay"):format(offDelay))
+		assert.is_true(shots >= 218, ("%d shots shown as Shoot"):format(shots))
+	end)
 end)
