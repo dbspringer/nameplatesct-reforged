@@ -236,8 +236,8 @@ function Adapter.New(onRecord)
 	-- cast GUID, or false when there was none. A SUCCEEDED takes it as its
 	-- startTargetLife: for a cast with a cast time, the player's target at its
 	-- end can be another mob than the one the spell went to (11 Immolates in
-	-- warlock-rfk and warlock-bfd-group). A secret cast GUID cannot be
-	-- compared, so its cast keeps its own target.
+	-- warlock-rfk and warlock-bfd-group). A cast whose SENT is not here, as its
+	-- cast GUID is secret, gets none, as its own target can be that other mob.
 	local sentTargets = {}
 
 	local function rememberSent(entry)
@@ -253,11 +253,11 @@ function Adapter.New(onRecord)
 	end
 
 	-- The plate life of the player's target when this cast started, or nil.
-	local function startTargetLife(entry, targetLife)
+	local function startTargetLife(entry)
 		local castGUID = entry[4]
 		local sent = castGUID ~= nil and not issecretvalue(castGUID) and sentTargets[castGUID]
 		if not sent then
-			return targetLife
+			return nil
 		end
 		sentTargets[castGUID] = nil
 		return sent.life or nil
@@ -325,10 +325,9 @@ function Adapter.New(onRecord)
 			rememberSent(entry)
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
-			local targetLife = entry.target and lifeOf(entry.target) or nil
 			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], spellID = entry[5],
-				target = entry.target, targetLife = targetLife,
-				startTargetLife = event == "UNIT_SPELLCAST_SUCCEEDED" and startTargetLife(entry, targetLife) or nil })
+				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil,
+				startTargetLife = event == "UNIT_SPELLCAST_SUCCEEDED" and startTargetLife(entry) or nil })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", swingType = entry[4] })
 		end

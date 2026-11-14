@@ -779,6 +779,32 @@ describe("Spell Identity", function()
 				assert.are.same({ nil, CORRUPTION }, { of(identity, 3, "tick", SHADOW, "nameplate2"), of(identity, 3, "tick", SHADOW) })
 			end)
 
+			it("fits no tick to a cast older than a refresh, whose ticks the refresh replaced", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				of(identity, 7, "tick", SHADOW)
+				castOn(identity, 7, AGONY)
+				-- The first cast's grid (0, 3, 6, 9) is gone; Corruption is due at 10.
+				assert.are.equal(AGONY, of(identity, 9, "tick", SHADOW))
+			end)
+
+			it("fits no tick to a channel after it stopped", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_LIFE)
+				local first = of(identity, 1, "tick", SHADOW)
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 1.2, spellID = DRAIN_LIFE, unit = "player" })
+				castOn(identity, 2, AGONY)
+				assert.are.same({ DRAIN_LIFE, AGONY, nil }, { first, of(identity, 4, "tick", SHADOW), of(identity, 5, "tick", SHADOW) })
+
+				local stoppedEarly = Identity.New({})
+				castOn(stoppedEarly, 0, DRAIN_LIFE)
+				stoppedEarly.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 0.5, spellID = DRAIN_LIFE, unit = "player" })
+				castOn(stoppedEarly, 2, AGONY)
+				assert.are.equal(AGONY, of(stoppedEarly, 4, "tick", SHADOW))
+			end)
+
 			-- warlock-rfk and warlock-bfd-group: the target at a cast's end is the
 			-- player's target then, which can differ from the mob the spell went to.
 			it("takes the target when the cast started, as the player can change target during a cast", function()
@@ -791,6 +817,16 @@ describe("Spell Identity", function()
 					hitEntry(5.05, "nameplate1", FIRE),
 				}
 				assert.are.same({ "none", IMMOLATE }, shownSpells(entries))
+			end)
+
+			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
+				local entries = {
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
+					{ 2, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", IMMOLATE, "<nil>", target = "nameplate2" },
+					lineEntry(8, "tick"),
+					hitEntry(8, "nameplate2", FIRE),
+				}
+				assert.are.same({ "none" }, shownSpells(entries))
 			end)
 		end)
 

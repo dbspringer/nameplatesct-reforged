@@ -85,6 +85,12 @@ local function firstTickFits(hit, spell, from, extra)
 	return since >= spell.interval - TICK_TOLERANCE and since <= spell.interval + TICK_TOLERANCE + extra
 end
 
+-- Whether a channel stopped before this Hit: its last tick can come with the
+-- stop.
+local function stoppedBefore(cast, hit)
+	return cast.stopped ~= nil and hit.time > cast.stopped + TICK_TOLERANCE
+end
+
 -- How many whole intervals, one or more, a tick comes after from, or nil when
 -- it comes more than TICK_TOLERANCE off them.
 local function intervalsAfter(hit, spell, from)
@@ -455,7 +461,9 @@ function Identity.New(saved)
 	--   spell on another (warlock-rfk, warlock-bfd-group).
 	-- A spell that travels without a hit lands up to DIRECT_WINDOW late, so it
 	-- gets that much more time for its first tick and no later one. Each source
-	-- starts one rhythm on each unit.
+	-- starts one rhythm on each unit, and a cast no older than the rhythm's own
+	-- source, whose ticks a refresh replaced, starts none. Returns the source's
+	-- time, the intervals, and the cast.
 	local function rhythmSource(hit, spellID, spell, rhythm, plate)
 		if spell.travels and spell.hits then
 			local landed = rhythm and not rhythm.last and rhythm.source
@@ -469,18 +477,19 @@ function Identity.New(saved)
 		local found, foundSteps
 		for _, cast in ipairs(casts) do
 			if cast.spellID == spellID and cast.unit == "player" and not cast.missed
-				and not (rhythm and rhythm.source == cast.time) and (cast.plate == nil or cast.plate == plate) then
+				and not (rhythm and cast.time <= rhythm.source) and (cast.plate == nil or cast.plate == plate)
+				and not stoppedBefore(cast, hit) then
 				if firstTickFits(hit, spell, cast.time, extra) then
-					found, foundSteps = cast.time, 1
+					found, foundSteps = cast, 1
 				elseif cast.plate and not spell.travels and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
 					local steps = intervalsAfter(hit, spell, cast.time)
 					if steps then
-						found, foundSteps = cast.time, steps
+						found, foundSteps = cast, steps
 					end
 				end
 			end
 		end
-		return found, foundSteps
+		return found and found.time, foundSteps, found
 	end
 
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
@@ -488,15 +497,16 @@ function Identity.New(saved)
 	-- as a refresh does, even on the old rhythm. Otherwise a rhythm fits whole
 	-- intervals after its last tick until its duration ends, so one tick that
 	-- came late, or a resisted one, costs only its own icon; one that ran out
-	-- fits no more.
+	-- fits no more, nor does a channel's after it stopped.
 	local function rhythmOf(hit, spellID, spell, rhythm, plate)
-		local source, steps = rhythmSource(hit, spellID, spell, rhythm, plate)
+		local source, steps, cast = rhythmSource(hit, spellID, spell, rhythm, plate)
 		if source then
-			return { source = source, last = hit.time, ends = hit.time - steps * spell.interval + spell.duration }
+			return { source = source, cast = cast, last = hit.time,
+				ends = hit.time - steps * spell.interval + spell.duration }
 		end
 		if rhythm and rhythm.last and intervalsAfter(hit, spell, rhythm.last)
-			and hit.time <= rhythm.ends + TICK_TOLERANCE then
-			return { source = rhythm.source, last = hit.time, ends = rhythm.ends }
+			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit)) then
+			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends }
 		end
 	end
 
