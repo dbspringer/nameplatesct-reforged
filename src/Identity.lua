@@ -5,8 +5,9 @@ ns.Identity = Identity
 
 -- Spell Identity: which spell made Your Hit, from the player's casts, the
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
--- from the table of spells that tick (TickSpells.lua): one interval after the
--- spell's cast or landing, then on its Tick Rhythm on that Nameplate. A direct
+-- from the table of spells that tick (TickSpells.lua): whole intervals after
+-- the spell's cast on that Nameplate or its landing there, then on its Tick
+-- Rhythm there (see rhythmSource). A direct
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
@@ -82,6 +83,22 @@ end
 local function firstTickFits(hit, spell, from, extra)
 	local since = hit.time - from
 	return since >= spell.interval - TICK_TOLERANCE and since <= spell.interval + TICK_TOLERANCE + extra
+end
+
+-- Whether a channel stopped before this Hit: its last tick can come with the
+-- stop.
+local function stoppedBefore(cast, hit)
+	return cast.stopped ~= nil and hit.time > cast.stopped + TICK_TOLERANCE
+end
+
+-- How many whole intervals, one or more, a tick comes after from, or nil when
+-- it comes more than TICK_TOLERANCE off them.
+local function intervalsAfter(hit, spell, from)
+	local since = hit.time - from
+	local steps = math.floor(since / spell.interval + 0.5)
+	if steps >= 1 and math.abs(since - steps * spell.interval) <= TICK_TOLERANCE then
+		return steps
+	end
 end
 
 -- Whether a cast came before a Hit: by time, and in one frame by entry number,
@@ -229,9 +246,10 @@ end
 function Identity.New(saved)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret, lastTick, stopped }. A cast whose spell ID is secret
-	-- still competes, but never wins. lastTick is an area spell's last tick
-	-- on any unit, and stopped when its channel stopped.
+	-- missed, secret, lastTick, stopped, plate }. A cast whose spell ID is
+	-- secret still competes, but never wins. lastTick is an area spell's last
+	-- tick on any unit, stopped when its channel stopped, and plate the plate
+	-- life of the player's target when it started (see Adapter.New), or nil.
 	local casts = {}
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
@@ -432,40 +450,82 @@ function Identity.New(saved)
 		return known and (not school or known == school) and spellID or nil
 	end
 
-	-- The cast or landing whose first tick on this unit this tick is: one
-	-- interval after a landing for a spell that travels and hits, else after
-	-- a cast, with up to DIRECT_WINDOW of flight for a spell that travels.
-	-- Each one gives one first tick on each unit.
-	local function firstTickSource(hit, spellID, spell, rhythm)
-		if spell.travels and spell.hits then
-			local landed = rhythm and not rhythm.last and rhythm.source
-			return landed and firstTickFits(hit, spell, landed, 0) and landed or nil
+	-- Whether a cast of the spell on this unit after since, and before this
+	-- Hit, replaced the ticks from since: a refresh ends the old rhythm, and
+	-- the older cast's grid, even before its own first tick fits. A cast with
+	-- no target could be on any unit, and one that travels replaces the rhythm
+	-- when it lands, so neither replaces anything here.
+	local function refreshed(spellID, spell, plate, since, hit)
+		if spell.travels then
+			return false
 		end
-		local extra = spell.travels and DIRECT_WINDOW or 0
-		local found
 		for _, cast in ipairs(casts) do
-			if cast.spellID == spellID and cast.unit == "player" and not cast.missed
-				and not (rhythm and rhythm.source == cast.time) and firstTickFits(hit, spell, cast.time, extra) then
-				found = cast.time
+			if cast.spellID == spellID and cast.unit == "player" and not cast.missed and cast.plate == plate
+				and cast.time > since and cast.time < hit.time then
+				return true
 			end
 		end
-		return found
+		return false
+	end
+
+	-- The cast or landing whose Tick Rhythm on this unit this tick starts, and
+	-- how many intervals after it the tick comes; nil when none fits. No spell
+	-- drifts from its rhythm in the Traces, so a tick whose first tick came late
+	-- still fits whole intervals after its source:
+	-- - a spell that travels and hits: its landing on this unit;
+	-- - another spell: a cast on this unit, the player's target when it started;
+	-- - a cast with no target, as in Traces from before targets: its first tick
+	--   only, on any unit, as a cast on one mob can fit the ticks of the same
+	--   spell on another (warlock-rfk, warlock-bfd-group).
+	-- A spell that travels without a hit lands up to DIRECT_WINDOW late, so it
+	-- gets that much more time for its first tick and no later one. Each source
+	-- starts one rhythm on each unit, and a cast no older than the rhythm's own
+	-- source, whose ticks a refresh replaced, starts none. Returns the source's
+	-- time, the intervals, and the cast.
+	local function rhythmSource(hit, spellID, spell, rhythm, plate)
+		if spell.travels and spell.hits then
+			local landed = rhythm and not rhythm.last and rhythm.source
+			local steps = landed and intervalsAfter(hit, spell, landed)
+			if steps and hit.time - landed <= spell.duration + TICK_TOLERANCE then
+				return landed, steps
+			end
+			return nil
+		end
+		local extra = spell.travels and DIRECT_WINDOW or 0
+		local found, foundSteps
+		for _, cast in ipairs(casts) do
+			if cast.spellID == spellID and cast.unit == "player" and not cast.missed
+				and not (rhythm and cast.time <= rhythm.source) and (cast.plate == nil or cast.plate == plate)
+				and not stoppedBefore(cast, hit) and not refreshed(spellID, spell, plate, cast.time, hit) then
+				if firstTickFits(hit, spell, cast.time, extra) then
+					found, foundSteps = cast, 1
+				elseif cast.plate and not spell.travels and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
+					local steps = intervalsAfter(hit, spell, cast.time)
+					if steps then
+						found, foundSteps = cast, steps
+					end
+				end
+			end
+		end
+		return found and found.time, foundSteps, found
 	end
 
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
-	-- fit. A tick that fits a cast's or landing's first tick starts a new
-	-- rhythm and duration, as a refresh does, even on the old rhythm. A rhythm
-	-- fits only one interval after its last tick, and only until its duration
-	-- ends, so one whose tick did not come, or one that ran out, fits no more;
-	-- a resisted tick keeps it.
-	local function rhythmOf(hit, spellID, spell, rhythm)
-		local source = firstTickSource(hit, spellID, spell, rhythm)
+	-- fit. A tick that fits a cast or landing starts a new rhythm and duration,
+	-- as a refresh does, even on the old rhythm. Otherwise a rhythm fits whole
+	-- intervals after its last tick until its duration ends, so one tick that
+	-- came late, or a resisted one, costs only its own icon; one that ran out
+	-- fits no more, nor does a channel's after it stopped.
+	local function rhythmOf(hit, spellID, spell, rhythm, plate)
+		local source, steps, cast = rhythmSource(hit, spellID, spell, rhythm, plate)
 		if source then
-			return { source = source, last = hit.time, ends = hit.time - spell.interval + spell.duration }
+			return { source = source, cast = cast, last = hit.time,
+				ends = hit.time - steps * spell.interval + spell.duration }
 		end
-		if rhythm and rhythm.last and math.abs(hit.time - rhythm.last - spell.interval) <= TICK_TOLERANCE
-			and hit.time <= rhythm.ends + TICK_TOLERANCE then
-			return { source = rhythm.source, last = hit.time, ends = rhythm.ends }
+		if rhythm and rhythm.last and intervalsAfter(hit, spell, rhythm.last)
+			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+			and not refreshed(spellID, spell, plate, rhythm.source, hit) then
+			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends }
 		end
 	end
 
@@ -480,7 +540,7 @@ function Identity.New(saved)
 				return
 			end
 			tried[spellID] = true
-			local rhythm = rhythmOf(hit, spellID, spell, plateRhythms[spellID])
+			local rhythm = rhythmOf(hit, spellID, spell, plateRhythms[spellID], plate)
 			-- Every spell that fits keeps its Tick Rhythm, so a tie does not end
 			-- the rhythm of the one that ticked.
 			if rhythm then
@@ -508,14 +568,25 @@ function Identity.New(saved)
 
 	function identity.Cast(record)
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
-			-- A channelled area spell's ticks end with its channel. The stop
-			-- marks the oldest open cast of the spell, so a recast whose cast
-			-- comes before the old channel's stop keeps its own ticks.
-			for _, cast in ipairs(casts) do
-				if cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped then
-					cast.stopped = record.time
-					break
+			-- A channel's ticks end with it. The stop marks the oldest open cast
+			-- of the spell, so a recast whose cast comes before the old channel's
+			-- stop keeps its own ticks. A long channel's cast can leave casts
+			-- before its stop, so the casts that Tick Rhythms hold count too.
+			local oldest
+			local function consider(cast)
+				if cast and cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped
+					and not (oldest and oldest.time <= cast.time) then
+					oldest = cast
 				end
+			end
+			for _, cast in ipairs(casts) do
+				consider(cast)
+			end
+			for _, plateRhythms in pairs(rhythms) do
+				consider(plateRhythms[record.spellID] and plateRhythms[record.spellID].cast)
+			end
+			if oldest then
+				oldest.stopped = record.time
 			end
 			return
 		end
@@ -530,7 +601,7 @@ function Identity.New(saved)
 			seals.Cast(record, secret)
 		end
 		casts[#casts + 1] = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
-			secret = secret or nil }
+			secret = secret or nil, plate = record.startTargetLife }
 	end
 
 	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so

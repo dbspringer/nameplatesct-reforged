@@ -746,6 +746,126 @@ describe("Spell Identity", function()
 			assert.are.same({ CORRUPTION, CORRUPTION }, spells)
 		end)
 
+		describe("with the cast's target", function()
+			-- A player's cast on nameplate1, the target when it started.
+			local function castOn(identity, time, spellID)
+				identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = time, spellID = spellID, unit = "player",
+					startTargetLife = "nameplate1" })
+			end
+
+			-- warlock-tick-jitter: one tick came 0.17 s late, and the next on the
+			-- rhythm again.
+			it("gives none to one late tick, and the spell again to the next tick on the rhythm", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, AGONY)
+				local spells = { of(identity, 2, "tick", SHADOW), of(identity, 4.17, "tick", SHADOW) }
+				spells[3] = of(identity, 6, "tick", SHADOW)
+				assert.are.same({ AGONY, nil, AGONY }, spells)
+			end)
+
+			-- warlock-tick-jitter: Drain Life's first tick came 0.18 s late.
+			it("gives a later tick its spell when the first tick came late", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_LIFE)
+				local late = of(identity, 1.18, "tick", SHADOW)
+				assert.are.same({ nil, DRAIN_LIFE, DRAIN_LIFE }, { late, of(identity, 2, "tick", SHADOW), of(identity, 3, "tick", SHADOW) })
+			end)
+
+			-- warlock-rfk and warlock-bfd-group: a cast on one mob fitted the
+			-- ticks of the same spell on another.
+			it("gives a tick on another Nameplate none", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				assert.are.same({ nil, CORRUPTION }, { of(identity, 3, "tick", SHADOW, "nameplate2"), of(identity, 3, "tick", SHADOW) })
+			end)
+
+			it("fits no tick to a cast older than a refresh, whose ticks the refresh replaced", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				of(identity, 7, "tick", SHADOW)
+				castOn(identity, 7, AGONY)
+				-- The first cast's grid (0, 3, 6, 9) is gone; Corruption is due at 10.
+				assert.are.equal(AGONY, of(identity, 9, "tick", SHADOW))
+			end)
+
+			it("ends the replaced rhythm at a refresh, even when the refresh's first tick comes late", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				castOn(identity, 7, AGONY)
+				local late = of(identity, 7.17, "tick", SHADOW)
+				-- The old rhythm (3, 6, 9) is gone; the refresh is due at 10.
+				assert.are.same({ nil, AGONY, CORRUPTION }, { late, of(identity, 9, "tick", SHADOW), of(identity, 10, "tick", SHADOW) })
+			end)
+
+			it("starts no rhythm from a cast that a later refresh replaced", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				castOn(identity, 6, AGONY)
+				of(identity, 7.17, "tick", SHADOW)
+				castOn(identity, 8, CORRUPTION)
+				-- The refresh at 4 is replaced; Corruption is due at 11.
+				assert.are.same({ AGONY, AGONY }, { of(identity, 8, "tick", SHADOW), of(identity, 10, "tick", SHADOW) })
+			end)
+
+			it("stops a channel whose cast is older than the casts kept", function()
+				local DRAIN_SOUL = 1120
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_SOUL)
+				for time = 3, 12, 3 do
+					of(identity, time, "tick", SHADOW)
+				end
+				cast(identity, 12.5, FIREBOLT, "pet")
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 13, spellID = DRAIN_SOUL, unit = "player" })
+				castOn(identity, 13, AGONY)
+				assert.are.equal(AGONY, of(identity, 15, "tick", SHADOW))
+			end)
+
+			it("fits no tick to a channel after it stopped", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_LIFE)
+				local first = of(identity, 1, "tick", SHADOW)
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 1.2, spellID = DRAIN_LIFE, unit = "player" })
+				castOn(identity, 2, AGONY)
+				assert.are.same({ DRAIN_LIFE, AGONY, nil }, { first, of(identity, 4, "tick", SHADOW), of(identity, 5, "tick", SHADOW) })
+
+				local stoppedEarly = Identity.New({})
+				castOn(stoppedEarly, 0, DRAIN_LIFE)
+				stoppedEarly.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 0.5, spellID = DRAIN_LIFE, unit = "player" })
+				castOn(stoppedEarly, 2, AGONY)
+				assert.are.equal(AGONY, of(stoppedEarly, 4, "tick", SHADOW))
+			end)
+
+			-- warlock-rfk and warlock-bfd-group: the target at a cast's end is the
+			-- player's target then, which can differ from the mob the spell went to.
+			it("takes the target when the cast started, as the player can change target during a cast", function()
+				local entries = {
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-0", IMMOLATE, target = "nameplate1" },
+					{ 2, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-0", IMMOLATE, "<nil>", target = "nameplate2" },
+					lineEntry(5, "tick"),
+					hitEntry(5, "nameplate2", FIRE),
+					lineEntry(5.05, "tick"),
+					hitEntry(5.05, "nameplate1", FIRE),
+				}
+				assert.are.same({ "none", IMMOLATE }, shownSpells(entries))
+			end)
+
+			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
+				local entries = {
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
+					{ 2, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", IMMOLATE, "<nil>", target = "nameplate2" },
+					lineEntry(8, "tick"),
+					hitEntry(8, "nameplate2", FIRE),
+				}
+				assert.are.same({ "none" }, shownSpells(entries))
+			end)
+		end)
+
 		it("gives a landing one first tick", function()
 			local identity = Identity.New({})
 			cast(identity, 1, FIREBALL)
@@ -928,7 +1048,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 49
+		local UNKNOWN_FLOOR = 32
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}
