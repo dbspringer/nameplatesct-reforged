@@ -928,7 +928,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 24
+		local UNKNOWN_FLOOR = 49
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}
