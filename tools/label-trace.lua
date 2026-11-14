@@ -94,6 +94,13 @@ local function splitEvent(event)
 	end
 end
 
+-- Whether a damage or heal event has the advanced fields: the file says so,
+-- or the field after its prefix is the advanced fields' first, a GUID. Forever
+-- can write them while its first line says they are off.
+local function hasAdvancedFields(fileSaysSo, token)
+	return fileSaysSo or token == "0000000000000000" or (token or ""):find("^%a+%-%d+%-") ~= nil
+end
+
 local function parseEvents(lines)
 	local advanced = lines[1]:find("ADVANCED_LOG_ENABLED,1", 1, true) ~= nil
 	local events = {}
@@ -120,7 +127,7 @@ local function parseEvents(lines)
 				event.kind = tokens[first]
 			else
 				event.kind = suffix == "DAMAGE" and "WOUND" or "HEAL"
-				local amountAt = first + (advanced and ADVANCED_FIELDS or 0)
+				local amountAt = first + (hasAdvancedFields(advanced, tokens[first]) and ADVANCED_FIELDS or 0)
 				event.amount = tonumber(tokens[amountAt])
 				-- After the amount: base amount, overkill, school, resisted, blocked,
 				-- absorbed, critical, glancing, crushing; a heal's critical comes

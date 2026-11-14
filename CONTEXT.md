@@ -95,7 +95,7 @@ What the addon has learned about a spell whose school is not fixed, such as a wa
 _Avoid_: Spell data, spell profile
 
 **Tick Rhythm**:
-The times at which one spell's ticks come on one Nameplate. A tick that comes on a spell's Tick Rhythm can be that spell's.
+The times at which one spell's ticks come on one Nameplate: one interval apart, from its cast or landing. One tick can come a little early or late, but the next tick comes on the rhythm again, so a rhythm does not drift. A tick that comes on a spell's Tick Rhythm can be that spell's.
 _Avoid_: DoT timer, tick schedule
 
 **Secret Amount**:

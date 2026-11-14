@@ -10,7 +10,7 @@ Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN = 0x2000
 
 -- The Traces in spec/traces/ that have checked Labels.
 Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind",
-	"warlock-spells", "warlock-rain-of-fire" }
+	"warlock-spells", "warlock-rain-of-fire", "warlock-tick-jitter" }
 
 -- Your Hits in those Traces that Pairing is known to give no Log Line, by
 -- Trace and Hit entry. warlock-spells 302: the pet's swing came off its

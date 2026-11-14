@@ -74,8 +74,9 @@ local function logLine(time, grey, named)
 end
 
 -- Labels the Trace entries against the file lines, and returns the rows by
--- the entry number of their Hit. filter adds to the Trace's Log Filter.
-local function label(entries, fileLines, withPet, filter)
+-- the entry number of their Hit. filter adds to the Trace's Log Filter, and
+-- format replaces the file's first line.
+local function label(entries, fileLines, withPet, filter, format)
 	local trace = {
 		header = {
 			started = "2026-10-20 10:00:00",
@@ -96,7 +97,7 @@ local function label(entries, fileLines, withPet, filter)
 	for key, value in pairs(filter or {}) do
 		trace.header.logFilter.filter[key] = value
 	end
-	local lines = { FORMAT }
+	local lines = { format or FORMAT }
 	for _, line in ipairs(fileLines) do
 		lines[#lines + 1] = line
 	end
@@ -118,6 +119,17 @@ describe("Labels", function()
 			damage(101, ME, MOB_A, 29, "Immolate"),
 		})
 		assert.are.same({ 1, 707, nil }, { rows[2].line, rows[2].spell, rows[2].unsure })
+	end)
+
+	-- Forever wrote warlock-tick-jitter's file with the advanced fields while
+	-- its first line said they were off.
+	it("reads the advanced fields of a file whose first line says they are off", function()
+		local line = damage(101, ME, MOB_A, 29, "Immolate"):gsub(',0,', "," .. MOB_A[1] .. ",", 1)
+		local rows = label({
+			logLine(101),
+			report(101, "nameplate1", "nameplate1", "WOUND", 29, 4),
+		}, { line }, false, nil, (FORMAT:gsub("ADVANCED_LOG_ENABLED,1", "ADVANCED_LOG_ENABLED,0")))
+		assert.are.same({ 1, 707 }, { rows[2].line, rows[2].spell })
 	end)
 
 	it("gives each Log Line of a frame the file event of its colour", function()
