@@ -746,6 +746,54 @@ describe("Spell Identity", function()
 			assert.are.same({ CORRUPTION, CORRUPTION }, spells)
 		end)
 
+		describe("with the cast's target", function()
+			-- A player's cast on nameplate1, the target when it started.
+			local function castOn(identity, time, spellID)
+				identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = time, spellID = spellID, unit = "player",
+					startTargetLife = "nameplate1" })
+			end
+
+			-- warlock-tick-jitter: one tick came 0.17 s late, and the next on the
+			-- rhythm again.
+			it("gives none to one late tick, and the spell again to the next tick on the rhythm", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, AGONY)
+				local spells = { of(identity, 2, "tick", SHADOW), of(identity, 4.17, "tick", SHADOW) }
+				spells[3] = of(identity, 6, "tick", SHADOW)
+				assert.are.same({ AGONY, nil, AGONY }, spells)
+			end)
+
+			-- warlock-tick-jitter: Drain Life's first tick came 0.18 s late.
+			it("gives a later tick its spell when the first tick came late", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_LIFE)
+				local late = of(identity, 1.18, "tick", SHADOW)
+				assert.are.same({ nil, DRAIN_LIFE, DRAIN_LIFE }, { late, of(identity, 2, "tick", SHADOW), of(identity, 3, "tick", SHADOW) })
+			end)
+
+			-- warlock-rfk and warlock-bfd-group: a cast on one mob fitted the
+			-- ticks of the same spell on another.
+			it("gives a tick on another Nameplate none", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				assert.are.same({ nil, CORRUPTION }, { of(identity, 3, "tick", SHADOW, "nameplate2"), of(identity, 3, "tick", SHADOW) })
+			end)
+
+			-- warlock-rfk and warlock-bfd-group: the target at a cast's end is the
+			-- player's target then, which can differ from the mob the spell went to.
+			it("takes the target when the cast started, as the player can change target during a cast", function()
+				local entries = {
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-0", IMMOLATE, target = "nameplate1" },
+					{ 2, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-0", IMMOLATE, "<nil>", target = "nameplate2" },
+					lineEntry(5, "tick"),
+					hitEntry(5, "nameplate2", FIRE),
+					lineEntry(5.05, "tick"),
+					hitEntry(5.05, "nameplate1", FIRE),
+				}
+				assert.are.same({ "none", IMMOLATE }, shownSpells(entries))
+			end)
+		end)
+
 		it("gives a landing one first tick", function()
 			local identity = Identity.New({})
 			cast(identity, 1, FIREBALL)
@@ -928,7 +976,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 49
+		local UNKNOWN_FLOOR = 32
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

@@ -1,5 +1,10 @@
 # Changelog
 
+## 8
+
+- Your DoTs keep their icon when one tick lands a little late. Before, one late tick could cost the icon for the rest of the DoT. Now only that tick shows no icon.
+- With your DoTs on more than one enemy, each tick takes its icon from a DoT you cast on that enemy. Before, a tick could show the icon of a DoT on a different enemy.
+
 ## 7
 
 - In groups, another player's hit takes your or your pet's swing number less often. Once in a while, a real swing shows no number.

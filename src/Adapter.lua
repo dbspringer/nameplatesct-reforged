@@ -15,6 +15,10 @@ local NO_PLATE = "<no plate>"
 -- softinteract only). A Weapon Proc's Hit can come later than a swing's, so this
 -- is the longer of the two delays.
 local LATE_REPORT_WINDOW = ns.LineKind.LONGEST_PROC_DELAY
+-- How long a SENT's target waits for its SUCCEEDED: longer than any cast
+-- time, which is 2.0 s for Immolate in the Traces. A cast that fails never
+-- succeeds, so its SENT goes after this.
+local SENT_TARGET_AGE = 10
 
 -- Hits on the player and the pet stay, so Pairing can give the Log Lines for
 -- heals and self-damage to them, not to an enemy's Hit. Events.lua records
@@ -228,6 +232,37 @@ function Adapter.New(onRecord)
 		return lives[token]
 	end
 
+	-- The plate life of the player's target at each recent SENT, by its public
+	-- cast GUID, or false when there was none. A SUCCEEDED takes it as its
+	-- startTargetLife: for a cast with a cast time, the player's target at its
+	-- end can be another mob than the one the spell went to (11 Immolates in
+	-- warlock-rfk and warlock-bfd-group). A secret cast GUID cannot be
+	-- compared, so its cast keeps its own target.
+	local sentTargets = {}
+
+	local function rememberSent(entry)
+		local time, castGUID = entry[1], entry[5]
+		for known, sent in pairs(sentTargets) do
+			if time - sent.time > SENT_TARGET_AGE then
+				sentTargets[known] = nil
+			end
+		end
+		if castGUID ~= nil and not issecretvalue(castGUID) then
+			sentTargets[castGUID] = { time = time, life = entry.target and lifeOf(entry.target) or false }
+		end
+	end
+
+	-- The plate life of the player's target when this cast started, or nil.
+	local function startTargetLife(entry, targetLife)
+		local castGUID = entry[4]
+		local sent = castGUID ~= nil and not issecretvalue(castGUID) and sentTargets[castGUID]
+		if not sent then
+			return targetLife
+		end
+		sentTargets[castGUID] = nil
+		return sent.life or nil
+	end
+
 	local function add(entry, record)
 		record.time = entry[1]
 		record.entry = count
@@ -287,10 +322,13 @@ function Adapter.New(onRecord)
 			end
 		elseif event == "UNIT_SPELLCAST_SENT" then
 			-- entry[4] is the target's name, which can be secret.
+			rememberSent(entry)
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
+			local targetLife = entry.target and lifeOf(entry.target) or nil
 			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], spellID = entry[5],
-				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil })
+				target = entry.target, targetLife = targetLife,
+				startTargetLife = event == "UNIT_SPELLCAST_SUCCEEDED" and startTargetLife(entry, targetLife) or nil })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", swingType = entry[4] })
 		end
