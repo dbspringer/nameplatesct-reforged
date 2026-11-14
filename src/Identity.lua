@@ -492,6 +492,23 @@ function Identity.New(saved)
 		return found and found.time, foundSteps, found
 	end
 
+	-- Whether a later cast of the spell on this unit replaced the rhythm's
+	-- ticks before this Hit: a refresh ends the old rhythm even before its own
+	-- first tick fits. A cast with no target could be on any unit, and one that
+	-- travels replaces the rhythm when it lands, so neither ends it here.
+	local function refreshed(spellID, spell, rhythm, hit, plate)
+		if spell.travels then
+			return false
+		end
+		for _, cast in ipairs(casts) do
+			if cast.spellID == spellID and cast.unit == "player" and not cast.missed and cast.plate == plate
+				and cast.time > rhythm.source and cast.time < hit.time then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
 	-- fit. A tick that fits a cast or landing starts a new rhythm and duration,
 	-- as a refresh does, even on the old rhythm. Otherwise a rhythm fits whole
@@ -505,7 +522,8 @@ function Identity.New(saved)
 				ends = hit.time - steps * spell.interval + spell.duration }
 		end
 		if rhythm and rhythm.last and intervalsAfter(hit, spell, rhythm.last)
-			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit)) then
+			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+			and not refreshed(spellID, spell, rhythm, hit, plate) then
 			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends }
 		end
 	end
@@ -549,14 +567,25 @@ function Identity.New(saved)
 
 	function identity.Cast(record)
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
-			-- A channelled area spell's ticks end with its channel. The stop
-			-- marks the oldest open cast of the spell, so a recast whose cast
-			-- comes before the old channel's stop keeps its own ticks.
-			for _, cast in ipairs(casts) do
-				if cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped then
-					cast.stopped = record.time
-					break
+			-- A channel's ticks end with it. The stop marks the oldest open cast
+			-- of the spell, so a recast whose cast comes before the old channel's
+			-- stop keeps its own ticks. A long channel's cast can leave casts
+			-- before its stop, so the casts that Tick Rhythms hold count too.
+			local oldest
+			local function consider(cast)
+				if cast and cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped
+					and not (oldest and oldest.time <= cast.time) then
+					oldest = cast
 				end
+			end
+			for _, cast in ipairs(casts) do
+				consider(cast)
+			end
+			for _, plateRhythms in pairs(rhythms) do
+				consider(plateRhythms[record.spellID] and plateRhythms[record.spellID].cast)
+			end
+			if oldest then
+				oldest.stopped = record.time
 			end
 			return
 		end

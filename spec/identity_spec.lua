@@ -790,6 +790,30 @@ describe("Spell Identity", function()
 				assert.are.equal(AGONY, of(identity, 9, "tick", SHADOW))
 			end)
 
+			it("ends the replaced rhythm at a refresh, even when the refresh's first tick comes late", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				castOn(identity, 7, AGONY)
+				local late = of(identity, 7.17, "tick", SHADOW)
+				-- The old rhythm (3, 6, 9) is gone; the refresh is due at 10.
+				assert.are.same({ nil, AGONY, CORRUPTION }, { late, of(identity, 9, "tick", SHADOW), of(identity, 10, "tick", SHADOW) })
+			end)
+
+			it("stops a channel whose cast is older than the casts kept", function()
+				local DRAIN_SOUL = 1120
+				local identity = Identity.New({})
+				castOn(identity, 0, DRAIN_SOUL)
+				for time = 3, 12, 3 do
+					of(identity, time, "tick", SHADOW)
+				end
+				cast(identity, 12.5, FIREBOLT, "pet")
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 13, spellID = DRAIN_SOUL, unit = "player" })
+				castOn(identity, 13, AGONY)
+				assert.are.equal(AGONY, of(identity, 15, "tick", SHADOW))
+			end)
+
 			it("fits no tick to a channel after it stopped", function()
 				local identity = Identity.New({})
 				castOn(identity, 0, DRAIN_LIFE)
