@@ -450,6 +450,24 @@ function Identity.New(saved)
 		return known and (not school or known == school) and spellID or nil
 	end
 
+	-- Whether a cast of the spell on this unit after since, and before this
+	-- Hit, replaced the ticks from since: a refresh ends the old rhythm, and
+	-- the older cast's grid, even before its own first tick fits. A cast with
+	-- no target could be on any unit, and one that travels replaces the rhythm
+	-- when it lands, so neither replaces anything here.
+	local function refreshed(spellID, spell, plate, since, hit)
+		if spell.travels then
+			return false
+		end
+		for _, cast in ipairs(casts) do
+			if cast.spellID == spellID and cast.unit == "player" and not cast.missed and cast.plate == plate
+				and cast.time > since and cast.time < hit.time then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- The cast or landing whose Tick Rhythm on this unit this tick starts, and
 	-- how many intervals after it the tick comes; nil when none fits. No spell
 	-- drifts from its rhythm in the Traces, so a tick whose first tick came late
@@ -478,7 +496,7 @@ function Identity.New(saved)
 		for _, cast in ipairs(casts) do
 			if cast.spellID == spellID and cast.unit == "player" and not cast.missed
 				and not (rhythm and cast.time <= rhythm.source) and (cast.plate == nil or cast.plate == plate)
-				and not stoppedBefore(cast, hit) then
+				and not stoppedBefore(cast, hit) and not refreshed(spellID, spell, plate, cast.time, hit) then
 				if firstTickFits(hit, spell, cast.time, extra) then
 					found, foundSteps = cast, 1
 				elseif cast.plate and not spell.travels and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
@@ -490,23 +508,6 @@ function Identity.New(saved)
 			end
 		end
 		return found and found.time, foundSteps, found
-	end
-
-	-- Whether a later cast of the spell on this unit replaced the rhythm's
-	-- ticks before this Hit: a refresh ends the old rhythm even before its own
-	-- first tick fits. A cast with no target could be on any unit, and one that
-	-- travels replaces the rhythm when it lands, so neither ends it here.
-	local function refreshed(spellID, spell, rhythm, hit, plate)
-		if spell.travels then
-			return false
-		end
-		for _, cast in ipairs(casts) do
-			if cast.spellID == spellID and cast.unit == "player" and not cast.missed and cast.plate == plate
-				and cast.time > rhythm.source and cast.time < hit.time then
-				return true
-			end
-		end
-		return false
 	end
 
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
@@ -523,7 +524,7 @@ function Identity.New(saved)
 		end
 		if rhythm and rhythm.last and intervalsAfter(hit, spell, rhythm.last)
 			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-			and not refreshed(spellID, spell, rhythm, hit, plate) then
+			and not refreshed(spellID, spell, plate, rhythm.source, hit) then
 			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends }
 		end
 	end

@@ -801,6 +801,18 @@ describe("Spell Identity", function()
 				assert.are.same({ nil, AGONY, CORRUPTION }, { late, of(identity, 9, "tick", SHADOW), of(identity, 10, "tick", SHADOW) })
 			end)
 
+			it("starts no rhythm from a cast that a later refresh replaced", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				of(identity, 3, "tick", SHADOW)
+				castOn(identity, 4, CORRUPTION)
+				castOn(identity, 6, AGONY)
+				of(identity, 7.17, "tick", SHADOW)
+				castOn(identity, 8, CORRUPTION)
+				-- The refresh at 4 is replaced; Corruption is due at 11.
+				assert.are.same({ AGONY, AGONY }, { of(identity, 8, "tick", SHADOW), of(identity, 10, "tick", SHADOW) })
+			end)
+
 			it("stops a channel whose cast is older than the casts kept", function()
 				local DRAIN_SOUL = 1120
 				local identity = Identity.New({})
