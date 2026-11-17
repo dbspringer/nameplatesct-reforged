@@ -872,6 +872,45 @@ describe("Spell Identity", function()
 				assert.are.same({ "none", IMMOLATE }, shownSpells(entries))
 			end)
 
+			-- A cast whose SENT named nameplate1, through Flow.
+			local function castEntries(time, spellID)
+				local castGUID = "Cast-" .. time .. "-" .. spellID
+				return { time, "UNIT_SPELLCAST_SENT", "player", "<secret>", castGUID, spellID, target = "nameplate1" },
+					{ time, "UNIT_SPELLCAST_SUCCEEDED", "player", castGUID, spellID, "<nil>", target = "nameplate1" }
+			end
+			local function stopEntry(time, spellID)
+				return { time, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "<nil>", spellID, "<nil>", "CastBar-1" }
+			end
+			local function tickEntries(time)
+				return lineEntry(time, "tick"), hitEntry(time, "nameplate1", SHADOW)
+			end
+			local function entriesOf(...)
+				local entries = {}
+				for _, group in ipairs({ ... }) do
+					for _, entry in ipairs(group) do
+						entries[#entries + 1] = entry
+					end
+				end
+				return entries
+			end
+
+			-- warlock-drain-life: channels that stopped at about 3.75 s gave a tick
+			-- in the stop's frame, before the stop.
+			it("gives a Stop Tick its channel's spell, off the channel's rhythm", function()
+				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
+					{ tickEntries(3) }, { tickEntries(3.75) }, { stopEntry(3.75, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE }, shownSpells(entries))
+			end)
+
+			-- warlock-rfk 25337: the channel's last tick came 2 s before its stop,
+			-- and the Hit in the stop's frame was another player's, whose kill
+			-- stopped the channel.
+			it("gives no Stop Tick when the channel's last tick there came an interval or more before", function()
+				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
+					{ tickEntries(3.5) }, { stopEntry(3.5, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
@@ -1067,7 +1106,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 279
+		local UNKNOWN_FLOOR = 269
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

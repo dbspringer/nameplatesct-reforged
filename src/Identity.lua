@@ -7,7 +7,8 @@ ns.Identity = Identity
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
 -- from the table of spells that tick (TickSpells.lua): whole intervals after
 -- the spell's cast on that Nameplate or its landing there, then on its Tick
--- Rhythm there (see rhythmSource). A direct
+-- Rhythm there (see rhythmSource), or with its channel's stop (see
+-- stopTickOf). A direct
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
@@ -529,9 +530,28 @@ function Identity.New(saved)
 		end
 	end
 
+	-- The channel whose Stop Tick this tick is, and its rhythm: a tick in the
+	-- frame of its channel's stop, which can come before the rhythm's next tick
+	-- when the channel ends early (warlock-drain-life). It must come less than
+	-- one interval after the channel's last tick on this unit: a Hit in the
+	-- stop's frame long after it can be one whose kill stopped the channel
+	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
+	-- before Pairing decides that frame's Hits.
+	local function stopTickOf(hit, school, plateRhythms)
+		for spellID, rhythm in pairs(plateRhythms) do
+			local spell = ns.TickSpells[spellID]
+			local cast = rhythm.cast
+			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
+				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval then
+				return spellID, rhythm
+			end
+		end
+	end
+
 	local function ofTick(hit, school, crowded, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
+		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
@@ -555,6 +575,12 @@ function Identity.New(saved)
 			if cast.unit == "player" and not cast.secret then
 				try(cast.spellID)
 			end
+		end
+		-- A Stop Tick that its rhythm does not fit competes like a rhythm.
+		if stopSpell and plateRhythms[stopSpell] == stopRhythm then
+			plateRhythms[stopSpell] = { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
+				ends = stopRhythm.ends }
+			fits, found = fits + 1, stopSpell
 		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
