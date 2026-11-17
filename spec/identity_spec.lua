@@ -1003,6 +1003,19 @@ describe("Spell Identity", function()
 				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
 			end)
 
+			-- Codex review: a rival tick exactly 0.2 s off its grid computed as
+			-- 0.20000000000000284 s off at a large GetTime().
+			it("counts a rival tick due exactly STOP_RIVAL away, at any GetTime()", function()
+				for _, origin in ipairs({ 100, 348614.364 }) do
+					local entries = entriesOf({ castEntries(origin, CORRUPTION) }, { tickEntries(origin + 3) },
+						{ castEntries(origin + 3.5, DRAIN_LIFE) }, { tickEntries(origin + 4.5) }, { tickEntries(origin + 5.5) },
+						{ tickEntries(origin + 6.2) }, { stopEntry(origin + 6.2, DRAIN_LIFE) })
+					table.insert(entries, 1, castEntry(origin - 100, SHADOW_BOLT))
+					local spells = shownSpells(entries)
+					assert.are.equal("none", spells[#spells], "origin " .. origin)
+				end
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },

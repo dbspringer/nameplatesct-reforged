@@ -564,27 +564,30 @@ function Identity.New(saved)
 			local spell = ns.TickSpells[spellID] or RIVAL_ONLY[spellID]
 			return spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and spell
 		end
+		-- GetTime() is large, so a difference exactly STOP_RIVAL away can come
+		-- out a hair over it: the window gets a little slack.
+		local window = STOP_RIVAL + 1e-6
 		local function due(spell, from, extra)
 			local since = hit.time - from
-			if since > spell.duration + STOP_RIVAL then
+			if since > spell.duration + window then
 				return false
 			end
-			if since >= spell.interval - STOP_RIVAL and since <= spell.interval + STOP_RIVAL + extra then
+			if since >= spell.interval - window and since <= spell.interval + window + extra then
 				return true
 			end
 			local steps = math.floor(since / spell.interval + 0.5)
-			return steps >= 1 and math.abs(since - steps * spell.interval) <= STOP_RIVAL
+			return steps >= 1 and math.abs(since - steps * spell.interval) <= window
 		end
 		for spellID, rhythm in pairs(plateRhythms) do
 			local spell = rival(spellID)
 			if spell and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-				and (rhythm.last and hit.time <= rhythm.ends + STOP_RIVAL and due(spell, rhythm.last, 0)
+				and (rhythm.last and hit.time <= rhythm.ends + window and due(spell, rhythm.last, 0)
 					or due(spell, rhythm.source, 0)) then
 				return true
 			end
 		end
 		for _, cast in ipairs(dotCasts) do
-			if cast.secret and hit.time - cast.time <= LONGEST_DOT + STOP_RIVAL then
+			if cast.secret and hit.time - cast.time <= LONGEST_DOT + window then
 				return true
 			end
 			-- On any unit: the same mob gets a new plate life when its Nameplate
