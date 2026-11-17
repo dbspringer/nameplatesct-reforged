@@ -489,6 +489,28 @@ describe("Labels", function()
 		end
 	end)
 
+	-- A line whose colour is secret can report any event, so it must not take
+	-- the one event that a line of a known kind can report.
+	it("lets a line of a known kind choose its event before a line of a secret colour", function()
+		local direct = { colouring = "kind", lineKind = "direct" }
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i, nil, direct)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.02, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.02, nil, direct)
+		entries[#entries + 1] = logLine(112.02, nil, { colouring = "kind" })
+		fileLines[#fileLines + 1] = (damage(112, ME, MOB_A, 50, "Corruption"):gsub("SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE"))
+		fileLines[#fileLines + 1] = damage(112.02, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines, false, {
+			filters = { { eventList = { SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true }, sourceFlags = { [0x4511] = true } } },
+		})
+		assert.are.same({ 24, 23 }, { rows[21].line, rows[22].line })
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do

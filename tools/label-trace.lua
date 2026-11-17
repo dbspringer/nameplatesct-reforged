@@ -299,7 +299,25 @@ local function orderedPairs(trace, logLines, candidates, offset)
 		end
 		table.insert(classes[key], line)
 	end
-	table.sort(keys)
+	-- Classes can share events: a line of a secret colour can report any event.
+	-- The class that can report the fewest events chooses first, so a line of
+	-- a known kind keeps the one event it can report.
+	local reach = {}
+	for _, key in ipairs(keys) do
+		local first, count = trace.entries[classes[key][1].entry], 0
+		for _, event in ipairs(events) do
+			if colourFits(first, event, filter) then
+				count = count + 1
+			end
+		end
+		reach[key] = count
+	end
+	table.sort(keys, function(a, b)
+		if reach[a] ~= reach[b] then
+			return reach[a] < reach[b]
+		end
+		return a < b
+	end)
 
 	local result, used = {}, {}
 	for _, key in ipairs(keys) do
