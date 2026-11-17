@@ -931,6 +931,16 @@ describe("Spell Identity", function()
 				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(refresh))
 			end)
 
+			-- Codex review: the rival's last tick came 0.07 s early and its killing
+			-- tick 0.17 s late, off its last tick's grid but near its cast's.
+			it("gives no Stop Tick when another DoT's tick is due near it on its cast's grid", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { tickEntries(6) }, { tickEntries(9) },
+					{ tickEntries(11.93) }, { castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) },
+					{ tickEntries(15.17) }, { stopEntry(15.17, DRAIN_LIFE) })
+				local spells = shownSpells(entries)
+				assert.are.equal("none", spells[#spells])
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
@@ -1126,7 +1136,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 268
+		local UNKNOWN_FLOOR = 269
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

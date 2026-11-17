@@ -534,9 +534,10 @@ function Identity.New(saved)
 	end
 
 	-- Whether a tick of another DoT of the school on this unit is due within
-	-- STOP_RIVAL of this one, on a running rhythm or from a recent cast or
-	-- landing whose first tick no rhythm holds yet: its tick can kill the mob,
-	-- which stops the channel in the same frame, and come a little off time.
+	-- STOP_RIVAL of this one, on a running rhythm's last tick or source grid,
+	-- or from a recent cast whose first tick no rhythm holds yet: its tick can
+	-- kill the mob, which stops the channel in the same frame, and come a
+	-- little off time.
 	local function rivalDue(hit, school, plateRhythms, channelID, plate)
 		local function rival(spellID)
 			local spell = ns.TickSpells[spellID]
@@ -557,7 +558,7 @@ function Identity.New(saved)
 			local spell = rival(spellID)
 			if spell and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
 				and (rhythm.last and hit.time <= rhythm.ends + STOP_RIVAL and due(spell, rhythm.last, 0)
-					or not rhythm.last and due(spell, rhythm.source, 0)) then
+					or due(spell, rhythm.source, 0)) then
 				return true
 			end
 		end
