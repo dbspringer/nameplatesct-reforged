@@ -9,6 +9,8 @@ local DEFAULT_WOW_DIR = "/Applications/World of Warcraft/_forever_"
 -- Margin around the Trace, so the label script also sees the lines that a
 -- Hit at either end pairs with.
 local MARGIN_MS = 10000
+-- A Hit's file event can come this long after it (LATEST in label-trace.lua).
+local END_MARGIN_MS = 100
 
 local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
 local Trace = assert(loadfile(here .. "trace.lua"))()
@@ -126,6 +128,29 @@ function Import.Cut(lines, trace)
 		end
 	end
 	return kept
+end
+
+-- Returns the Trace without the entries that can come after the Combat Log
+-- File's last line, or within END_MARGIN_MS of it, as the label script could
+-- not label their Hits. The game can stop writing the file a few seconds
+-- before the recorder stops. The header's start time has whole seconds only,
+-- so an entry counts at the latest time it can have.
+function Import.EndAtFile(trace, lines)
+	local fileEnd = Trace.StampToMs(parseLine(lines[#lines]))
+	local startMs = Trace.StartedToSeconds(trace.header.started) * 1000
+	local kept = {}
+	for _, entry in ipairs(trace.entries) do
+		local latest = startMs + 1000 + math.floor((entry[1] - trace.header.startTime) * 1000 + 0.5)
+		if latest + END_MARGIN_MS < fileEnd then
+			kept[#kept + 1] = entry
+		end
+	end
+	local ended = {}
+	for key, value in pairs(trace) do
+		ended[key] = value
+	end
+	ended.entries = kept
+	return ended
 end
 
 local function sortedKeys(value)
@@ -291,7 +316,9 @@ local function main(name, savedVariablesPath, combatLogPath)
 	local wowDir = os.getenv("WOW_DIR") or DEFAULT_WOW_DIR
 	local trace = loadTrace(savedVariablesPath or findSavedVariables(wowDir))
 	combatLogPath = combatLogPath or findCombatLog(wowDir, trace)
-	local lines = Import.Cut(readLines(combatLogPath), trace)
+	local fileLines = readLines(combatLogPath)
+	trace = Import.EndAtFile(trace, fileLines)
+	local lines = #trace.entries > 0 and Import.Cut(fileLines, trace) or {}
 	if #lines < 2 then
 		fail(combatLogPath .. " has no lines at the time of the Trace")
 	end

@@ -359,6 +359,219 @@ describe("Labels", function()
 		assert.are.same({ false, "no file event fits" }, { rows[3].line, rows[3].unsure })
 	end)
 
+	-- In warlock-drain-life the game sent one frame's Log Lines 0.1 s after
+	-- their tick and heal, and 0.23 s after their pet swing.
+	it("gives a Log Line that came late the file event of its colour before it", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 40)
+		entries[#entries + 1] = logLine(112.1)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 40, "Corruption")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 22, 6222 }, { rows[21].line, rows[21].spell })
+	end)
+
+	-- Log Lines keep the order of their file events, so two late lines take
+	-- them in that order. A person checks such rows, as another order could fit.
+	it("gives two late Log Lines of one colour their file events in order, and marks them unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = logLine(112.3)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 43, 44 }, { rows[41].line, rows[42].line })
+		assert.are.equal("Log Line matched by order", rows[41].unsure)
+		assert.are.equal("Log Line matched by order", rows[42].unsure)
+	end)
+
+	-- The first late line lands on the second event's time, so the first pass
+	-- gives it that event.
+	it("keeps the event order when a late Log Line crosses a line of the first pass, and marks both unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 42, 44 }, { rows[41].line, rows[43].line })
+		assert.are.equal("Log Line matched by order", rows[41].unsure)
+		assert.are.equal("Log Line matched by order", rows[43].unsure)
+	end)
+
+	it("keeps the event order through a burst of three late Log Lines, and marks them all unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = report(112.2, "nameplate1", "nameplate1", "WOUND", 52)
+		entries[#entries + 1] = logLine(112.24)
+		for i = 0, 2 do
+			fileLines[#fileLines + 1] = damage(112 + i * 0.1, ME, MOB_A, 50 + i, "Immolate")
+		end
+		local rows = label(entries, fileLines)
+		assert.are.same({ 42, 44, 46 }, { rows[41].line, rows[43].line, rows[45].line })
+		for _, hit in ipairs({ 41, 43, 45 }) do
+			assert.are.equal("Log Line matched by order", rows[hit].unsure)
+		end
+	end)
+
+	it("keeps the file's order of two events with one time in a chain of late Log Lines, every time", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 52)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.2, "nameplate1", "nameplate1", "WOUND", 53)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = logLine(112.24)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Corruption")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 52, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.2, ME, MOB_A, 53, "Immolate")
+		for _ = 1, 20 do
+			local rows = label(entries, fileLines)
+			assert.are.same({ 42, 45, 47, 48 }, { rows[41].line, rows[43].line, rows[44].line, rows[46].line })
+		end
+	end)
+
+	-- Each line is 0.24 s late or less, but the burst spans more, and the first
+	-- two lines lie within 60 ms of the wrong events.
+	it("keeps the event order through a late burst longer than the late window", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 29 do
+			entries[#entries + 1] = logLine(101 + i * 0.3)
+			entries[#entries + 1] = report(101 + i * 0.3, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.3, ME, MOB_A, 20 + i, "Immolate")
+		end
+		local times = { 112, 112.2, 112.4, 112.5 }
+		for i, time in ipairs(times) do
+			entries[#entries + 1] = report(time, "nameplate1", "nameplate1", "WOUND", 60 + i)
+			fileLines[#fileLines + 1] = damage(time, ME, MOB_A, 60 + i, "Immolate")
+		end
+		for _, time in ipairs({ 112.24, 112.4, 112.64, 112.74 }) do
+			entries[#entries + 1] = logLine(time)
+		end
+		local rows = label(entries, fileLines)
+		assert.are.same({ 65, 66, 67, 68 }, { rows[61].line, rows[62].line, rows[63].line, rows[64].line })
+		for hit = 61, 64 do
+			assert.are.equal("Log Line matched by order", rows[hit].unsure)
+		end
+	end)
+
+	-- A line whose colour is secret can report any event, so it must not take
+	-- the one event that a line of a known kind can report.
+	it("lets a line of a known kind choose its event before a line of a secret colour", function()
+		local direct = { colouring = "kind", lineKind = "direct" }
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i, nil, direct)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.02, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.02, nil, direct)
+		entries[#entries + 1] = logLine(112.02, nil, { colouring = "kind" })
+		fileLines[#fileLines + 1] = (damage(112, ME, MOB_A, 50, "Corruption"):gsub("SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE"))
+		fileLines[#fileLines + 1] = damage(112.02, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines, false, {
+			filters = { { eventList = { SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true }, sourceFlags = { [0x4511] = true } } },
+		})
+		assert.are.same({ 24, 23 }, { rows[21].line, rows[22].line })
+	end)
+
+	-- Each class keeps its own order, but two classes that share events can
+	-- strand each other's lines, so their rows are for a person to check.
+	it("marks unsure a Hit whose file event lines of two colour classes can report", function()
+		local direct = { colouring = "kind", lineKind = "direct" }
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i, nil, direct)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.1, nil, direct)
+		entries[#entries + 1] = logLine(112.34, nil, { colouring = "kind" })
+		-- A tick that only the secret colour's class can report makes the direct
+		-- class the narrower one, so it chooses first.
+		fileLines[#fileLines + 1] = (damage(111.5, ME, MOB_B, 9, "Corruption"):gsub("SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE"))
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines, false, {
+			filters = { { eventList = { SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true }, sourceFlags = { [0x4511] = true } } },
+		})
+		assert.are.equal("colour fits two classes of Log Line", rows[21].unsure)
+		assert.are.equal("colour fits two classes of Log Line", rows[22].unsure)
+	end)
+
+	it("gives a Log Line no file event from after it", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = logLine(111.9)
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 40)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 40, "Corruption")
+		local rows = label(entries, fileLines)
+		assert.is_false(rows[22].line)
+	end)
+
+	-- In warlock-drain-life the pet's swing landed 0.69 s after its mob's
+	-- Nameplate hid, when the token already showed another mob.
+	it("keeps a Hit that came after its Nameplate hid on that Nameplate's creature", function()
+		local rows = label({
+			{ 100.5, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "Creature-A" },
+			logLine(101),
+			report(101, "nameplate1", "nameplate1", "WOUND", 29),
+			{ 102, "NAME_PLATE_UNIT_REMOVED", "nameplate1", guid = "Creature-A" },
+			{ 102.2, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "Creature-B" },
+			logLine(102.5),
+			report(102.5, "nameplate1", "nameplate1", "WOUND", 30),
+			logLine(102.6),
+			{ 102.6, "UNIT_COMBAT", "softinteract", "WOUND", "", 31, 32, guid = "Creature-A" },
+		}, {
+			damage(101, ME, MOB_A, 29, "Immolate"),
+			damage(102.5, ME, MOB_B, 30, "Immolate"),
+			damage(102.6, ME, MOB_A, 31, "Corruption"),
+		})
+		assert.are.same({ 8, 6222, nil }, { rows[9].line, rows[9].spell, rows[9].unsure })
+	end)
+
 	it("stops when the Log Lines do not line up with the file", function()
 		local trace = {
 			header = {

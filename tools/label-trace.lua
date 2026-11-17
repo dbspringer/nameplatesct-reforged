@@ -15,6 +15,9 @@ local Trace = assert(loadfile(here .. "trace.lua"))()
 
 -- The Log Lines align with their file events within this many milliseconds.
 local ALIGN_MS = 60
+-- How late a Log Line can come after its file event: one frame's lines came
+-- 0.1 s after their tick and 0.23 s after their pet swing (warlock-drain-life).
+local LATE_LINE_MS = 250
 -- The share of Log Lines that must align before any Label is trusted.
 local MIN_ALIGNED = 0.9
 -- A Hit's file event comes from this long before it to this long after it.
@@ -244,9 +247,144 @@ local function colourFits(entry, event, filter)
 	return true
 end
 
--- Pairs each Log Line with the file event it reports, by the one time offset
--- that lines up the most of them. Returns the offset in milliseconds and a
--- map from file event to Log Line.
+-- The class of a Log Line's colour: lines of one class can report the same
+-- file events (see colourFits).
+local function colourClass(entry)
+	if entry.colouring == "kind" and entry.lineKind ~= nil then
+		return "kind " .. entry.lineKind
+	end
+	if entry.colouring == "source" and type(entry[4]) == "number" then
+		return ("source %s %s %s"):format(entry[4], entry[5], entry[6])
+	end
+	return "any"
+end
+
+-- File order: by time, and in one millisecond by line in the file.
+local function fileOrder(a, b)
+	return a.ms < b.ms or (a.ms == b.ms and a.index < b.index)
+end
+
+-- Whether match a is better than b: more pairs, then less delay in all.
+local function better(a, b)
+	if a.count ~= b.count then
+		return a.count > b.count
+	end
+	return a.delay < b.delay
+end
+
+-- Pairs Log Lines with file events, keeping the file's order within each
+-- colour class: Log Lines of one colour come in their events' order. Lines of
+-- two colours can swap within 1 ms, as a heal's line before its tick's. In 29
+-- Traces a match of each line to its nearest event broke the order of one
+-- colour only once, by 1 ms, and there the file shows the order was right (a
+-- Judgement, then a Seal of Righteousness, in paladin-seal-fights). A line
+-- can report an event up to ALIGN_MS after it, as the two clocks differ by a
+-- few milliseconds, and up to LATE_LINE_MS before it, as the game can send a
+-- frame's lines late (0.23 s in warlock-drain-life). Of the matches in order,
+-- it takes the one with the most pairs, then the least delay in all. Returns a
+-- map from file event to Log Line, and the set of shared events (see below).
+local function orderedPairs(trace, logLines, candidates, offset)
+	local filter = trace.header.logFilter.filter
+	local events = {}
+	for i, event in ipairs(candidates) do
+		events[i] = event
+	end
+	table.sort(events, fileOrder)
+	local classes, keys = {}, {}
+	for _, line in ipairs(logLines) do
+		local key = colourClass(trace.entries[line.entry])
+		if not classes[key] then
+			classes[key] = {}
+			keys[#keys + 1] = key
+		end
+		table.insert(classes[key], line)
+	end
+	-- Classes can share events: a line of a secret colour can report any event.
+	-- The class that can report the fewest events chooses first, so a line of
+	-- a known kind keeps the one event it can report. Each class keeps only its
+	-- own order, so one class's choice can strand another's line, and an event
+	-- that two classes can report is in the returned set of shared events.
+	local reach, classesOf, shared = {}, {}, {}
+	for _, key in ipairs(keys) do
+		local first, count = trace.entries[classes[key][1].entry], 0
+		for _, event in ipairs(events) do
+			if colourFits(first, event, filter) then
+				count = count + 1
+				classesOf[event] = (classesOf[event] or 0) + 1
+				if classesOf[event] > 1 then
+					shared[event] = true
+				end
+			end
+		end
+		reach[key] = count
+	end
+	table.sort(keys, function(a, b)
+		if reach[a] ~= reach[b] then
+			return reach[a] < reach[b]
+		end
+		return a < b
+	end)
+
+	local result, used = {}, {}
+	for _, key in ipairs(keys) do
+		local lines = classes[key]
+		local first = trace.entries[lines[1].entry]
+		local fitting = {}
+		for _, event in ipairs(events) do
+			if not used[event] and colourFits(first, event, filter) then
+				fitting[#fitting + 1] = event
+			end
+		end
+		-- best[j]: the best match so far whose last pair takes fitting[j]; each
+		-- is a chain of pairs back to the empty match. settled: the best match
+		-- whose last event is before low, where no later line can reach.
+		local none = { count = 0, delay = 0 }
+		local best, settled, low = {}, none, 1
+		for _, line in ipairs(lines) do
+			local at = line.time * 1000 + offset
+			while low <= #fitting and at - fitting[low].ms > LATE_LINE_MS do
+				if best[low] and better(best[low], settled) then
+					settled = best[low]
+				end
+				low = low + 1
+			end
+			local before, offers = settled, {}
+			for j = low, #fitting do
+				local delay = at - fitting[j].ms
+				if delay < -ALIGN_MS then
+					break
+				end
+				offers[j] = { count = before.count + 1, delay = before.delay + math.abs(delay), line = line,
+					event = fitting[j], previous = before }
+				if best[j] and better(best[j], before) then
+					before = best[j]
+				end
+			end
+			for j, offer in pairs(offers) do
+				if not best[j] or better(offer, best[j]) then
+					best[j] = offer
+				end
+			end
+		end
+		local final = settled
+		for j = low, #fitting do
+			if best[j] and better(best[j], final) then
+				final = best[j]
+			end
+		end
+		while final.event do
+			result[final.event], used[final.event] = final.line, true
+			final = final.previous
+		end
+	end
+	return result, shared
+end
+
+-- Pairs each Log Line with the file event it reports: first the one time
+-- offset that lines up the most of them on time, then the match that keeps
+-- the file's order (see orderedPairs). Returns the offset in milliseconds, a
+-- map from file event to Log Line, the events whose line the second match
+-- changed, and the events that lines of two colour classes can report.
 local function align(trace, logLines, candidates)
 	local filter = trace.header.logFilter.filter
 	local guess = Trace.StartedToSeconds(trace.header.started) * 1000 - trace.header.startTime * 1000
@@ -284,11 +422,31 @@ local function align(trace, logLines, candidates)
 	if #logLines > 0 and bestCount < MIN_ALIGNED * #logLines then
 		return nil, ("only %d of %d Log Lines align with the Combat Log File"):format(math.max(bestCount, 0), #logLines)
 	end
-	return bestOffset or guess, bestPairs or {}
+	bestOffset, bestPairs = bestOffset or guess, bestPairs or {}
+
+	local ordered, shared = orderedPairs(trace, logLines, candidates, bestOffset)
+	-- The first pass is the plain match of lines on time. A line that the
+	-- order-keeping match gives another event, or one for the first time, and
+	-- an event that loses its line, could fit another order too, so a person
+	-- checks them.
+	local moved = {}
+	for event, line in pairs(bestPairs) do
+		if ordered[event] ~= line then
+			moved[event] = true
+		end
+	end
+	for event, line in pairs(ordered) do
+		if bestPairs[event] ~= line then
+			moved[event] = true
+		end
+	end
+	return bestOffset, ordered, moved, shared
 end
 
 -- The life of each nameplate token, for each Hit: a token names a new unit
--- after its plate hides and shows again.
+-- after its plate hides and shows again. A Hit that came just after its plate
+-- hid keeps that plate's life, as the adapter gives it, though the token can
+-- show another unit by then.
 local function plateLives(trace, hits)
 	local lifeOf, shown, hitAt = {}, {}, {}
 	for _, hit in ipairs(hits) do
@@ -300,7 +458,7 @@ local function plateLives(trace, hits)
 		end
 		local hit = hitAt[i]
 		if hit and hit.unit:find("^nameplate%d+$") then
-			lifeOf[hit] = hit.unit .. "#" .. (shown[hit.unit] or 0)
+			lifeOf[hit] = hit.life or hit.unit .. "#" .. (shown[hit.unit] or 0)
 		end
 	end
 	return lifeOf
@@ -437,7 +595,7 @@ function Label.Make(trace, lines)
 	if not candidates then
 		return nil, message
 	end
-	local offset, lineOf = align(trace, logLines, candidates)
+	local offset, lineOf, moved, shared = align(trace, logLines, candidates)
 	if not offset then
 		return nil, lineOf
 	end
@@ -510,6 +668,12 @@ function Label.Make(trace, lines)
 		end
 		if not unsure and event and hit.time - event.time > LATE then
 			unsure = ("late by %.2f s"):format(hit.time - event.time)
+		end
+		if not unsure and event and shared[event] then
+			unsure = "colour fits two classes of Log Line"
+		end
+		if not unsure and event and moved[event] then
+			unsure = "Log Line matched by order"
 		end
 		if not unsure and hit.amount == "<secret>" then
 			unsure = "secret amount"
