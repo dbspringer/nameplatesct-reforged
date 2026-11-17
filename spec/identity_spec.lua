@@ -884,6 +884,21 @@ describe("Spell Identity", function()
 			local function tickEntries(time)
 				return lineEntry(time, "tick"), hitEntry(time, "nameplate1", SHADOW)
 			end
+			-- The entries 100 s later, after a cast at 0, so that Identity has run
+			-- longer than any DoT that could have been cast before it started
+			-- (see stopTickOf).
+			local function afterStartup(entries)
+				local later = { castEntry(0, SHADOW_BOLT) }
+				for _, entry in ipairs(entries) do
+					local copy = {}
+					for key, value in pairs(entry) do
+						copy[key] = value
+					end
+					copy[1] = entry[1] + 100
+					later[#later + 1] = copy
+				end
+				return later
+			end
 			local function entriesOf(...)
 				local entries = {}
 				for _, group in ipairs({ ... }) do
@@ -899,7 +914,7 @@ describe("Spell Identity", function()
 			it("gives a Stop Tick its channel's spell, off the channel's rhythm", function()
 				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
 					{ tickEntries(3) }, { tickEntries(3.75) }, { stopEntry(3.75, DRAIN_LIFE) })
-				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE }, shownSpells(entries))
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE }, shownSpells(afterStartup(entries)))
 			end)
 
 			-- warlock-rfk 25337: the channel's last tick came 2 s before its stop,
@@ -908,7 +923,7 @@ describe("Spell Identity", function()
 			it("gives no Stop Tick when the channel's last tick there came an interval or more before", function()
 				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
 					{ tickEntries(3.5) }, { stopEntry(3.5, DRAIN_LIFE) })
-				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(afterStartup(entries)))
 			end)
 
 			-- Codex review of warlock-drain-life 3011, 60 ms earlier: a Corruption
@@ -917,7 +932,7 @@ describe("Spell Identity", function()
 			it("gives no Stop Tick when another DoT's tick is due near it", function()
 				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.2, DRAIN_LIFE) },
 					{ tickEntries(4.2) }, { tickEntries(5.2) }, { tickEntries(5.88) }, { stopEntry(5.88, DRAIN_LIFE) })
-				assert.are.same({ CORRUPTION, DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(afterStartup(entries)))
 			end)
 
 			-- Codex review: the killing tick was a rival DoT's first tick, from its
@@ -927,8 +942,8 @@ describe("Spell Identity", function()
 					{ tickEntries(3.12) }, { stopEntry(3.12, DRAIN_LIFE) })
 				local refresh = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.5, CORRUPTION) },
 					{ castEntries(5, DRAIN_LIFE) }, { tickEntries(6) }, { tickEntries(6.62) }, { stopEntry(6.62, DRAIN_LIFE) })
-				assert.are.same({ DRAIN_LIFE, "none" }, shownSpells(first))
-				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(refresh))
+				assert.are.same({ DRAIN_LIFE, "none" }, shownSpells(afterStartup(first)))
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(afterStartup(refresh)))
 			end)
 
 			-- Codex review: the rival's last tick came 0.07 s early and its killing
@@ -937,7 +952,7 @@ describe("Spell Identity", function()
 				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { tickEntries(6) }, { tickEntries(9) },
 					{ tickEntries(11.93) }, { castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) },
 					{ tickEntries(15.17) }, { stopEntry(15.17, DRAIN_LIFE) })
-				local spells = shownSpells(entries)
+				local spells = shownSpells(afterStartup(entries))
 				assert.are.equal("none", spells[#spells])
 			end)
 
@@ -950,7 +965,7 @@ describe("Spell Identity", function()
 				}, { tickEntries(3.18) }, { tickEntries(6) }, { tickEntries(9) }, { tickEntries(12) },
 					{ castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) }, { tickEntries(15.17) },
 					{ stopEntry(15.17, DRAIN_LIFE) })
-				local spells = shownSpells(entries)
+				local spells = shownSpells(afterStartup(entries))
 				assert.are.equal("none", spells[#spells])
 			end)
 
@@ -964,7 +979,7 @@ describe("Spell Identity", function()
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-secret", "<secret>", target = "nameplate1" },
 					{ 0, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-secret", "<secret>", "<nil>", target = "nameplate1" },
 				}, { castEntries(4, DRAIN_LIFE) }, { tickEntries(5) }, { tickEntries(5.8) }, { stopEntry(5.8, DRAIN_LIFE) })
-				local doomSpells, secretSpells = shownSpells(doom), shownSpells(secret)
+				local doomSpells, secretSpells = shownSpells(afterStartup(doom)), shownSpells(afterStartup(secret))
 				assert.are.same({ "none", "none" }, { doomSpells[#doomSpells], secretSpells[#secretSpells] })
 			end)
 
@@ -975,8 +990,17 @@ describe("Spell Identity", function()
 					{ { 3.3, "NAME_PLATE_UNIT_REMOVED", "nameplate1" }, { 3.4, "NAME_PLATE_UNIT_ADDED", "nameplate1" } },
 					{ castEntries(3.5, DRAIN_LIFE) }, { tickEntries(4.5) }, { tickEntries(5.5) }, { tickEntries(6.12) },
 					{ stopEntry(6.12, DRAIN_LIFE) })
-				local spells = shownSpells(entries)
+				local spells = shownSpells(afterStartup(entries))
 				assert.are.equal("none", spells[#spells])
+			end)
+
+			-- Codex review: replaying warlock-drain-life from entry 3919, as after
+			-- a /reload, gave Corruption's killing tick (hit 3941) Drain Life's icon,
+			-- as no cast showed that Corruption was running.
+			it("gives no Stop Tick while a DoT cast before Identity started could still run", function()
+				local entries = entriesOf({ castEntries(1, DRAIN_LIFE) }, { tickEntries(2) }, { tickEntries(3) },
+					{ tickEntries(3.6) }, { stopEntry(3.6, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
 			end)
 
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
@@ -1174,7 +1198,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 269
+		local UNKNOWN_FLOOR = 270
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

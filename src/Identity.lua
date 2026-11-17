@@ -272,6 +272,10 @@ function Identity.New(saved)
 	-- secret spells, kept while their DoT can run, longer than casts: what
 	-- rivalDue reads.
 	local dotCasts = {}
+	-- The time of the first record: a DoT cast before it, as before a /reload
+	-- or a Trace's start, is in no list, so rivalDue cannot see it until it has
+	-- run out (warlock-drain-life replayed from entry 3919).
+	local startedAt
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
 	-- tick (none yet after a landing), and ends when its duration ends.
@@ -602,6 +606,9 @@ function Identity.New(saved)
 	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
 	-- before Pairing decides that frame's Hits.
 	local function stopTickOf(hit, school, plateRhythms)
+		if not startedAt or hit.time - startedAt <= LONGEST_DOT + STOP_RIVAL then
+			return nil
+		end
 		for spellID, rhythm in pairs(plateRhythms) do
 			local spell = ns.TickSpells[spellID]
 			local cast = rhythm.cast
@@ -658,6 +665,7 @@ function Identity.New(saved)
 	identity.SchoolOf = schoolOf
 
 	function identity.Cast(record)
+		startedAt = startedAt or record.time
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
 			-- A channel's ticks end with it. The stop marks the oldest open cast
 			-- of the spell, so a recast whose cast comes before the old channel's
@@ -716,6 +724,7 @@ function Identity.New(saved)
 	-- a known spell's cast is in one group only. A miss reports school 1 whatever
 	-- the spell, so it teaches nothing and uses the school of its spell's hits.
 	function identity.Of(hit, line, crowded)
+		startedAt = startedAt or hit.time
 		local plate = plateOf(hit)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
