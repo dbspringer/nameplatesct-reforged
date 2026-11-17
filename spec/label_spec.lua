@@ -440,6 +440,31 @@ describe("Labels", function()
 		end
 	end)
 
+	it("keeps the file's order of two events with one time in a chain of late Log Lines, every time", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 52)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.2, "nameplate1", "nameplate1", "WOUND", 53)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = logLine(112.24)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Corruption")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 52, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.2, ME, MOB_A, 53, "Immolate")
+		for _ = 1, 20 do
+			local rows = label(entries, fileLines)
+			assert.are.same({ 42, 45, 47, 48 }, { rows[41].line, rows[43].line, rows[44].line, rows[46].line })
+		end
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do

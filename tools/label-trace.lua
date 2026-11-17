@@ -308,6 +308,10 @@ local function align(trace, logLines, candidates)
 		return at - event.ms >= -ALIGN_MS and at - event.ms <= LATE_LINE_MS
 			and colourFits(trace.entries[line.entry], event, filter)
 	end
+	-- File order: by time, and in one millisecond by line in the file.
+	local function fileOrder(a, b)
+		return a.ms < b.ms or (a.ms == b.ms and a.index < b.index)
+	end
 	local function contest(events, count)
 		for _, event in ipairs(events) do
 			contested[event] = math.max(contested[event] or 0, count)
@@ -321,9 +325,7 @@ local function align(trace, logLines, candidates)
 					fitting[#fitting + 1] = event
 				end
 			end
-			table.sort(fitting, function(a, b)
-				return a.ms < b.ms
-			end)
+			table.sort(fitting, fileOrder)
 			local oldest = fitting[1]
 			if oldest then
 				used[oldest] = true
@@ -332,16 +334,14 @@ local function align(trace, logLines, candidates)
 				end
 				local chain, events = { line }, { oldest }
 				for other, event in pairs(eventOfLine) do
-					if other.entry < line.entry and event.ms > oldest.ms and canReport(line, event) then
+					if other.entry < line.entry and fileOrder(oldest, event) and canReport(line, event) then
 						chain[#chain + 1], events[#events + 1] = other, event
 					end
 				end
 				table.sort(chain, function(a, b)
 					return a.entry < b.entry
 				end)
-				table.sort(events, function(a, b)
-					return a.ms < b.ms
-				end)
+				table.sort(events, fileOrder)
 				local inOrder = true
 				for i, member in ipairs(chain) do
 					inOrder = inOrder and canReport(member, events[i])
