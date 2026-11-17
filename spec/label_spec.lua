@@ -417,6 +417,29 @@ describe("Labels", function()
 		assert.matches("^late", rows[43].unsure)
 	end)
 
+	it("keeps the event order through a burst of three late Log Lines, and marks them all unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = report(112.2, "nameplate1", "nameplate1", "WOUND", 52)
+		entries[#entries + 1] = logLine(112.24)
+		for i = 0, 2 do
+			fileLines[#fileLines + 1] = damage(112 + i * 0.1, ME, MOB_A, 50 + i, "Immolate")
+		end
+		local rows = label(entries, fileLines)
+		assert.are.same({ 42, 44, 46 }, { rows[41].line, rows[43].line, rows[45].line })
+		for _, hit in ipairs({ 41, 43, 45 }) do
+			assert.matches("^late", rows[hit].unsure)
+		end
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do
