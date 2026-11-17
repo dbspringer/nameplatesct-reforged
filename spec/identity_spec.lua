@@ -954,6 +954,20 @@ describe("Spell Identity", function()
 				assert.are.equal("none", spells[#spells])
 			end)
 
+			-- Codex review: Doom's one tick at 60 s, or a DoT cast whose spell ID
+			-- is secret, can kill the mob in the stop's frame.
+			it("gives no Stop Tick when Doom or a cast with a secret spell ID could make the tick", function()
+				local CURSE_OF_DOOM = 603
+				local doom = entriesOf({ castEntries(0, CURSE_OF_DOOM) }, { castEntries(57.3, DRAIN_LIFE) }, { tickEntries(58.3) },
+					{ tickEntries(59.3) }, { tickEntries(60) }, { stopEntry(60, DRAIN_LIFE) })
+				local secret = entriesOf({
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-secret", "<secret>", target = "nameplate1" },
+					{ 0, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-secret", "<secret>", "<nil>", target = "nameplate1" },
+				}, { castEntries(4, DRAIN_LIFE) }, { tickEntries(5) }, { tickEntries(5.8) }, { stopEntry(5.8, DRAIN_LIFE) })
+				local doomSpells, secretSpells = shownSpells(doom), shownSpells(secret)
+				assert.are.same({ "none", "none" }, { doomSpells[#doomSpells], secretSpells[#secretSpells] })
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },

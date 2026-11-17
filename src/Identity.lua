@@ -35,6 +35,19 @@ local TICK_TOLERANCE = 0.1
 -- How near another DoT's due tick keeps a Stop Tick unsure: twice the
 -- rhythm's tolerance, as a killing tick can come a little off its rhythm.
 local STOP_RIVAL = 2 * TICK_TOLERANCE
+-- DoTs that the tick table leaves out but whose tick can still kill the mob
+-- in a channel's stop frame, so they count against a Stop Tick: Curse of Doom
+-- (Bane of Doom on Forever), one Shadow tick at 60 s (Classic IDs, unverified
+-- on Forever).
+local RIVAL_ONLY = {}
+for _, spellID in ipairs({ 603, 30910 }) do
+	RIVAL_ONLY[spellID] = { interval = 60, duration = 60, school = 32 }
+end
+-- How long any DoT can run, for a cast whose spell ID is secret.
+local LONGEST_DOT = 60
+for _, spell in pairs(ns.TickSpells) do
+	LONGEST_DOT = math.max(LONGEST_DOT, spell.duration)
+end
 -- A school counts once this many Hits agree on it.
 local AGREEING_HITS = 2
 -- How long after its cast the miss of a spell's application can come, for
@@ -255,8 +268,9 @@ function Identity.New(saved)
 	-- tick on any unit, stopped when its channel stopped, and plate the plate
 	-- life of the player's target when it started (see Adapter.New), or nil.
 	local casts = {}
-	-- The player's casts of spells that tick, kept while their DoT can run,
-	-- longer than casts: what rivalDue reads.
+	-- The player's casts of spells that tick, of RIVAL_ONLY spells, and of
+	-- secret spells, kept while their DoT can run, longer than casts: what
+	-- rivalDue reads.
 	local dotCasts = {}
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
@@ -543,7 +557,7 @@ function Identity.New(saved)
 	-- little off time.
 	local function rivalDue(hit, school, plateRhythms, channelID, plate)
 		local function rival(spellID)
-			local spell = ns.TickSpells[spellID]
+			local spell = ns.TickSpells[spellID] or RIVAL_ONLY[spellID]
 			return spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and spell
 		end
 		local function due(spell, from, extra)
@@ -566,7 +580,10 @@ function Identity.New(saved)
 			end
 		end
 		for _, cast in ipairs(dotCasts) do
-			local spell = not cast.missed and rival(cast.spellID)
+			if cast.secret and hit.time - cast.time <= LONGEST_DOT + STOP_RIVAL then
+				return true
+			end
+			local spell = not cast.secret and not cast.missed and rival(cast.spellID)
 			if spell and (cast.plate == nil or cast.plate == plate) and not stoppedBefore(cast, hit)
 				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
 				return true
@@ -681,13 +698,14 @@ function Identity.New(saved)
 		casts[#casts + 1] = cast
 		local kept = {}
 		for _, old in ipairs(dotCasts) do
-			if record.time - old.time <= ns.TickSpells[old.spellID].duration + DIRECT_WINDOW + STOP_RIVAL then
+			local spell = old.spellID and (ns.TickSpells[old.spellID] or RIVAL_ONLY[old.spellID])
+			if record.time - old.time <= (spell and spell.duration or LONGEST_DOT) + DIRECT_WINDOW + STOP_RIVAL then
 				kept[#kept + 1] = old
 			end
 		end
 		dotCasts = kept
-		local spell = cast.spellID and ns.TickSpells[cast.spellID]
-		if record.unit == "player" and spell and not spell.area then
+		local spell = cast.spellID and (ns.TickSpells[cast.spellID] or RIVAL_ONLY[cast.spellID])
+		if record.unit == "player" and (secret or spell and not spell.area) then
 			dotCasts[#dotCasts + 1] = cast
 		end
 	end
