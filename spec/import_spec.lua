@@ -115,6 +115,16 @@ describe("Import", function()
 		assert.are.same({ FORMAT, window[3], window[4] }, kept)
 	end)
 
+	-- warlock-drain-life ran 6 s past its file's last line, as the game had not
+	-- written the rest when the file was copied.
+	it("ends the Trace before the Combat Log File's last line, by its latest possible time", function()
+		local file = { FORMAT, line("10:49:30.000", "SPELL_DAMAGE,first"), line("10:49:50.000", "SPELL_DAMAGE,last") }
+		-- Started in the second 10:49:21, so entry 127.8 came by 10:49:49.8,
+		-- and its Hit's file event can come 0.1 s later still.
+		local ended = Import.EndAtFile(trace(100, { { 100 }, { 127.8 }, { 127.9 }, { 150 } }), file)
+		assert.are.same({ { 100 }, { 127.8 } }, ended.entries)
+	end)
+
 	it("starts 10 s before the first entry when the recorder dropped the earlier ones", function()
 		local window = {
 			FORMAT,
