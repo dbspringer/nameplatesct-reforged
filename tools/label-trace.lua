@@ -282,7 +282,7 @@ end
 -- few milliseconds, and up to LATE_LINE_MS before it, as the game can send a
 -- frame's lines late (0.23 s in warlock-drain-life). Of the matches in order,
 -- it takes the one with the most pairs, then the least delay in all. Returns a
--- map from file event to Log Line.
+-- map from file event to Log Line, and the set of shared events (see below).
 local function orderedPairs(trace, logLines, candidates, offset)
 	local filter = trace.header.logFilter.filter
 	local events = {}
@@ -301,13 +301,19 @@ local function orderedPairs(trace, logLines, candidates, offset)
 	end
 	-- Classes can share events: a line of a secret colour can report any event.
 	-- The class that can report the fewest events chooses first, so a line of
-	-- a known kind keeps the one event it can report.
-	local reach = {}
+	-- a known kind keeps the one event it can report. Each class keeps only its
+	-- own order, so one class's choice can strand another's line, and an event
+	-- that two classes can report is in the returned set of shared events.
+	local reach, classesOf, shared = {}, {}, {}
 	for _, key in ipairs(keys) do
 		local first, count = trace.entries[classes[key][1].entry], 0
 		for _, event in ipairs(events) do
 			if colourFits(first, event, filter) then
 				count = count + 1
+				classesOf[event] = (classesOf[event] or 0) + 1
+				if classesOf[event] > 1 then
+					shared[event] = true
+				end
 			end
 		end
 		reach[key] = count
@@ -371,14 +377,14 @@ local function orderedPairs(trace, logLines, candidates, offset)
 			final = final.previous
 		end
 	end
-	return result
+	return result, shared
 end
 
 -- Pairs each Log Line with the file event it reports: first the one time
 -- offset that lines up the most of them on time, then the match that keeps
 -- the file's order (see orderedPairs). Returns the offset in milliseconds, a
--- map from file event to Log Line, and the events whose line the second match
--- changed.
+-- map from file event to Log Line, the events whose line the second match
+-- changed, and the events that lines of two colour classes can report.
 local function align(trace, logLines, candidates)
 	local filter = trace.header.logFilter.filter
 	local guess = Trace.StartedToSeconds(trace.header.started) * 1000 - trace.header.startTime * 1000
@@ -418,7 +424,7 @@ local function align(trace, logLines, candidates)
 	end
 	bestOffset, bestPairs = bestOffset or guess, bestPairs or {}
 
-	local ordered = orderedPairs(trace, logLines, candidates, bestOffset)
+	local ordered, shared = orderedPairs(trace, logLines, candidates, bestOffset)
 	-- The first pass is the plain match of lines on time. A line that the
 	-- order-keeping match gives another event, or one for the first time, and
 	-- an event that loses its line, could fit another order too, so a person
@@ -434,7 +440,7 @@ local function align(trace, logLines, candidates)
 			moved[event] = true
 		end
 	end
-	return bestOffset, ordered, moved
+	return bestOffset, ordered, moved, shared
 end
 
 -- The life of each nameplate token, for each Hit: a token names a new unit
@@ -589,7 +595,7 @@ function Label.Make(trace, lines)
 	if not candidates then
 		return nil, message
 	end
-	local offset, lineOf, moved = align(trace, logLines, candidates)
+	local offset, lineOf, moved, shared = align(trace, logLines, candidates)
 	if not offset then
 		return nil, lineOf
 	end
@@ -662,6 +668,9 @@ function Label.Make(trace, lines)
 		end
 		if not unsure and event and hit.time - event.time > LATE then
 			unsure = ("late by %.2f s"):format(hit.time - event.time)
+		end
+		if not unsure and event and shared[event] then
+			unsure = "colour fits two classes of Log Line"
 		end
 		if not unsure and event and moved[event] then
 			unsure = "Log Line matched by order"

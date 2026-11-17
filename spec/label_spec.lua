@@ -511,6 +511,32 @@ describe("Labels", function()
 		assert.are.same({ 24, 23 }, { rows[21].line, rows[22].line })
 	end)
 
+	-- Each class keeps its own order, but two classes that share events can
+	-- strand each other's lines, so their rows are for a person to check.
+	it("marks unsure a Hit whose file event lines of two colour classes can report", function()
+		local direct = { colouring = "kind", lineKind = "direct" }
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i, nil, direct)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.1, nil, direct)
+		entries[#entries + 1] = logLine(112.34, nil, { colouring = "kind" })
+		-- A tick that only the secret colour's class can report makes the direct
+		-- class the narrower one, so it chooses first.
+		fileLines[#fileLines + 1] = (damage(111.5, ME, MOB_B, 9, "Corruption"):gsub("SPELL_DAMAGE", "SPELL_PERIODIC_DAMAGE"))
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines, false, {
+			filters = { { eventList = { SPELL_DAMAGE = true, SPELL_PERIODIC_DAMAGE = true }, sourceFlags = { [0x4511] = true } } },
+		})
+		assert.are.equal("colour fits two classes of Log Line", rows[21].unsure)
+		assert.are.equal("colour fits two classes of Log Line", rows[22].unsure)
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do
