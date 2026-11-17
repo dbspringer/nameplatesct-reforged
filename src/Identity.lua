@@ -32,6 +32,9 @@ local DECIDE_LATE = ns.Pairing.LATEST_DECISION + 0.1
 -- icon. A wider window lets another spell's tick that comes just before fit
 -- too, which moves the rhythm off its own next tick.
 local TICK_TOLERANCE = 0.1
+-- How near another DoT's due tick keeps a Stop Tick unsure: twice the
+-- rhythm's tolerance, as a killing tick can come a little off its rhythm.
+local STOP_RIVAL = 2 * TICK_TOLERANCE
 -- A school counts once this many Hits agree on it.
 local AGREEING_HITS = 2
 -- How long after its cast the miss of a spell's application can come, for
@@ -530,6 +533,24 @@ function Identity.New(saved)
 		end
 	end
 
+	-- Whether another running rhythm of the school on this unit has a tick due
+	-- within STOP_RIVAL of this one: its DoT's tick can kill the mob, which
+	-- stops the channel in the same frame, and come a little off its rhythm.
+	local function rivalDue(hit, school, plateRhythms, channelID)
+		for spellID, rhythm in pairs(plateRhythms) do
+			local spell = ns.TickSpells[spellID]
+			if spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and rhythm.last
+				and hit.time <= rhythm.ends + STOP_RIVAL and not (rhythm.cast and stoppedBefore(rhythm.cast, hit)) then
+				local since = hit.time - rhythm.last
+				local steps = math.floor(since / spell.interval + 0.5)
+				if steps >= 1 and math.abs(since - steps * spell.interval) <= STOP_RIVAL then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
 	-- The channel whose Stop Tick this tick is, and its rhythm: a tick in the
 	-- frame of its channel's stop, which can come before the rhythm's next tick
 	-- when the channel ends early (warlock-drain-life). It must come less than
@@ -542,7 +563,8 @@ function Identity.New(saved)
 			local spell = ns.TickSpells[spellID]
 			local cast = rhythm.cast
 			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
-				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval then
+				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
+				and not rivalDue(hit, school, plateRhythms, spellID) then
 				return spellID, rhythm
 			end
 		end

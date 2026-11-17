@@ -911,6 +911,15 @@ describe("Spell Identity", function()
 				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
 			end)
 
+			-- Codex review of warlock-drain-life 3011, 60 ms earlier: a Corruption
+			-- tick a little off its rhythm killed the mob, and the kill stopped the
+			-- channel in its frame.
+			it("gives no Stop Tick when another DoT's tick is due near it", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.2, DRAIN_LIFE) },
+					{ tickEntries(4.2) }, { tickEntries(5.2) }, { tickEntries(5.88) }, { stopEntry(5.88, DRAIN_LIFE) })
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
@@ -1106,7 +1115,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 269
+		local UNKNOWN_FLOOR = 268
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}
