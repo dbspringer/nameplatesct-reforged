@@ -359,6 +359,57 @@ describe("Labels", function()
 		assert.are.same({ false, "no file event fits" }, { rows[3].line, rows[3].unsure })
 	end)
 
+	-- In warlock-drain-life the game sent one frame's Log Lines 0.1 s after
+	-- their tick and heal, and 0.23 s after their pet swing.
+	it("gives a Log Line that came late the file event of its colour before it", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 40)
+		entries[#entries + 1] = logLine(112.1)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 40, "Corruption")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 22, 6222 }, { rows[21].line, rows[21].spell })
+	end)
+
+	it("gives a Log Line no file event from after it", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 9 do
+			entries[#entries + 1] = logLine(101 + i)
+			entries[#entries + 1] = report(101 + i, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = logLine(111.9)
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 40)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 40, "Corruption")
+		local rows = label(entries, fileLines)
+		assert.is_false(rows[22].line)
+	end)
+
+	-- In warlock-drain-life the pet's swing landed 0.69 s after its mob's
+	-- Nameplate hid, when the token already showed another mob.
+	it("keeps a Hit that came after its Nameplate hid on that Nameplate's creature", function()
+		local rows = label({
+			{ 100.5, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "Creature-A" },
+			logLine(101),
+			report(101, "nameplate1", "nameplate1", "WOUND", 29),
+			{ 102, "NAME_PLATE_UNIT_REMOVED", "nameplate1", guid = "Creature-A" },
+			{ 102.2, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "Creature-B" },
+			logLine(102.5),
+			report(102.5, "nameplate1", "nameplate1", "WOUND", 30),
+			logLine(102.6),
+			{ 102.6, "UNIT_COMBAT", "softinteract", "WOUND", "", 31, 32, guid = "Creature-A" },
+		}, {
+			damage(101, ME, MOB_A, 29, "Immolate"),
+			damage(102.5, ME, MOB_B, 30, "Immolate"),
+			damage(102.6, ME, MOB_A, 31, "Corruption"),
+		})
+		assert.are.same({ 8, 6222, nil }, { rows[9].line, rows[9].spell, rows[9].unsure })
+	end)
+
 	it("stops when the Log Lines do not line up with the file", function()
 		local trace = {
 			header = {

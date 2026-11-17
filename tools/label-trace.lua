@@ -15,6 +15,9 @@ local Trace = assert(loadfile(here .. "trace.lua"))()
 
 -- The Log Lines align with their file events within this many milliseconds.
 local ALIGN_MS = 60
+-- How late a Log Line can come after its file event: one frame's lines came
+-- 0.1 s after their tick and 0.23 s after their pet swing (warlock-drain-life).
+local LATE_LINE_MS = 250
 -- The share of Log Lines that must align before any Label is trusted.
 local MIN_ALIGNED = 0.9
 -- A Hit's file event comes from this long before it to this long after it.
@@ -284,11 +287,37 @@ local function align(trace, logLines, candidates)
 	if #logLines > 0 and bestCount < MIN_ALIGNED * #logLines then
 		return nil, ("only %d of %d Log Lines align with the Combat Log File"):format(math.max(bestCount, 0), #logLines)
 	end
-	return bestOffset or guess, bestPairs or {}
+	bestOffset, bestPairs = bestOffset or guess, bestPairs or {}
+
+	-- The game can send a frame's Log Lines late, so a line that is still
+	-- unmatched takes the nearest unused event of its colour that came up to
+	-- LATE_LINE_MS before it, never one after it.
+	local used, matchedLine = {}, {}
+	for event, line in pairs(bestPairs) do
+		used[event], matchedLine[line] = true, true
+	end
+	for _, line in ipairs(logLines) do
+		if not matchedLine[line] then
+			local at = line.time * 1000 + bestOffset
+			local best
+			for _, event in ipairs(candidates) do
+				if not used[event] and event.ms <= at and at - event.ms <= LATE_LINE_MS
+					and (not best or event.ms > best.ms) and colourFits(trace.entries[line.entry], event, filter) then
+					best = event
+				end
+			end
+			if best then
+				used[best], bestPairs[best] = true, line
+			end
+		end
+	end
+	return bestOffset, bestPairs
 end
 
 -- The life of each nameplate token, for each Hit: a token names a new unit
--- after its plate hides and shows again.
+-- after its plate hides and shows again. A Hit that came just after its plate
+-- hid keeps that plate's life, as the adapter gives it, though the token can
+-- show another unit by then.
 local function plateLives(trace, hits)
 	local lifeOf, shown, hitAt = {}, {}, {}
 	for _, hit in ipairs(hits) do
@@ -300,7 +329,7 @@ local function plateLives(trace, hits)
 		end
 		local hit = hitAt[i]
 		if hit and hit.unit:find("^nameplate%d+$") then
-			lifeOf[hit] = hit.unit .. "#" .. (shown[hit.unit] or 0)
+			lifeOf[hit] = hit.life or hit.unit .. "#" .. (shown[hit.unit] or 0)
 		end
 	end
 	return lifeOf
