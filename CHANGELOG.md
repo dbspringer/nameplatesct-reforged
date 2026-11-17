@@ -4,6 +4,7 @@
 
 - Your DoTs keep their icon when one tick lands a little late. Before, one late tick could cost the icon for the rest of the DoT. Now only that tick shows no icon.
 - With your DoTs on more than one enemy, each tick takes its icon from a DoT you cast on that enemy. Before, a tick could show the icon of a DoT on a different enemy.
+- Drain Life's last tick shows its icon when the channel ends early.
 
 ## 7
 

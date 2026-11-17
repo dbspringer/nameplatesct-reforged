@@ -7,7 +7,8 @@ ns.Identity = Identity
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
 -- from the table of spells that tick (TickSpells.lua): whole intervals after
 -- the spell's cast on that Nameplate or its landing there, then on its Tick
--- Rhythm there (see rhythmSource). A direct
+-- Rhythm there (see rhythmSource), or with its channel's stop (see
+-- stopTickOf). A direct
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
@@ -31,6 +32,22 @@ local DECIDE_LATE = ns.Pairing.LATEST_DECISION + 0.1
 -- icon. A wider window lets another spell's tick that comes just before fit
 -- too, which moves the rhythm off its own next tick.
 local TICK_TOLERANCE = 0.1
+-- How near another DoT's due tick keeps a Stop Tick unsure: twice the
+-- rhythm's tolerance, as a killing tick can come a little off its rhythm.
+local STOP_RIVAL = 2 * TICK_TOLERANCE
+-- DoTs that the tick table leaves out but whose tick can still kill the mob
+-- in a channel's stop frame, so they count against a Stop Tick: Curse of Doom
+-- (Bane of Doom on Forever), one Shadow tick at 60 s (Classic IDs, unverified
+-- on Forever).
+local RIVAL_ONLY = {}
+for _, spellID in ipairs({ 603, 30910 }) do
+	RIVAL_ONLY[spellID] = { interval = 60, duration = 60, school = 32 }
+end
+-- How long any DoT can run, for a cast whose spell ID is secret.
+local LONGEST_DOT = 60
+for _, spell in pairs(ns.TickSpells) do
+	LONGEST_DOT = math.max(LONGEST_DOT, spell.duration)
+end
 -- A school counts once this many Hits agree on it.
 local AGREEING_HITS = 2
 -- How long after its cast the miss of a spell's application can come, for
@@ -251,6 +268,14 @@ function Identity.New(saved)
 	-- tick on any unit, stopped when its channel stopped, and plate the plate
 	-- life of the player's target when it started (see Adapter.New), or nil.
 	local casts = {}
+	-- The player's casts of spells that tick, of RIVAL_ONLY spells, and of
+	-- secret spells, kept while their DoT can run, longer than casts: what
+	-- rivalDue reads.
+	local dotCasts = {}
+	-- The time of the first record: a DoT cast before it, as before a /reload
+	-- or a Trace's start, is in no list, so rivalDue cannot see it until it has
+	-- run out (warlock-drain-life replayed from entry 3919).
+	local startedAt
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
 	-- tick (none yet after a landing), and ends when its duration ends.
@@ -529,9 +554,79 @@ function Identity.New(saved)
 		end
 	end
 
+	-- Whether a tick of another DoT of the school on this unit is due within
+	-- STOP_RIVAL of this one, on a running rhythm's last tick or source grid,
+	-- or from a cast that no rhythm holds, while its DoT can run: its tick can
+	-- kill the mob, which stops the channel in the same frame, and come a
+	-- little off time.
+	local function rivalDue(hit, school, plateRhythms, channelID)
+		local function rival(spellID)
+			local spell = ns.TickSpells[spellID] or RIVAL_ONLY[spellID]
+			return spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and spell
+		end
+		-- GetTime() is large, so a difference exactly STOP_RIVAL away can come
+		-- out a hair over it: the window gets a little slack.
+		local window = STOP_RIVAL + 1e-6
+		local function due(spell, from, extra)
+			local since = hit.time - from
+			if since > spell.duration + window then
+				return false
+			end
+			if since >= spell.interval - window and since <= spell.interval + window + extra then
+				return true
+			end
+			local steps = math.floor(since / spell.interval + 0.5)
+			return steps >= 1 and math.abs(since - steps * spell.interval) <= window
+		end
+		for spellID, rhythm in pairs(plateRhythms) do
+			local spell = rival(spellID)
+			if spell and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+				and (rhythm.last and hit.time <= rhythm.ends + window and due(spell, rhythm.last, 0)
+					or due(spell, rhythm.source, 0)) then
+				return true
+			end
+		end
+		for _, cast in ipairs(dotCasts) do
+			if cast.secret and hit.time - cast.time <= LONGEST_DOT + window then
+				return true
+			end
+			-- On any unit: the same mob gets a new plate life when its Nameplate
+			-- shows again, and a cast's plate is its first life.
+			local spell = not cast.secret and not cast.missed and rival(cast.spellID)
+			if spell and not stoppedBefore(cast, hit)
+				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- The channel whose Stop Tick this tick is, and its rhythm: a tick in the
+	-- frame of its channel's stop, which can come before the rhythm's next tick
+	-- when the channel ends early (warlock-drain-life). It must come less than
+	-- one interval after the channel's last tick on this unit: a Hit in the
+	-- stop's frame long after it can be one whose kill stopped the channel
+	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
+	-- before Pairing decides that frame's Hits.
+	local function stopTickOf(hit, school, plateRhythms)
+		if not startedAt or hit.time - startedAt <= LONGEST_DOT + STOP_RIVAL then
+			return nil
+		end
+		for spellID, rhythm in pairs(plateRhythms) do
+			local spell = ns.TickSpells[spellID]
+			local cast = rhythm.cast
+			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
+				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
+				and not rivalDue(hit, school, plateRhythms, spellID) then
+				return spellID, rhythm
+			end
+		end
+	end
+
 	local function ofTick(hit, school, crowded, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
+		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
@@ -556,6 +651,12 @@ function Identity.New(saved)
 				try(cast.spellID)
 			end
 		end
+		-- A Stop Tick that its rhythm does not fit competes like a rhythm.
+		if stopSpell and plateRhythms[stopSpell] == stopRhythm then
+			plateRhythms[stopSpell] = { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
+				ends = stopRhythm.ends }
+			fits, found = fits + 1, stopSpell
+		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
 		return fits == 1 and not crowded and found or nil
@@ -567,15 +668,20 @@ function Identity.New(saved)
 	identity.SchoolOf = schoolOf
 
 	function identity.Cast(record)
+		startedAt = startedAt or record.time
 		if record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
 			-- A channel's ticks end with it. The stop marks the oldest open cast
 			-- of the spell, so a recast whose cast comes before the old channel's
 			-- stop keeps its own ticks. A long channel's cast can leave casts
 			-- before its stop, so the casts that Tick Rhythms hold count too.
+			-- Only a cast whose channel can still run counts: a cast whose stop
+			-- never came can stay in a Tick Rhythm on another mob (warlock-drain-life).
+			local spell = ns.TickSpells[record.spellID]
+			local runs = spell and spell.duration + TICK_TOLERANCE or math.huge
 			local oldest
 			local function consider(cast)
 				if cast and cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped
-					and not (oldest and oldest.time <= cast.time) then
+					and record.time - cast.time <= runs and not (oldest and oldest.time <= cast.time) then
 					oldest = cast
 				end
 			end
@@ -600,14 +706,28 @@ function Identity.New(saved)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
 		end
-		casts[#casts + 1] = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
+		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
 			secret = secret or nil, plate = record.startTargetLife }
+		casts[#casts + 1] = cast
+		local kept = {}
+		for _, old in ipairs(dotCasts) do
+			local spell = old.spellID and (ns.TickSpells[old.spellID] or RIVAL_ONLY[old.spellID])
+			if record.time - old.time <= (spell and spell.duration or LONGEST_DOT) + DIRECT_WINDOW + STOP_RIVAL then
+				kept[#kept + 1] = old
+			end
+		end
+		dotCasts = kept
+		local spell = cast.spellID and (ns.TickSpells[cast.spellID] or RIVAL_ONLY[cast.spellID])
+		if record.unit == "player" and (secret or spell and not spell.area) then
+			dotCasts[#dotCasts + 1] = cast
+		end
 	end
 
 	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
 	-- a known spell's cast is in one group only. A miss reports school 1 whatever
 	-- the spell, so it teaches nothing and uses the school of its spell's hits.
 	function identity.Of(hit, line, crowded)
+		startedAt = startedAt or hit.time
 		local plate = plateOf(hit)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil

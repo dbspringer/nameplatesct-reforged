@@ -826,6 +826,23 @@ describe("Spell Identity", function()
 				assert.are.equal(AGONY, of(identity, 15, "tick", SHADOW))
 			end)
 
+			-- warlock-drain-life: a stop marked a Drain Life cast from 25 s before,
+			-- which a rhythm on another mob still held, and not the channel it ended.
+			it("stops the channel that can still run, not an older one whose stop never came", function()
+				local identity = Identity.New({})
+				identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 0, spellID = DRAIN_LIFE, unit = "player",
+					startTargetLife = "nameplate2" })
+				of(identity, 1, "tick", SHADOW, "nameplate2")
+				castOn(identity, 20, DRAIN_LIFE)
+				for time = 21, 23 do
+					of(identity, time, "tick", SHADOW)
+				end
+				castOn(identity, 23, AGONY)
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 23.5, spellID = DRAIN_LIFE, unit = "player" })
+				-- Agony's first tick is due at 25, as Drain Life's would be had it not stopped.
+				assert.are.equal(AGONY, of(identity, 25, "tick", SHADOW))
+			end)
+
 			it("fits no tick to a channel after it stopped", function()
 				local identity = Identity.New({})
 				castOn(identity, 0, DRAIN_LIFE)
@@ -853,6 +870,150 @@ describe("Spell Identity", function()
 					hitEntry(5.05, "nameplate1", FIRE),
 				}
 				assert.are.same({ "none", IMMOLATE }, shownSpells(entries))
+			end)
+
+			-- A cast whose SENT named nameplate1, through Flow.
+			local function castEntries(time, spellID)
+				local castGUID = "Cast-" .. time .. "-" .. spellID
+				return { time, "UNIT_SPELLCAST_SENT", "player", "<secret>", castGUID, spellID, target = "nameplate1" },
+					{ time, "UNIT_SPELLCAST_SUCCEEDED", "player", castGUID, spellID, "<nil>", target = "nameplate1" }
+			end
+			local function stopEntry(time, spellID)
+				return { time, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "<nil>", spellID, "<nil>", "CastBar-1" }
+			end
+			local function tickEntries(time)
+				return lineEntry(time, "tick"), hitEntry(time, "nameplate1", SHADOW)
+			end
+			-- The entries 100 s later, after a cast at 0, so that Identity has run
+			-- longer than any DoT that could have been cast before it started
+			-- (see stopTickOf).
+			local function afterStartup(entries)
+				local later = { castEntry(0, SHADOW_BOLT) }
+				for _, entry in ipairs(entries) do
+					local copy = {}
+					for key, value in pairs(entry) do
+						copy[key] = value
+					end
+					copy[1] = entry[1] + 100
+					later[#later + 1] = copy
+				end
+				return later
+			end
+			local function entriesOf(...)
+				local entries = {}
+				for _, group in ipairs({ ... }) do
+					for _, entry in ipairs(group) do
+						entries[#entries + 1] = entry
+					end
+				end
+				return entries
+			end
+
+			-- warlock-drain-life: channels that stopped at about 3.75 s gave a tick
+			-- in the stop's frame, before the stop.
+			it("gives a Stop Tick its channel's spell, off the channel's rhythm", function()
+				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
+					{ tickEntries(3) }, { tickEntries(3.75) }, { stopEntry(3.75, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE, DRAIN_LIFE }, shownSpells(afterStartup(entries)))
+			end)
+
+			-- warlock-rfk 25337: the channel's last tick came 2 s before its stop,
+			-- and the Hit in the stop's frame was another player's, whose kill
+			-- stopped the channel.
+			it("gives no Stop Tick when the channel's last tick there came an interval or more before", function()
+				local entries = entriesOf({ castEntries(0, DRAIN_LIFE) }, { tickEntries(1) }, { tickEntries(2) },
+					{ tickEntries(3.5) }, { stopEntry(3.5, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(afterStartup(entries)))
+			end)
+
+			-- Codex review of warlock-drain-life 3011, 60 ms earlier: a Corruption
+			-- tick a little off its rhythm killed the mob, and the kill stopped the
+			-- channel in its frame.
+			it("gives no Stop Tick when another DoT's tick is due near it", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.2, DRAIN_LIFE) },
+					{ tickEntries(4.2) }, { tickEntries(5.2) }, { tickEntries(5.88) }, { stopEntry(5.88, DRAIN_LIFE) })
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(afterStartup(entries)))
+			end)
+
+			-- Codex review: the killing tick was a rival DoT's first tick, from its
+			-- cast or a refresh, which no rhythm holds yet.
+			it("gives no Stop Tick when another DoT's first tick is due near it", function()
+				local first = entriesOf({ castEntries(0, CORRUPTION) }, { castEntries(1.5, DRAIN_LIFE) }, { tickEntries(2.5) },
+					{ tickEntries(3.12) }, { stopEntry(3.12, DRAIN_LIFE) })
+				local refresh = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.5, CORRUPTION) },
+					{ castEntries(5, DRAIN_LIFE) }, { tickEntries(6) }, { tickEntries(6.62) }, { stopEntry(6.62, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, "none" }, shownSpells(afterStartup(first)))
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(afterStartup(refresh)))
+			end)
+
+			-- Codex review: the rival's last tick came 0.07 s early and its killing
+			-- tick 0.17 s late, off its last tick's grid but near its cast's.
+			it("gives no Stop Tick when another DoT's tick is due near it on its cast's grid", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { tickEntries(6) }, { tickEntries(9) },
+					{ tickEntries(11.93) }, { castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) },
+					{ tickEntries(15.17) }, { stopEntry(15.17, DRAIN_LIFE) })
+				local spells = shownSpells(afterStartup(entries))
+				assert.are.equal("none", spells[#spells])
+			end)
+
+			-- Codex review: a rival DoT cast with a secret GUID never set up a
+			-- rhythm, and its cast record was gone by the time it killed the mob.
+			it("gives no Stop Tick when a DoT cast long ago, with no rhythm, has a tick due near it", function()
+				local entries = entriesOf({
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", CORRUPTION, target = "nameplate1" },
+					{ 0, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", CORRUPTION, "<nil>", target = "nameplate1" },
+				}, { tickEntries(3.18) }, { tickEntries(6) }, { tickEntries(9) }, { tickEntries(12) },
+					{ castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) }, { tickEntries(15.17) },
+					{ stopEntry(15.17, DRAIN_LIFE) })
+				local spells = shownSpells(afterStartup(entries))
+				assert.are.equal("none", spells[#spells])
+			end)
+
+			-- Codex review: Doom's one tick at 60 s, or a DoT cast whose spell ID
+			-- is secret, can kill the mob in the stop's frame.
+			it("gives no Stop Tick when Doom or a cast with a secret spell ID could make the tick", function()
+				local CURSE_OF_DOOM = 603
+				local doom = entriesOf({ castEntries(0, CURSE_OF_DOOM) }, { castEntries(57.3, DRAIN_LIFE) }, { tickEntries(58.3) },
+					{ tickEntries(59.3) }, { tickEntries(60) }, { stopEntry(60, DRAIN_LIFE) })
+				local secret = entriesOf({
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-secret", "<secret>", target = "nameplate1" },
+					{ 0, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-secret", "<secret>", "<nil>", target = "nameplate1" },
+				}, { castEntries(4, DRAIN_LIFE) }, { tickEntries(5) }, { tickEntries(5.8) }, { stopEntry(5.8, DRAIN_LIFE) })
+				local doomSpells, secretSpells = shownSpells(afterStartup(doom)), shownSpells(afterStartup(secret))
+				assert.are.same({ "none", "none" }, { doomSpells[#doomSpells], secretSpells[#secretSpells] })
+			end)
+
+			-- Codex review: the Nameplate hid and showed again, which starts a new
+			-- plate life for the same mob, and its Corruption then killed it.
+			it("gives no Stop Tick when a DoT cast on an earlier life of the Nameplate has a tick due near it", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) },
+					{ { 3.3, "NAME_PLATE_UNIT_REMOVED", "nameplate1" }, { 3.4, "NAME_PLATE_UNIT_ADDED", "nameplate1" } },
+					{ castEntries(3.5, DRAIN_LIFE) }, { tickEntries(4.5) }, { tickEntries(5.5) }, { tickEntries(6.12) },
+					{ stopEntry(6.12, DRAIN_LIFE) })
+				local spells = shownSpells(afterStartup(entries))
+				assert.are.equal("none", spells[#spells])
+			end)
+
+			-- Codex review: replaying warlock-drain-life from entry 3919, as after
+			-- a /reload, gave Corruption's killing tick (hit 3941) Drain Life's icon,
+			-- as no cast showed that Corruption was running.
+			it("gives no Stop Tick while a DoT cast before Identity started could still run", function()
+				local entries = entriesOf({ castEntries(1, DRAIN_LIFE) }, { tickEntries(2) }, { tickEntries(3) },
+					{ tickEntries(3.6) }, { stopEntry(3.6, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
+			end)
+
+			-- Codex review: a rival tick exactly 0.2 s off its grid computed as
+			-- 0.20000000000000284 s off at a large GetTime().
+			it("counts a rival tick due exactly STOP_RIVAL away, at any GetTime()", function()
+				for _, origin in ipairs({ 100, 348614.364 }) do
+					local entries = entriesOf({ castEntries(origin, CORRUPTION) }, { tickEntries(origin + 3) },
+						{ castEntries(origin + 3.5, DRAIN_LIFE) }, { tickEntries(origin + 4.5) }, { tickEntries(origin + 5.5) },
+						{ tickEntries(origin + 6.2) }, { stopEntry(origin + 6.2, DRAIN_LIFE) })
+					table.insert(entries, 1, castEntry(origin - 100, SHADOW_BOLT))
+					local spells = shownSpells(entries)
+					assert.are.equal("none", spells[#spells], "origin " .. origin)
+				end
 			end)
 
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
@@ -1050,7 +1211,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 279
+		local UNKNOWN_FLOOR = 270
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

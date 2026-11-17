@@ -98,6 +98,10 @@ _Avoid_: Spell data, spell profile
 The times at which one spell's ticks come on one Nameplate: one interval apart, from its cast or landing. One tick can come a little early or late, but the next tick comes on the rhythm again, so a rhythm does not drift. A tick that comes on a spell's Tick Rhythm can be that spell's.
 _Avoid_: DoT timer, tick schedule
 
+**Stop Tick**:
+A channel's tick that comes in the same frame as the channel's stop. It can come before the next tick on the channel's Tick Rhythm, when the channel ends early. It is the channel's tick only when the channel ticked on the same Nameplate less than one interval before.
+_Avoid_: Last tick, final tick, partial tick
+
 **Secret Amount**:
 An amount that the game lets the addon show but not compare or calculate with.
 _Avoid_: Hidden value, protected number
