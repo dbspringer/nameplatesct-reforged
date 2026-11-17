@@ -563,4 +563,32 @@ describe("Flow", function()
 		assert.is_true(offDelay <= 48, ("%d swing Hits off the delay"):format(offDelay))
 		assert.is_true(shots >= 218, ("%d shots shown as Shoot"):format(shots))
 	end)
+
+	-- warlock-sm-armory is a Scarlet Monastery Armory run in a group, with all
+	-- four DoTs and Drain Life on several mobs at once. Its Labels are all
+	-- unsure, but a row unsure only for its secret amount has one file event,
+	-- so its spell is sure. Before Tick Rhythms took a cast's target (#69), 15
+	-- such ticks showed another DoT's icon and 772 ticks showed an icon; now
+	-- none and 808.
+	it("keeps every DoT's icon on its own mob through a dungeon run", function()
+		local trace, labels = Trace.LoadChecked("warlock-sm-armory")
+		local spellOf = {}
+		for _, row in ipairs(labels) do
+			if row.unsure == "secret amount" then
+				spellOf[row.hit] = row.spell
+			end
+		end
+		local icons, wrong = 0, {}
+		for _, result in ipairs(run(trace.entries)) do
+			if result.lineKind == "tick" and result.spellID then
+				icons = icons + 1
+			end
+			local spell = spellOf[result.hit.entry]
+			if result.spellID and spell ~= nil and result.spellID ~= spell then
+				wrong[#wrong + 1] = ("hit %d: %s, Label %s"):format(result.hit.entry, result.spellID, tostring(spell))
+			end
+		end
+		assert.are.same({}, wrong)
+		assert.is_true(icons >= 800, ("%d ticks shown with an icon"):format(icons))
+	end)
 end)
