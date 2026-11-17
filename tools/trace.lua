@@ -10,13 +10,24 @@ Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN = 0x2000
 
 -- The Traces in spec/traces/ that have checked Labels.
 Trace.NAMES = { "warlock-stockade", "warlock-thanes", "warlock-pet-thanes", "warlock-plate-text", "warlock-line-kind",
-	"warlock-spells", "warlock-rain-of-fire", "warlock-tick-jitter" }
+	"warlock-spells", "warlock-rain-of-fire", "warlock-tick-jitter", "warlock-drain-life" }
 
 -- Your Hits in those Traces that Pairing is known to give no Log Line, by
 -- Trace and Hit entry. warlock-spells 302: the pet's swing came off its
 -- settled Swing Delay while another Nameplate hid, which in a group is the
 -- sign of another player's Hit (see lostItsHit in src/Pairing.lua).
-Trace.LOST = { ["warlock-spells"] = { [302] = true } }
+-- warlock-drain-life 1311: Drain Life's heal on the player, whose line the game
+-- sent 0.1 s late, and a Hit on the player takes a line only in its own frame.
+Trace.LOST = { ["warlock-spells"] = { [302] = true }, ["warlock-drain-life"] = { [1311] = true } }
+
+-- Your Hits in those Traces that Spell Identity is known to give a wrong icon,
+-- by Trace and Hit entry. The replay fails on any other wrong icon, and on a
+-- Hit here that no longer gets one, so this list only shrinks.
+-- warlock-drain-life 3011: a Corruption tick that killed its mob, 0.95 s after
+-- Drain Life's last tick; Corruption's rhythm missed it by 0.100 s.
+-- warlock-drain-life 3527, 3575: Corruption ticks on a mob where Corruption had
+-- lost its rhythm, which fit the first tick of a Siphon Life cast 2.95 s before.
+Trace.WRONG = { ["warlock-drain-life"] = { [3011] = true, [3527] = true, [3575] = true } }
 
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111

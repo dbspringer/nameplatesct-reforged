@@ -1045,10 +1045,12 @@ describe("Spell Identity", function()
 	-- Every Warlock Trace through Flow, as the live addon runs, against the
 	-- spell of each Label. Wrong is an icon of another spell, or any icon on
 	-- a Hit that has none; Unknown is no icon on a Hit whose spell is known.
+	-- The Wrong icons in Trace.WRONG are known: each must still be Wrong, so a
+	-- fix removes it from the list.
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 32
+		local UNKNOWN_FLOOR = 279
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}
@@ -1062,6 +1064,7 @@ describe("Spell Identity", function()
 				for _, row in ipairs(labels) do
 					spellOf[row.hit] = row.spell
 				end
+				local known, stillWrong = Trace.WRONG[name] or {}, {}
 				local flow = ns.Flow.New({
 					spellFacts = facts,
 					show = function(hit, spellID)
@@ -1070,7 +1073,11 @@ describe("Spell Identity", function()
 							unknown = unknown + 1
 							perSpell[want] = (perSpell[want] or 0) + 1
 						elseif spellID ~= nil and spellID ~= want then
-							wrong[#wrong + 1] = ("%s hit %d: %s, Label %s"):format(name, hit.entry, spellID, tostring(want))
+							if known[hit.entry] then
+								stillWrong[hit.entry] = true
+							else
+								wrong[#wrong + 1] = ("%s hit %d: %s, Label %s"):format(name, hit.entry, spellID, tostring(want))
+							end
 						end
 					end,
 				})
@@ -1078,11 +1085,16 @@ describe("Spell Identity", function()
 					flow.Push(entry)
 				end
 				flow.Tick(math.huge)
+				for entry in pairs(known) do
+					if not stillWrong[entry] then
+						wrong[#wrong + 1] = ("%s hit %d: no longer Wrong, so remove it from Trace.WRONG"):format(name, entry)
+					end
+				end
 			end
 			return wrong, unknown, perSpell
 		end
 
-		it("gives no Wrong icon, with Spell Facts learned in each Trace alone", function()
+		it("gives no Wrong icon but the known ones, with Spell Facts learned in each Trace alone", function()
 			local wrong, unknown, perSpell = replay(false)
 			local parts = {}
 			for spellID, count in pairs(perSpell) do
@@ -1094,7 +1106,7 @@ describe("Spell Identity", function()
 			assert.is_true(unknown <= UNKNOWN_FLOOR, ("%d Unknown, more than %d"):format(unknown, UNKNOWN_FLOOR))
 		end)
 
-		it("gives no Wrong icon, and fewer Unknown, with Spell Facts carried from Trace to Trace", function()
+		it("gives no Wrong icon but the known ones, and fewer Unknown, with Spell Facts carried from Trace to Trace", function()
 			local wrong, unknown = replay(true)
 			assert.are.same({}, wrong)
 			assert.is_true(unknown < select(2, replay(false)), "carried Spell Facts gave no more icons")
