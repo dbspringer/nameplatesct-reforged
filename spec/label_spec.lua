@@ -396,6 +396,27 @@ describe("Labels", function()
 		assert.matches("^late", rows[42].unsure)
 	end)
 
+	-- The first late line lands on the second event's time, so the first pass
+	-- gives it that event.
+	it("keeps the event order when a late Log Line crosses a line of the first pass, and marks both unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = logLine(112.1)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 42, 44 }, { rows[41].line, rows[43].line })
+		assert.matches("^late", rows[41].unsure)
+		assert.matches("^late", rows[43].unsure)
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do

@@ -325,9 +325,9 @@ return {
 	{ hit = 1300, line = 1301, spell = 709 }, -- 347.317 player HEAL <secret> <- you: Drain Life SPELL_HEAL -0.003 s
 	{ hit = 1302, line = false }, -- 347.567 pet WOUND <secret> <- creature: swing SWING_DAMAGE +0.498 s
 	{ hit = 1304, line = 1307, spell = 7648 }, -- 347.900 nameplate1 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.002 s
-	{ hit = 1308, line = 1319, spell = 709 }, -- 348.361 nameplate1 WOUND <secret> <- you: Drain Life SPELL_PERIODIC_DAMAGE -0.002 s
+	{ hit = 1308, line = 1314, spell = 709 }, -- 348.361 nameplate1 WOUND <secret> <- you: Drain Life SPELL_PERIODIC_DAMAGE -0.002 s
 	{ hit = 1311, line = 1315, spell = 709 }, -- 348.361 player HEAL <secret> <- you: Drain Life SPELL_HEAL -0.002 s
-	{ hit = 1316, line = 1314, spell = 6217 }, -- 348.459 nameplate1 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.003 s
+	{ hit = 1316, line = 1319, spell = 6217 }, -- 348.459 nameplate1 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.003 s
 	{ hit = 1320, line = 1313, spell = false }, -- 349.183 nameplate1 WOUND <secret> <- pet: swing SWING_DAMAGE +0.955 s
 	{ hit = 1324, line = 1323, spell = 709 }, -- 349.358 nameplate1 WOUND <secret> <- you: Drain Life SPELL_PERIODIC_DAMAGE -0.002 s
 	{ hit = 1327, line = 1329, spell = 709 }, -- 349.358 player HEAL <secret> <- you: Drain Life SPELL_HEAL -0.003 s

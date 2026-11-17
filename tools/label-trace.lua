@@ -291,21 +291,27 @@ local function align(trace, logLines, candidates)
 
 	-- The game can send a frame's Log Lines late, so a line that is still
 	-- unmatched takes an unused event of its colour that came up to
-	-- LATE_LINE_MS before it, never one after it. Log Lines keep their events'
-	-- order, so it takes the oldest. When more than one fits, another order
-	-- could be right too, so the line, and any later line that takes one of
-	-- those events, is in the returned set of unsure lines, with the count.
-	local used, matchedLine, unsureLines, contested = {}, {}, {}, {}
+	-- LATE_LINE_MS before it, or after it only by the first pass's ALIGN_MS,
+	-- as the two clocks differ by a few milliseconds. Log Lines keep their events'
+	-- order, so it takes the oldest, and when an earlier line has a newer event
+	-- of the same colour that this line could also report, the two swap. When
+	-- more than one event fits, or two lines swap, another order could be right
+	-- too, so those lines, and any later line that takes one of those events,
+	-- are in the returned set of unsure lines, with the count of events.
+	local used, eventOfLine, unsureLines, contested = {}, {}, {}, {}
 	for event, line in pairs(bestPairs) do
-		used[event], matchedLine[line] = true, true
+		used[event], eventOfLine[line] = true, event
+	end
+	local function canReport(line, event)
+		local at = line.time * 1000 + bestOffset
+		return at - event.ms >= -ALIGN_MS and at - event.ms <= LATE_LINE_MS
+			and colourFits(trace.entries[line.entry], event, filter)
 	end
 	for _, line in ipairs(logLines) do
-		if not matchedLine[line] then
-			local at = line.time * 1000 + bestOffset
+		if not eventOfLine[line] then
 			local fitting = {}
 			for _, event in ipairs(candidates) do
-				if not used[event] and event.ms <= at and at - event.ms <= LATE_LINE_MS
-					and colourFits(trace.entries[line.entry], event, filter) then
+				if not used[event] and canReport(line, event) then
 					fitting[#fitting + 1] = event
 				end
 			end
@@ -314,14 +320,31 @@ local function align(trace, logLines, candidates)
 			end)
 			local oldest = fitting[1]
 			if oldest then
-				used[oldest], bestPairs[oldest] = true, line
 				if #fitting > 1 then
 					for _, event in ipairs(fitting) do
 						contested[event] = math.max(contested[event] or 0, #fitting)
 					end
 				end
-				if contested[oldest] then
-					unsureLines[line] = contested[oldest]
+				local crossing
+				for other, event in pairs(eventOfLine) do
+					if other.entry < line.entry and event.ms > oldest.ms and canReport(line, event) and canReport(other, oldest)
+						and not (crossing and crossing.entry < other.entry) then
+						crossing = other
+					end
+				end
+				used[oldest] = true
+				if crossing then
+					local newer = eventOfLine[crossing]
+					bestPairs[oldest], eventOfLine[crossing] = crossing, oldest
+					bestPairs[newer], eventOfLine[line] = line, newer
+					contested[oldest] = math.max(contested[oldest] or 0, 2)
+					contested[newer] = math.max(contested[newer] or 0, 2)
+					unsureLines[crossing] = contested[oldest]
+				else
+					bestPairs[oldest], eventOfLine[line] = line, oldest
+				end
+				if contested[eventOfLine[line]] then
+					unsureLines[line] = contested[eventOfLine[line]]
 				end
 			end
 		end
