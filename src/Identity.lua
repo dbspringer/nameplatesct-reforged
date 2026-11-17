@@ -555,7 +555,7 @@ function Identity.New(saved)
 	-- or from a cast that no rhythm holds, while its DoT can run: its tick can
 	-- kill the mob, which stops the channel in the same frame, and come a
 	-- little off time.
-	local function rivalDue(hit, school, plateRhythms, channelID, plate)
+	local function rivalDue(hit, school, plateRhythms, channelID)
 		local function rival(spellID)
 			local spell = ns.TickSpells[spellID] or RIVAL_ONLY[spellID]
 			return spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and spell
@@ -583,8 +583,10 @@ function Identity.New(saved)
 			if cast.secret and hit.time - cast.time <= LONGEST_DOT + STOP_RIVAL then
 				return true
 			end
+			-- On any unit: the same mob gets a new plate life when its Nameplate
+			-- shows again, and a cast's plate is its first life.
 			local spell = not cast.secret and not cast.missed and rival(cast.spellID)
-			if spell and (cast.plate == nil or cast.plate == plate) and not stoppedBefore(cast, hit)
+			if spell and not stoppedBefore(cast, hit)
 				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
 				return true
 			end
@@ -599,13 +601,13 @@ function Identity.New(saved)
 	-- stop's frame long after it can be one whose kill stopped the channel
 	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
 	-- before Pairing decides that frame's Hits.
-	local function stopTickOf(hit, school, plateRhythms, plate)
+	local function stopTickOf(hit, school, plateRhythms)
 		for spellID, rhythm in pairs(plateRhythms) do
 			local spell = ns.TickSpells[spellID]
 			local cast = rhythm.cast
 			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
 				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
-				and not rivalDue(hit, school, plateRhythms, spellID, plate) then
+				and not rivalDue(hit, school, plateRhythms, spellID) then
 				return spellID, rhythm
 			end
 		end
@@ -614,7 +616,7 @@ function Identity.New(saved)
 	local function ofTick(hit, school, crowded, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
-		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms, plate)
+		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]

@@ -968,6 +968,17 @@ describe("Spell Identity", function()
 				assert.are.same({ "none", "none" }, { doomSpells[#doomSpells], secretSpells[#secretSpells] })
 			end)
 
+			-- Codex review: the Nameplate hid and showed again, which starts a new
+			-- plate life for the same mob, and its Corruption then killed it.
+			it("gives no Stop Tick when a DoT cast on an earlier life of the Nameplate has a tick due near it", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) },
+					{ { 3.3, "NAME_PLATE_UNIT_REMOVED", "nameplate1" }, { 3.4, "NAME_PLATE_UNIT_ADDED", "nameplate1" } },
+					{ castEntries(3.5, DRAIN_LIFE) }, { tickEntries(4.5) }, { tickEntries(5.5) }, { tickEntries(6.12) },
+					{ stopEntry(6.12, DRAIN_LIFE) })
+				local spells = shownSpells(entries)
+				assert.are.equal("none", spells[#spells])
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
