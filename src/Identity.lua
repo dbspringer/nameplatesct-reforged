@@ -255,6 +255,9 @@ function Identity.New(saved)
 	-- tick on any unit, stopped when its channel stopped, and plate the plate
 	-- life of the player's target when it started (see Adapter.New), or nil.
 	local casts = {}
+	-- The player's casts of spells that tick, kept while their DoT can run,
+	-- longer than casts: what rivalDue reads.
+	local dotCasts = {}
 	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
 	-- ends }. source is the cast or landing that started it, last its last
 	-- tick (none yet after a landing), and ends when its duration ends.
@@ -535,7 +538,7 @@ function Identity.New(saved)
 
 	-- Whether a tick of another DoT of the school on this unit is due within
 	-- STOP_RIVAL of this one, on a running rhythm's last tick or source grid,
-	-- or from a recent cast whose first tick no rhythm holds yet: its tick can
+	-- or from a cast that no rhythm holds, while its DoT can run: its tick can
 	-- kill the mob, which stops the channel in the same frame, and come a
 	-- little off time.
 	local function rivalDue(hit, school, plateRhythms, channelID, plate)
@@ -562,8 +565,8 @@ function Identity.New(saved)
 				return true
 			end
 		end
-		for _, cast in ipairs(casts) do
-			local spell = cast.unit == "player" and not cast.secret and not cast.missed and rival(cast.spellID)
+		for _, cast in ipairs(dotCasts) do
+			local spell = not cast.missed and rival(cast.spellID)
 			if spell and (cast.plate == nil or cast.plate == plate) and not stoppedBefore(cast, hit)
 				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
 				return true
@@ -673,8 +676,20 @@ function Identity.New(saved)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
 		end
-		casts[#casts + 1] = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
+		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
 			secret = secret or nil, plate = record.startTargetLife }
+		casts[#casts + 1] = cast
+		local kept = {}
+		for _, old in ipairs(dotCasts) do
+			if record.time - old.time <= ns.TickSpells[old.spellID].duration + DIRECT_WINDOW + STOP_RIVAL then
+				kept[#kept + 1] = old
+			end
+		end
+		dotCasts = kept
+		local spell = cast.spellID and ns.TickSpells[cast.spellID]
+		if record.unit == "player" and spell and not spell.area then
+			dotCasts[#dotCasts + 1] = cast
+		end
 	end
 
 	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so

@@ -941,6 +941,19 @@ describe("Spell Identity", function()
 				assert.are.equal("none", spells[#spells])
 			end)
 
+			-- Codex review: a rival DoT cast with a secret GUID never set up a
+			-- rhythm, and its cast record was gone by the time it killed the mob.
+			it("gives no Stop Tick when a DoT cast long ago, with no rhythm, has a tick due near it", function()
+				local entries = entriesOf({
+					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", CORRUPTION, target = "nameplate1" },
+					{ 0, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", CORRUPTION, "<nil>", target = "nameplate1" },
+				}, { tickEntries(3.18) }, { tickEntries(6) }, { tickEntries(9) }, { tickEntries(12) },
+					{ castEntries(12.4, DRAIN_LIFE) }, { tickEntries(13.4) }, { tickEntries(14.4) }, { tickEntries(15.17) },
+					{ stopEntry(15.17, DRAIN_LIFE) })
+				local spells = shownSpells(entries)
+				assert.are.equal("none", spells[#spells])
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
