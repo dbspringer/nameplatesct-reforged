@@ -533,19 +533,39 @@ function Identity.New(saved)
 		end
 	end
 
-	-- Whether another running rhythm of the school on this unit has a tick due
-	-- within STOP_RIVAL of this one: its DoT's tick can kill the mob, which
-	-- stops the channel in the same frame, and come a little off its rhythm.
-	local function rivalDue(hit, school, plateRhythms, channelID)
-		for spellID, rhythm in pairs(plateRhythms) do
+	-- Whether a tick of another DoT of the school on this unit is due within
+	-- STOP_RIVAL of this one, on a running rhythm or from a recent cast or
+	-- landing whose first tick no rhythm holds yet: its tick can kill the mob,
+	-- which stops the channel in the same frame, and come a little off time.
+	local function rivalDue(hit, school, plateRhythms, channelID, plate)
+		local function rival(spellID)
 			local spell = ns.TickSpells[spellID]
-			if spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and rhythm.last
-				and hit.time <= rhythm.ends + STOP_RIVAL and not (rhythm.cast and stoppedBefore(rhythm.cast, hit)) then
-				local since = hit.time - rhythm.last
-				local steps = math.floor(since / spell.interval + 0.5)
-				if steps >= 1 and math.abs(since - steps * spell.interval) <= STOP_RIVAL then
-					return true
-				end
+			return spellID ~= channelID and spell and not spell.area and (not school or spell.school == school) and spell
+		end
+		local function due(spell, from, extra)
+			local since = hit.time - from
+			if since > spell.duration + STOP_RIVAL then
+				return false
+			end
+			if since >= spell.interval - STOP_RIVAL and since <= spell.interval + STOP_RIVAL + extra then
+				return true
+			end
+			local steps = math.floor(since / spell.interval + 0.5)
+			return steps >= 1 and math.abs(since - steps * spell.interval) <= STOP_RIVAL
+		end
+		for spellID, rhythm in pairs(plateRhythms) do
+			local spell = rival(spellID)
+			if spell and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+				and (rhythm.last and hit.time <= rhythm.ends + STOP_RIVAL and due(spell, rhythm.last, 0)
+					or not rhythm.last and due(spell, rhythm.source, 0)) then
+				return true
+			end
+		end
+		for _, cast in ipairs(casts) do
+			local spell = cast.unit == "player" and not cast.secret and not cast.missed and rival(cast.spellID)
+			if spell and (cast.plate == nil or cast.plate == plate) and not stoppedBefore(cast, hit)
+				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
+				return true
 			end
 		end
 		return false
@@ -558,13 +578,13 @@ function Identity.New(saved)
 	-- stop's frame long after it can be one whose kill stopped the channel
 	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
 	-- before Pairing decides that frame's Hits.
-	local function stopTickOf(hit, school, plateRhythms)
+	local function stopTickOf(hit, school, plateRhythms, plate)
 		for spellID, rhythm in pairs(plateRhythms) do
 			local spell = ns.TickSpells[spellID]
 			local cast = rhythm.cast
 			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
 				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
-				and not rivalDue(hit, school, plateRhythms, spellID) then
+				and not rivalDue(hit, school, plateRhythms, spellID, plate) then
 				return spellID, rhythm
 			end
 		end
@@ -573,7 +593,7 @@ function Identity.New(saved)
 	local function ofTick(hit, school, crowded, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
-		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
+		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms, plate)
 		local tried, fits, found = {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]

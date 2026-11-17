@@ -920,6 +920,17 @@ describe("Spell Identity", function()
 				assert.are.same({ CORRUPTION, DRAIN_LIFE, DRAIN_LIFE, "none" }, shownSpells(entries))
 			end)
 
+			-- Codex review: the killing tick was a rival DoT's first tick, from its
+			-- cast or a refresh, which no rhythm holds yet.
+			it("gives no Stop Tick when another DoT's first tick is due near it", function()
+				local first = entriesOf({ castEntries(0, CORRUPTION) }, { castEntries(1.5, DRAIN_LIFE) }, { tickEntries(2.5) },
+					{ tickEntries(3.12) }, { stopEntry(3.12, DRAIN_LIFE) })
+				local refresh = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3) }, { castEntries(3.5, CORRUPTION) },
+					{ castEntries(5, DRAIN_LIFE) }, { tickEntries(6) }, { tickEntries(6.62) }, { stopEntry(6.62, DRAIN_LIFE) })
+				assert.are.same({ DRAIN_LIFE, "none" }, shownSpells(first))
+				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(refresh))
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
