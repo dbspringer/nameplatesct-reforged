@@ -290,28 +290,43 @@ local function align(trace, logLines, candidates)
 	bestOffset, bestPairs = bestOffset or guess, bestPairs or {}
 
 	-- The game can send a frame's Log Lines late, so a line that is still
-	-- unmatched takes the nearest unused event of its colour that came up to
-	-- LATE_LINE_MS before it, never one after it.
-	local used, matchedLine = {}, {}
+	-- unmatched takes an unused event of its colour that came up to
+	-- LATE_LINE_MS before it, never one after it. Log Lines keep their events'
+	-- order, so it takes the oldest. When more than one fits, another order
+	-- could be right too, so the line, and any later line that takes one of
+	-- those events, is in the returned set of unsure lines, with the count.
+	local used, matchedLine, unsureLines, contested = {}, {}, {}, {}
 	for event, line in pairs(bestPairs) do
 		used[event], matchedLine[line] = true, true
 	end
 	for _, line in ipairs(logLines) do
 		if not matchedLine[line] then
 			local at = line.time * 1000 + bestOffset
-			local best
+			local fitting = {}
 			for _, event in ipairs(candidates) do
 				if not used[event] and event.ms <= at and at - event.ms <= LATE_LINE_MS
-					and (not best or event.ms > best.ms) and colourFits(trace.entries[line.entry], event, filter) then
-					best = event
+					and colourFits(trace.entries[line.entry], event, filter) then
+					fitting[#fitting + 1] = event
 				end
 			end
-			if best then
-				used[best], bestPairs[best] = true, line
+			table.sort(fitting, function(a, b)
+				return a.ms < b.ms
+			end)
+			local oldest = fitting[1]
+			if oldest then
+				used[oldest], bestPairs[oldest] = true, line
+				if #fitting > 1 then
+					for _, event in ipairs(fitting) do
+						contested[event] = math.max(contested[event] or 0, #fitting)
+					end
+				end
+				if contested[oldest] then
+					unsureLines[line] = contested[oldest]
+				end
 			end
 		end
 	end
-	return bestOffset, bestPairs
+	return bestOffset, bestPairs, unsureLines
 end
 
 -- The life of each nameplate token, for each Hit: a token names a new unit
@@ -466,7 +481,7 @@ function Label.Make(trace, lines)
 	if not candidates then
 		return nil, message
 	end
-	local offset, lineOf = align(trace, logLines, candidates)
+	local offset, lineOf, unsureLines = align(trace, logLines, candidates)
 	if not offset then
 		return nil, lineOf
 	end
@@ -539,6 +554,9 @@ function Label.Make(trace, lines)
 		end
 		if not unsure and event and hit.time - event.time > LATE then
 			unsure = ("late by %.2f s"):format(hit.time - event.time)
+		end
+		if not unsure and event and lineOf[event] and unsureLines[lineOf[event]] then
+			unsure = ("late Log Line, of %d file events"):format(unsureLines[lineOf[event]])
 		end
 		if not unsure and hit.amount == "<secret>" then
 			unsure = "secret amount"

@@ -375,6 +375,27 @@ describe("Labels", function()
 		assert.are.same({ 22, 6222 }, { rows[21].line, rows[21].spell })
 	end)
 
+	-- Log Lines keep the order of their file events, so two late lines take
+	-- them in that order. A person checks such rows, as another order could fit.
+	it("gives two late Log Lines of one colour their file events in order, and marks them unsure", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 19 do
+			entries[#entries + 1] = logLine(101 + i * 0.5)
+			entries[#entries + 1] = report(101 + i * 0.5, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.5, ME, MOB_A, 20 + i, "Immolate")
+		end
+		entries[#entries + 1] = report(112, "nameplate1", "nameplate1", "WOUND", 50)
+		entries[#entries + 1] = report(112.1, "nameplate1", "nameplate1", "WOUND", 51)
+		entries[#entries + 1] = logLine(112.2)
+		entries[#entries + 1] = logLine(112.3)
+		fileLines[#fileLines + 1] = damage(112, ME, MOB_A, 50, "Immolate")
+		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
+		local rows = label(entries, fileLines)
+		assert.are.same({ 43, 44 }, { rows[41].line, rows[42].line })
+		assert.matches("^late", rows[41].unsure)
+		assert.matches("^late", rows[42].unsure)
+	end)
+
 	it("gives a Log Line no file event from after it", function()
 		local entries, fileLines = {}, {}
 		for i = 0, 9 do
