@@ -392,8 +392,8 @@ describe("Labels", function()
 		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
 		local rows = label(entries, fileLines)
 		assert.are.same({ 43, 44 }, { rows[41].line, rows[42].line })
-		assert.matches("^late", rows[41].unsure)
-		assert.matches("^late", rows[42].unsure)
+		assert.are.equal("Log Line matched by order", rows[41].unsure)
+		assert.are.equal("Log Line matched by order", rows[42].unsure)
 	end)
 
 	-- The first late line lands on the second event's time, so the first pass
@@ -413,8 +413,8 @@ describe("Labels", function()
 		fileLines[#fileLines + 1] = damage(112.1, ME, MOB_A, 51, "Immolate")
 		local rows = label(entries, fileLines)
 		assert.are.same({ 42, 44 }, { rows[41].line, rows[43].line })
-		assert.matches("^late", rows[41].unsure)
-		assert.matches("^late", rows[43].unsure)
+		assert.are.equal("Log Line matched by order", rows[41].unsure)
+		assert.are.equal("Log Line matched by order", rows[43].unsure)
 	end)
 
 	it("keeps the event order through a burst of three late Log Lines, and marks them all unsure", function()
@@ -436,7 +436,7 @@ describe("Labels", function()
 		local rows = label(entries, fileLines)
 		assert.are.same({ 42, 44, 46 }, { rows[41].line, rows[43].line, rows[45].line })
 		for _, hit in ipairs({ 41, 43, 45 }) do
-			assert.matches("^late", rows[hit].unsure)
+			assert.are.equal("Log Line matched by order", rows[hit].unsure)
 		end
 	end)
 
@@ -462,6 +462,30 @@ describe("Labels", function()
 		for _ = 1, 20 do
 			local rows = label(entries, fileLines)
 			assert.are.same({ 42, 45, 47, 48 }, { rows[41].line, rows[43].line, rows[44].line, rows[46].line })
+		end
+	end)
+
+	-- Each line is 0.24 s late or less, but the burst spans more, and the first
+	-- two lines lie within 60 ms of the wrong events.
+	it("keeps the event order through a late burst longer than the late window", function()
+		local entries, fileLines = {}, {}
+		for i = 0, 29 do
+			entries[#entries + 1] = logLine(101 + i * 0.3)
+			entries[#entries + 1] = report(101 + i * 0.3, "nameplate1", "nameplate1", "WOUND", 20 + i)
+			fileLines[#fileLines + 1] = damage(101 + i * 0.3, ME, MOB_A, 20 + i, "Immolate")
+		end
+		local times = { 112, 112.2, 112.4, 112.5 }
+		for i, time in ipairs(times) do
+			entries[#entries + 1] = report(time, "nameplate1", "nameplate1", "WOUND", 60 + i)
+			fileLines[#fileLines + 1] = damage(time, ME, MOB_A, 60 + i, "Immolate")
+		end
+		for _, time in ipairs({ 112.24, 112.4, 112.64, 112.74 }) do
+			entries[#entries + 1] = logLine(time)
+		end
+		local rows = label(entries, fileLines)
+		assert.are.same({ 65, 66, 67, 68 }, { rows[61].line, rows[62].line, rows[63].line, rows[64].line })
+		for hit = 61, 64 do
+			assert.are.equal("Log Line matched by order", rows[hit].unsure)
 		end
 	end)
 
