@@ -826,6 +826,23 @@ describe("Spell Identity", function()
 				assert.are.equal(AGONY, of(identity, 15, "tick", SHADOW))
 			end)
 
+			-- warlock-drain-life: a stop marked a Drain Life cast from 25 s before,
+			-- which a rhythm on another mob still held, and not the channel it ended.
+			it("stops the channel that can still run, not an older one whose stop never came", function()
+				local identity = Identity.New({})
+				identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 0, spellID = DRAIN_LIFE, unit = "player",
+					startTargetLife = "nameplate2" })
+				of(identity, 1, "tick", SHADOW, "nameplate2")
+				castOn(identity, 20, DRAIN_LIFE)
+				for time = 21, 23 do
+					of(identity, time, "tick", SHADOW)
+				end
+				castOn(identity, 23, AGONY)
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 23.5, spellID = DRAIN_LIFE, unit = "player" })
+				-- Agony's first tick is due at 25, as Drain Life's would be had it not stopped.
+				assert.are.equal(AGONY, of(identity, 25, "tick", SHADOW))
+			end)
+
 			it("fits no tick to a channel after it stopped", function()
 				local identity = Identity.New({})
 				castOn(identity, 0, DRAIN_LIFE)

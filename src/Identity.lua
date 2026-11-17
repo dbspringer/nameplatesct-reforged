@@ -572,10 +572,14 @@ function Identity.New(saved)
 			-- of the spell, so a recast whose cast comes before the old channel's
 			-- stop keeps its own ticks. A long channel's cast can leave casts
 			-- before its stop, so the casts that Tick Rhythms hold count too.
+			-- Only a cast whose channel can still run counts: a cast whose stop
+			-- never came can stay in a Tick Rhythm on another mob (warlock-drain-life).
+			local spell = ns.TickSpells[record.spellID]
+			local runs = spell and spell.duration + TICK_TOLERANCE or math.huge
 			local oldest
 			local function consider(cast)
 				if cast and cast.unit == "player" and cast.spellID == record.spellID and not cast.stopped
-					and not (oldest and oldest.time <= cast.time) then
+					and record.time - cast.time <= runs and not (oldest and oldest.time <= cast.time) then
 					oldest = cast
 				end
 			end
