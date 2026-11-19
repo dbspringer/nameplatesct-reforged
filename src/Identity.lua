@@ -494,10 +494,12 @@ function Identity.New(saved, class)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
 		local found, fitting = castOf(hit, group, school, miss)
-		local poison = poisons and group == "direct" and school == SCHOOL_NATURE and poisons.ProcSpell(hit)
+		-- A cast that fits could have made the Hit too, so it goes on as any
+		-- direct Hit, and uses that cast up.
+		local poison = poisons and group == "direct" and school == SCHOOL_NATURE and fitting == 0
+			and poisons.ProcSpell(hit)
 		if poison then
-			-- As for a Seal Proc, a cast that fits could have made the Hit too.
-			return fitting == 0 and poison or nil
+			return poison
 		end
 		local seal = group == "direct" and seals.ProcSpell(hit, school)
 		if seal then

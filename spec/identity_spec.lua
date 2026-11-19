@@ -306,6 +306,15 @@ describe("Spell Identity", function()
 			end
 		end)
 
+		it("gives none when a cast also fits, and that cast is used up as before", function()
+			local identity = Identity.New({}, "ROGUE")
+			swing(identity, 5)
+			cast(identity, 5, "<secret>")
+			assert.is_nil(of(identity, 5.05, "direct", NATURE))
+			cast(identity, 5.2, SINISTER_STRIKE)
+			assert.are.equal(SINISTER_STRIKE, of(identity, 5.3, "direct", PHYSICAL))
+		end)
+
 		it("gives Deadly Poison to a Rogue's Nature tick that no Tick Rhythm fits", function()
 			assert.are.equal(DEADLY_POISON, of(Identity.New({}, "ROGUE"), 5, "tick", NATURE))
 		end)
