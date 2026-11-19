@@ -90,6 +90,10 @@ _Avoid_: Current seal, seal buff
 Your Hit made by the Active Seal when a melee swing lands, with no cast of its own.
 _Avoid_: Seal damage, seal hit
 
+**Poison Proc**:
+Your Hit made by a Rogue's poison on a weapon, with no cast of its own: Instant Poison's Hit just after a landed melee hit, or a Deadly Poison tick.
+_Avoid_: Poison damage, poison tick
+
 **Spell Facts**:
 What the addon has learned about a spell whose school is not fixed, such as a wand's Shoot, from Your Hits: the school of its shots. A fact counts only once enough Hits agree on it. Other spells are known from the start, so they need none. Text for players calls them learned spells.
 _Avoid_: Spell data, spell profile

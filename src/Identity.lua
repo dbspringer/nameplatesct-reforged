@@ -15,7 +15,10 @@ ns.Identity = Identity
 -- that Spell Facts have learned (ADR 0004). On Forever an area spell's ticks
 -- come as direct hits, so a direct hit can also take an area spell, each
 -- interval after its cast, the first up to DIRECT_WINDOW later for one that
--- travels (see areaOf). When it is not sure, it gives none.
+-- travels (see areaOf). A Seal Proc and a Rogue's Poison Procs have no cast:
+-- a Seal Proc goes by the Active Seal and a landed swing, a poison by its
+-- school and a landed melee hit (see newSealTracker and newPoisonTracker).
+-- When it is not sure, it gives none.
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -67,6 +70,16 @@ local SCHOOL_HOLY = 2
 -- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
 -- melee line is the longest, and this is well past it.
 local SEAL_CHANGE_AGE = 2
+-- A Poison Proc's spells, by their first rank's damage spell ID, so that each
+-- rank shows one icon and name: Instant Poison's direct hit and Deadly
+-- Poison's tick (Forever's spell data, build 1.60.1.70888).
+local INSTANT_POISON, DEADLY_POISON = 8680, 2818
+-- Instant Poison comes just after the melee hit that landed it: 339 of 341 of
+-- a party Rogue's in warlock-rfk came 1 to 100 ms after one of their swings
+-- or strikes in the Combat Log File, on the same target. The same window as a
+-- Seal Proc's.
+local POISON_PROC_WINDOW = 0.15
+local SCHOOL_PHYSICAL, SCHOOL_NATURE = 1, 8
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
 -- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
@@ -250,6 +263,50 @@ local function newSealTracker()
 	return tracker
 end
 
+-- Follows the player's landed melee hits, which are all that tie Instant
+-- Poison's Hit to the player, as a proc has no cast. A Rogue has no Nature
+-- spell, so a Nature Hit with no cast is a poison's, or a rare item proc's,
+-- which then shows a poison's icon: the poison on a weapon is not checked
+-- (ADR 0004).
+local function newPoisonTracker()
+	-- The times of the player's latest landed swing lines and strike Hits.
+	local landed = {}
+
+	local function land(time)
+		while landed[1] and time - landed[1] > POISON_PROC_WINDOW + DECIDE_LATE do
+			table.remove(landed, 1)
+		end
+		landed[#landed + 1] = time
+	end
+
+	local tracker = {}
+
+	-- A pet's swing line lands no poison, and a swing that missed lands none.
+	function tracker.Line(record)
+		if record.lineKind == "swing" and not record.pet then
+			land(record.time)
+		end
+	end
+
+	-- A strike's Hit: a Physical direct Hit of the player's.
+	function tracker.Strike(hit)
+		land(hit.time)
+	end
+
+	-- Instant Poison if this Nature direct Hit comes just after a landed melee
+	-- hit, or nil.
+	function tracker.ProcSpell(hit)
+		for _, time in ipairs(landed) do
+			local since = hit.time - time
+			if since >= 0 and since <= POISON_PROC_WINDOW then
+				return INSTANT_POISON
+			end
+		end
+	end
+
+	return tracker
+end
+
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
@@ -259,8 +316,9 @@ end
 -- order of their time, a held Hit up to DECIDE_LATE late. crowded says that
 -- another tick that could be the same spell's came at the same time on the
 -- same unit. SchoolOf(spellID) gives the school of a spell's hits, from a
--- table or from the Spell Facts that count, or nil.
-function Identity.New(saved)
+-- table or from the Spell Facts that count, or nil. class is the player's
+-- class token from UnitClass, which turns on the Poison Procs for a Rogue.
+function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
 	-- missed, secret, lastTick, stopped, plate }. A cast whose spell ID is
@@ -282,6 +340,7 @@ function Identity.New(saved)
 	-- Weak keys, so a plate life's rhythms go with the life.
 	local rhythms = setmetatable({}, { __mode = "k" })
 	local seals = newSealTracker()
+	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -435,6 +494,13 @@ function Identity.New(saved)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
 		local found, fitting = castOf(hit, group, school, miss)
+		-- A cast that fits could have made the Hit too, so it goes on as any
+		-- direct Hit, and uses that cast up.
+		local poison = poisons and group == "direct" and school == SCHOOL_NATURE and fitting == 0
+			and poisons.ProcSpell(hit)
+		if poison then
+			return poison
+		end
 		local seal = group == "direct" and seals.ProcSpell(hit, school)
 		if seal then
 			-- A cast that fits could have made the Hit too, so it gets none, and
@@ -657,6 +723,11 @@ function Identity.New(saved)
 				ends = stopRhythm.ends }
 			fits, found = fits + 1, stopSpell
 		end
+		-- A Rogue's Nature tick that no rhythm fits is Deadly Poison's, which
+		-- has no cast. Its stacks tick as one, so crowding does not matter.
+		if fits == 0 and poisons and school == SCHOOL_NATURE then
+			return DEADLY_POISON
+		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
 		return fits == 1 and not crowded and found or nil
@@ -664,7 +735,12 @@ function Identity.New(saved)
 
 	local identity = {}
 
-	identity.Line = seals.Line
+	function identity.Line(record)
+		seals.Line(record)
+		if poisons then
+			poisons.Line(record)
+		end
+	end
 	identity.SchoolOf = schoolOf
 
 	function identity.Cast(record)
@@ -734,6 +810,9 @@ function Identity.New(saved)
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
 			return ofTick(hit, school, crowded, plate)
+		end
+		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
+			poisons.Strike(hit)
 		end
 		return group and ofDirect(hit, group, school, miss, plate) or nil
 	end
