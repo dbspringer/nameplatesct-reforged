@@ -170,7 +170,8 @@ end
 -- noPlate(hit, how) Your Hits on target or a soft target with no Nameplate;
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)
-	flow = ns.Flow.New({ show = show, noPlate = noPlate, spellFacts = spellFacts })
+	local _, class = UnitClass("player")
+	flow = ns.Flow.New({ show = show, noPlate = noPlate, spellFacts = spellFacts, class = class })
 	frame:SetScript("OnUpdate", onUpdate)
 
 	keepFilteredEvents()

@@ -279,6 +279,45 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of a Poison Proc", function()
+		local INSTANT_POISON, DEADLY_POISON, SINISTER_STRIKE = 8680, 2818, 1752
+
+		local function swing(identity, time)
+			identity.Line({ kind = "line", time = time, lineKind = "swing" })
+		end
+
+		it("gives Instant Poison to a Rogue's Nature Hit up to 0.15 s after a swing line", function()
+			for _, time in ipairs({ 5, 5.05, 5.149 }) do
+				local identity = Identity.New({}, "ROGUE")
+				swing(identity, 5)
+				assert.are.equal(INSTANT_POISON, of(identity, time, "direct", NATURE))
+			end
+			local late = Identity.New({}, "ROGUE")
+			swing(late, 5)
+			assert.is_nil(of(late, 5.2, "direct", NATURE))
+		end)
+
+		it("gives Instant Poison to a Rogue's Nature Hit up to 0.15 s after a strike's Hit", function()
+			for time, want in pairs({ [5.15] = INSTANT_POISON, [5.3] = false }) do
+				local identity = Identity.New({}, "ROGUE")
+				cast(identity, 5, SINISTER_STRIKE)
+				assert.are.equal(SINISTER_STRIKE, of(identity, 5.1, "direct", PHYSICAL))
+				assert.are.equal(want or nil, of(identity, time, "direct", NATURE))
+			end
+		end)
+
+		it("gives Deadly Poison to a Rogue's Nature tick that no Tick Rhythm fits", function()
+			assert.are.equal(DEADLY_POISON, of(Identity.New({}, "ROGUE"), 5, "tick", NATURE))
+		end)
+
+		it("gives no poison to another class", function()
+			local identity = Identity.New({}, "WARLOCK")
+			swing(identity, 5)
+			assert.is_nil(of(identity, 5.05, "direct", NATURE))
+			assert.is_nil(of(identity, 6, "tick", NATURE))
+		end)
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}
@@ -1228,6 +1267,7 @@ describe("Spell Identity", function()
 				local known, stillWrong = Trace.WRONG[name] or {}, {}
 				local flow = ns.Flow.New({
 					spellFacts = facts,
+					class = trace.header.class,
 					show = function(hit, spellID)
 						local want = spellOf[hit.entry]
 						if spellID == nil and want then

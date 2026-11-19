@@ -40,6 +40,7 @@ end
 _G.UnitCanAttack = function() return true end
 _G.UnitGUID = function(unit) return guids[unit] end
 _G.UnitClassification = function() return "normal" end
+_G.UnitClass = function() return "Warlock", "WARLOCK" end
 _G.UnitIsBossMob = function() return false end
 _G.UnitIsPlayer = function() return false end
 

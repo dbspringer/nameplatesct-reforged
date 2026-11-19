@@ -25,7 +25,8 @@ end
 -- the renderer needs neither. noPlate(hit, how), which is optional, gets Your
 -- Hit on target or a soft target that has no Nameplate.
 -- spellFacts, which is required, holds the Spell Facts, which
--- Identity changes in place. Hits on the player or the pet go nowhere: they
+-- Identity changes in place. class, the player's class token, turns on the
+-- Poison Procs for a Rogue (see Identity.New). Hits on the player or the pet go nowhere: they
 -- are there to use up the Log Lines of heals and self-damage.
 -- A Hit decided after its Nameplate hid, such as a killing blow whose Log
 -- Line came late, is a late Hit: its token can by then name another unit, or
@@ -36,7 +37,7 @@ end
 -- its text would show where that unit is or was.
 function Flow.New(options)
 	local show, noPlate = options.show, options.noPlate
-	local identity = ns.Identity.New(options.spellFacts)
+	local identity = ns.Identity.New(options.spellFacts, options.class)
 	-- Pairing's decisions of Your Hits on enemies, and the casts, in the order
 	-- they came. Identity takes the decisions that come together as one group,
 	-- so it can see two ticks that come at once. Identity and show run after
