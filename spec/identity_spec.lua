@@ -1110,6 +1110,39 @@ describe("Spell Identity", function()
 				assert.are.equal(DRAIN_LIFE, spells[#spells])
 			end)
 
+			-- Codex review: Siphon Life's tie at 108.96 left it an older rhythm too,
+			-- which also fit the crowded frame of Agony's and Drain Life's ticks at
+			-- 109.075, so that frame moved all three spells and Siphon Life lost
+			-- its true rhythm.
+			it("keeps the rhythms of a spell that a crowded frame need not hold", function()
+				local entries = entriesOf({ castEntries(99.98, SIPHON_LIFE) }, { tickEntries(102.98) },
+					{ castEntries(103.075, AGONY) }, { tickEntries(105.075) }, { tickEntries(105.98) }, { tickEntries(107.075) },
+					{ castEntries(108.04, DRAIN_LIFE) }, { tickEntries(108.96) }, { tickEntries(109.075) },
+					{ lineEntry(109.075, "tick"), hitEntry(109.075, "nameplate1", SHADOW) }, { tickEntries(110.02) },
+					{ tickEntries(111.1) }, { tickEntries(111.11) }, { tickEntries(111.94) })
+				local spells = shownSpells(entries)
+				assert.are_not.equal(DRAIN_LIFE, spells[#spells])
+			end)
+
+			-- Codex review: the old Drain Soul channel's stop had a secret spell ID,
+			-- so its cast stayed open in a rhythm that the tie with Siphon Life kept,
+			-- and took the recast's stop. The recast's channel then never stopped.
+			it("gives a channel's stop to its newest cast that a rhythm holds", function()
+				local DRAIN_SOUL, CURSE_OF_DOOM = 1120, 603
+				local function secretCast(time, spellID)
+					return { time, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", spellID, target = "nameplate1" },
+						{ time, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", spellID, "<nil>", target = "nameplate1" }
+				end
+				local entries = entriesOf({ castEntries(56.7, CURSE_OF_DOOM) }, { castEntries(95.67, SIPHON_LIFE) },
+					{ tickEntries(98.67) }, { castEntries(100, DRAIN_SOUL) }, { tickEntries(101.67) }, { tickEntries(103) },
+					{ tickEntries(104.67) }, { tickEntries(106) }, { tickEntries(107.67) }, { tickEntries(109) },
+					{ { 110.6, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "<nil>", "<secret>", "<nil>", "CastBar-1" } },
+					{ tickEntries(110.67) }, { secretCast(110.7, DRAIN_SOUL) }, { tickEntries(113.67) }, { tickEntries(113.7) },
+					{ stopEntry(114.6, DRAIN_SOUL) }, { castEntries(115, SIPHON_LIFE) }, { tickEntries(116.7) })
+				local spells = shownSpells(entries)
+				assert.are_not.equal(DRAIN_SOUL, spells[#spells])
+			end)
+
 			-- Limits, from Codex reviews: a Tick Tie's other spell ticks a little
 			-- more than TICK_TOLERANCE off its rhythm, so only the tie's owner fits
 			-- that tick, and takes it. Ticks that far off are rare in the Traces.
