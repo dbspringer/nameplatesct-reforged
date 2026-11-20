@@ -1171,6 +1171,18 @@ describe("Spell Identity", function()
 				assert.are.equal("none", shownSpells(entries)[7])
 			end)
 
+			-- Codex review: the guard above blocked the icon of a secret Siphon Life
+			-- cast's tick, but the tick still narrowed Corruption's kept rhythms to
+			-- one, so Siphon Life's next tick took Corruption's icon.
+			it("narrows no rhythm with a tick whose icon a cast with a secret spell ID blocks", function()
+				local entries = entriesOf({ castEntries(99.15, "<secret>") }, { castEntries(102.09, CORRUPTION) },
+					{ tickEntries(102.15) }, { tickEntries(105.09) }, { tickEntries(105.15) },
+					{ castEntries(107, DRAIN_LIFE) }, { tickEntries(108) }, { tickEntries(108.09) },
+					{ tickEntries(108.15) }, { tickEntries(109) }, { stopEntry(109.2, DRAIN_LIFE) },
+					{ tickEntries(111.15) }, { tickEntries(111.18) })
+				assert.are.equal("none", shownSpells(entries)[8])
+			end)
+
 			-- Limits, from Codex reviews: a Tick Tie's other spell ticks a little
 			-- more than TICK_TOLERANCE off its rhythm, so only the tie's owner fits
 			-- that tick, and takes it. Ticks that far off are rare in the Traces.

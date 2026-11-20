@@ -788,11 +788,12 @@ function Identity.New(saved, class)
 		-- NO_RHYTHM, so that the cast can still give the spell's first tick
 		-- (warlock-rfk 2154, 19406). Each spell keeps its true rhythm only while
 		-- every tick comes within TICK_TOLERANCE of it.
-		local tie = fits > (sure or 1)
 		-- A spell that still holds rhythms from a tie fits more ticks than its
 		-- own. A DoT cast whose spell ID is secret has no rhythm, so such a
-		-- spell could be the only one that fits that DoT's tick.
+		-- spell could be the only one that fits that DoT's tick: while one can
+		-- run, that tick gets no icon and, like a tie, narrows no rhythm.
 		local unsettled = fits == 1 and #(plateRhythms[found] or {}) > 1
+		local tie = fits > (sure or 1) or (unsettled and secretDotRuns(hit))
 		for spellID, list in pairs(moved) do
 			if tie then
 				local spell = ns.TickSpells[spellID]
