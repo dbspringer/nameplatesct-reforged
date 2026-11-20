@@ -8,7 +8,8 @@ ns.Identity = Identity
 -- from the table of spells that tick (TickSpells.lua): whole intervals after
 -- the spell's cast on that Nameplate or its landing there, then on its Tick
 -- Rhythm there (see rhythmSource), or with its channel's stop (see
--- stopTickOf). A direct
+-- stopTickOf). At a Tick Tie each tied spell keeps every rhythm that can be
+-- its own (see ofTick). A direct
 -- hit or a shot takes the one cast that fits it of a spell that can make it
 -- (see canHit), from that table or the table of spells that hit
 -- (DirectSpells.lua), with the school the table gives or, for a wand's Shoot,
@@ -334,11 +335,15 @@ function Identity.New(saved, class)
 	-- or a Trace's start, is in no list, so rivalDue cannot see it until it has
 	-- run out (warlock-drain-life replayed from entry 3919).
 	local startedAt
-	-- For each unit and spell that ticks, its Tick Rhythm: { source, last,
-	-- ends }. source is the cast or landing that started it, last its last
-	-- tick (none yet after a landing), and ends when its duration ends.
-	-- Weak keys, so a plate life's rhythms go with the life.
+	-- For each unit and spell that ticks, the Tick Rhythms it can have there:
+	-- one, or after a Tick Tie each one that can be true (see ofTick). A rhythm
+	-- is { source, cast, last, ends }: source is the time of the cast or
+	-- landing that started it, cast that cast, last its last tick (none yet
+	-- after a landing), and ends when its duration ends. NO_RHYTHM stands for
+	-- none yet, which a cast can still start. Weak keys, so a plate life's
+	-- rhythms go with the life.
 	local rhythms = setmetatable({}, { __mode = "k" })
+	local NO_RHYTHM = {}
 	local seals = newSealTracker()
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 
@@ -535,7 +540,7 @@ function Identity.New(saved, class)
 			-- Tick Rhythm ends; another tick on it, such as an Ignite's, must
 			-- not take the spell.
 			rhythms[plate] = rhythms[plate] or {}
-			rhythms[plate][spellID] = { source = hit.time }
+			rhythms[plate][spellID] = { { source = hit.time } }
 		end
 		local known = schoolOf(spellID)
 		return known and (not school or known == school) and spellID or nil
@@ -644,12 +649,14 @@ function Identity.New(saved, class)
 			local steps = math.floor(since / spell.interval + 0.5)
 			return steps >= 1 and math.abs(since - steps * spell.interval) <= window
 		end
-		for spellID, rhythm in pairs(plateRhythms) do
+		for spellID, candidates in pairs(plateRhythms) do
 			local spell = rival(spellID)
-			if spell and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-				and (rhythm.last and hit.time <= rhythm.ends + window and due(spell, rhythm.last, 0)
-					or due(spell, rhythm.source, 0)) then
-				return true
+			for _, rhythm in ipairs(spell and candidates or {}) do
+				if rhythm ~= NO_RHYTHM and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+					and (rhythm.last and hit.time <= rhythm.ends + window and due(spell, rhythm.last, 0)
+						or due(spell, rhythm.source, 0)) then
+					return true
+				end
 			end
 		end
 		for _, cast in ipairs(dotCasts) do
@@ -672,28 +679,54 @@ function Identity.New(saved, class)
 	-- when the channel ends early (warlock-drain-life). It must come less than
 	-- one interval after the channel's last tick on this unit: a Hit in the
 	-- stop's frame long after it can be one whose kill stopped the channel
-	-- (warlock-rfk). The stop is known in time, as Flow takes a frame's casts
-	-- before Pairing decides that frame's Hits.
+	-- (warlock-rfk). Any of the channel's rhythms counts, as its last tick can
+	-- have been a Tick Tie. The stop is known in time, as Flow takes a frame's
+	-- casts before Pairing decides that frame's Hits.
 	local function stopTickOf(hit, school, plateRhythms)
 		if not startedAt or hit.time - startedAt <= LONGEST_DOT + STOP_RIVAL then
 			return nil
 		end
-		for spellID, rhythm in pairs(plateRhythms) do
+		for spellID, candidates in pairs(plateRhythms) do
 			local spell = ns.TickSpells[spellID]
-			local cast = rhythm.cast
-			if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
-				and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
-				and not rivalDue(hit, school, plateRhythms, spellID) then
-				return spellID, rhythm
+			for _, rhythm in ipairs(candidates) do
+				local cast = rhythm.cast
+				if spell and not spell.area and (not school or spell.school == school) and cast and cast.stopped == hit.time
+					and rhythm.last and hit.time > rhythm.last and hit.time - rhythm.last < spell.interval
+					and not rivalDue(hit, school, plateRhythms, spellID) then
+					return spellID, rhythm
+				end
 			end
 		end
+	end
+
+	local function sameRhythm(a, b)
+		return a.source == b.source and (a.cast and a.cast.time) == (b.cast and b.cast.time) and a.last == b.last
+			and a.ends == b.ends
+	end
+
+	local function addRhythm(list, rhythm)
+		for _, kept in ipairs(list) do
+			if sameRhythm(kept, rhythm) then
+				return
+			end
+		end
+		list[#list + 1] = rhythm
+	end
+
+	-- Whether a rhythm can still fit a later tick: it has not run out, its
+	-- channel has not stopped, and no recast has replaced it.
+	local function stillRuns(spellID, spell, rhythm, plate, hit)
+		return rhythm == NO_RHYTHM or not rhythm.last
+			or hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+			and not refreshed(spellID, spell, plate, rhythm.source, hit)
 	end
 
 	local function ofTick(hit, school, crowded, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
 		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
-		local tried, fits, found = {}, 0, nil
+		-- For each spell that fits, the rhythms that this tick continues.
+		local tried, moved, fits, found = {}, {}, 0, nil
 		local function try(spellID)
 			local spell = ns.TickSpells[spellID]
 			-- An area spell's ticks come as direct hits.
@@ -701,11 +734,15 @@ function Identity.New(saved, class)
 				return
 			end
 			tried[spellID] = true
-			local rhythm = rhythmOf(hit, spellID, spell, plateRhythms[spellID], plate)
-			-- Every spell that fits keeps its Tick Rhythm, so a tie does not end
-			-- the rhythm of the one that ticked.
-			if rhythm then
-				plateRhythms[spellID] = rhythm
+			local list = {}
+			for _, old in ipairs(plateRhythms[spellID] or { NO_RHYTHM }) do
+				local rhythm = rhythmOf(hit, spellID, spell, old ~= NO_RHYTHM and old or nil, plate)
+				if rhythm then
+					addRhythm(list, rhythm)
+				end
+			end
+			if #list > 0 then
+				moved[spellID] = list
 				fits, found = fits + 1, spellID
 			end
 		end
@@ -718,10 +755,38 @@ function Identity.New(saved, class)
 			end
 		end
 		-- A Stop Tick that its rhythm does not fit competes like a rhythm.
-		if stopSpell and plateRhythms[stopSpell] == stopRhythm then
-			plateRhythms[stopSpell] = { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
-				ends = stopRhythm.ends }
+		if stopSpell and not moved[stopSpell] then
+			moved[stopSpell] = { { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
+				ends = stopRhythm.ends } }
 			fits, found = fits + 1, stopSpell
+		end
+		-- A tick that fits one spell alone is that spell's, so it keeps only the
+		-- rhythms that the tick continues. Two ticks of one school at once both
+		-- ticked, so every spell that fits does the same. A Tick Tie is one
+		-- spell's tick, but nothing tells which: a rhythm moved onto it would
+		-- miss the other spell's own tick, which can come just after it, and
+		-- Drain Life's 1 s interval divides the other DoTs', so a moved rhythm
+		-- kept meeting its ticks (warlock-drain-life). So each tied spell keeps
+		-- its old rhythms and adds the moved ones, until a tick fits it alone.
+		-- A rhythm that ran out, stopped, or was replaced by a recast becomes
+		-- NO_RHYTHM, so that the cast can still give the spell's first tick
+		-- (warlock-rfk 2154, 19406). Each spell keeps its true rhythm only while
+		-- every tick comes within TICK_TOLERANCE of it.
+		local tie = fits > 1 and not crowded
+		for spellID, list in pairs(moved) do
+			if tie then
+				local spell = ns.TickSpells[spellID]
+				local kept = {}
+				for _, old in ipairs(plateRhythms[spellID] or { NO_RHYTHM }) do
+					addRhythm(kept, stillRuns(spellID, spell, old, plate, hit) and old or NO_RHYTHM)
+				end
+				for _, rhythm in ipairs(list) do
+					addRhythm(kept, rhythm)
+				end
+				plateRhythms[spellID] = kept
+			else
+				plateRhythms[spellID] = list
+			end
 		end
 		-- A Rogue's Nature tick that no rhythm fits is Deadly Poison's, which
 		-- has no cast. Its stacks tick as one, so crowding does not matter.
@@ -765,7 +830,9 @@ function Identity.New(saved, class)
 				consider(cast)
 			end
 			for _, plateRhythms in pairs(rhythms) do
-				consider(plateRhythms[record.spellID] and plateRhythms[record.spellID].cast)
+				for _, rhythm in ipairs(plateRhythms[record.spellID] or {}) do
+					consider(rhythm.cast)
+				end
 			end
 			if oldest then
 				oldest.stopped = record.time
