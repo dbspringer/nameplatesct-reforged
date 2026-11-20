@@ -711,6 +711,19 @@ function Identity.New(saved, class)
 		return false
 	end
 
+	-- Whether a RIVAL_ONLY spell's tick, from a cast on any unit as in
+	-- rivalDue, is due at this Hit.
+	local function rivalOnlyDue(hit, school)
+		for _, cast in ipairs(dotCasts) do
+			local spell = cast.spellID and RIVAL_ONLY[cast.spellID]
+			if spell and not cast.missed and (not school or spell.school == school)
+				and math.abs(hit.time - cast.time - spell.interval) <= TICK_TOLERANCE then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function sameRhythm(a, b)
 		return a.source == b.source and (a.cast and a.cast.time) == (b.cast and b.cast.time) and a.last == b.last
 			and a.ends == b.ends
@@ -771,6 +784,11 @@ function Identity.New(saved, class)
 			moved[stopSpell] = { { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
 				ends = stopRhythm.ends } }
 			fits, found = fits + 1, stopSpell
+		end
+		-- A due tick of a spell that the tick table leaves out, such as Curse of
+		-- Doom's, competes too, but has no rhythm to move or keep.
+		if rivalOnlyDue(hit, school) then
+			fits = fits + 1
 		end
 		-- A tick that fits one spell alone is that spell's, so it keeps only the
 		-- rhythms that the tick continues. So does each spell that fits n ticks

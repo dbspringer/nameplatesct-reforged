@@ -1183,6 +1183,20 @@ describe("Spell Identity", function()
 				assert.are.equal("none", shownSpells(entries)[8])
 			end)
 
+			-- Codex review: Curse of Doom ticked with Siphon Life at 108.92, and a
+			-- Corruption rhythm that a tie kept fit that frame too. Two Shadow ticks
+			-- and two spells that fit, so Corruption took the frame and lost its
+			-- true rhythm, and its tick at 109.045 took Drain Life's icon.
+			it("counts a due Curse of Doom as a spell that fits a crowded frame", function()
+				local CURSE_OF_DOOM = 603
+				local entries = entriesOf({ castEntries(48.92, CURSE_OF_DOOM) }, { castEntries(100, CORRUPTION) },
+					{ castEntries(102.84, SIPHON_LIFE) }, { tickEntries(103) }, { castEntries(105.09, DRAIN_LIFE) },
+					{ tickEntries(105.84) }, { tickEntries(106.09) }, { tickEntries(106.095) }, { stopEntry(106.5, DRAIN_LIFE) },
+					{ castEntries(108.04, DRAIN_LIFE) }, { tickEntries(108.92) }, { tickEntries(108.92) },
+					{ tickEntries(109.045) }, { tickEntries(109.06) })
+				assert.are_not.equal(DRAIN_LIFE, shownSpells(entries)[7])
+			end)
+
 			-- Limits, from Codex reviews: a Tick Tie's other spell ticks a little
 			-- more than TICK_TOLERANCE off its rhythm, so only the tie's owner fits
 			-- that tick, and takes it. Ticks that far off are rare in the Traces.
