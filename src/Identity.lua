@@ -312,11 +312,12 @@ end
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
 -- Cast(record) takes the adapter's cast records, and Line(record) its Log
--- Lines. Of(hit, line, together) gives the spell ID of Your Hit on an enemy,
--- or nil; Hits come in about the
+-- Lines. Of(hit, line, together, sure) gives the spell ID of Your Hit on an
+-- enemy, or nil; Hits come in about the
 -- order of their time, a held Hit up to DECIDE_LATE late. together, for a
 -- tick, is how many ticks that could be the same spell's came at that time on
--- that unit, this one included; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
+-- that unit, this one included, and sure how many of them surely have its
+-- school; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
 -- table or from the Spell Facts that count, or nil. class is the player's
 -- class token from UnitClass, which turns on the Poison Procs for a Rogue.
 function Identity.New(saved, class)
@@ -699,6 +700,17 @@ function Identity.New(saved, class)
 		end
 	end
 
+	-- Whether a player's DoT cast whose spell ID is secret could still be
+	-- running at this Hit.
+	local function secretDotRuns(hit)
+		for _, cast in ipairs(dotCasts) do
+			if cast.secret and hit.time - cast.time <= LONGEST_DOT + TICK_TOLERANCE then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function sameRhythm(a, b)
 		return a.source == b.source and (a.cast and a.cast.time) == (b.cast and b.cast.time) and a.last == b.last
 			and a.ends == b.ends
@@ -721,7 +733,7 @@ function Identity.New(saved, class)
 			and not refreshed(spellID, spell, plate, rhythm.source, hit)
 	end
 
-	local function ofTick(hit, school, together, plate)
+	local function ofTick(hit, school, together, sure, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
 		local stopSpell, stopRhythm = stopTickOf(hit, school, plateRhythms)
@@ -762,7 +774,9 @@ function Identity.New(saved, class)
 		end
 		-- A tick that fits one spell alone is that spell's, so it keeps only the
 		-- rhythms that the tick continues. So does each spell that fits n ticks
-		-- of one school at once, when no more than n spells fit: each ticked.
+		-- of one school at once, when no more than n spells fit: each ticked. A
+		-- tick whose school is secret counts in n only for the icon, as it can be
+		-- of another school.
 		-- A Tick Tie is one spell's tick, but nothing tells which: a rhythm
 		-- moved onto it would miss the other spell's own tick, which can come
 		-- just after it, and Drain Life's 1 s interval divides the other DoTs',
@@ -774,7 +788,11 @@ function Identity.New(saved, class)
 		-- NO_RHYTHM, so that the cast can still give the spell's first tick
 		-- (warlock-rfk 2154, 19406). Each spell keeps its true rhythm only while
 		-- every tick comes within TICK_TOLERANCE of it.
-		local tie = fits > (together or 1)
+		local tie = fits > (sure or 1)
+		-- A spell that still holds rhythms from a tie fits more ticks than its
+		-- own. A DoT cast whose spell ID is secret has no rhythm, so such a
+		-- spell could be the only one that fits that DoT's tick.
+		local unsettled = fits == 1 and #(plateRhythms[found] or {}) > 1
 		for spellID, list in pairs(moved) do
 			if tie then
 				local spell = ns.TickSpells[spellID]
@@ -797,7 +815,7 @@ function Identity.New(saved, class)
 		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
-		return fits == 1 and not together and found or nil
+		return fits == 1 and not together and not (unsettled and secretDotRuns(hit)) and found or nil
 	end
 
 	local identity = {}
@@ -878,14 +896,14 @@ function Identity.New(saved, class)
 	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
 	-- a known spell's cast is in one group only. A miss reports school 1 whatever
 	-- the spell, so it teaches nothing and uses the school of its spell's hits.
-	function identity.Of(hit, line, together)
+	function identity.Of(hit, line, together, sure)
 		startedAt = startedAt or hit.time
 		local plate = plateOf(hit)
 		local miss = isMiss(line.lineKind)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
-			return ofTick(hit, school, together, plate)
+			return ofTick(hit, school, together, sure, plate)
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
@@ -894,23 +912,27 @@ function Identity.New(saved, class)
 	end
 
 	-- Of for each { hit, line } of decisions that came together, with the
-	-- number of ticks that came with each tick. A resisted tick reports school
+	-- number of ticks that came with each tick, and of those whose school is
+	-- surely its own. A resisted tick reports school
 	-- 1 whatever its spell, so only real ticks count. A Hit paired as melee has no spell. A
 	-- Weapon Proc's line is a direct one, but its Hit must not use up a cast that
 	-- it did not come from.
 	function identity.OfAll(decisions)
 		local spellIDs = {}
 		for i, decision in ipairs(decisions) do
-			local together
+			local together, sure
 			if decision.line.lineKind == "tick" then
 				for j, other in ipairs(decisions) do
 					if j ~= i and other.line.lineKind == "tick" and sameTick(decision, other) then
 						together = (together or 1) + 1
+						if not issecretvalue(decision.hit.school) and not issecretvalue(other.hit.school) then
+							sure = (sure or 1) + 1
+						end
 					end
 				end
 			end
 			if decision.how ~= "melee" then
-				spellIDs[i] = identity.Of(decision.hit, decision.line, together)
+				spellIDs[i] = identity.Of(decision.hit, decision.line, together, sure)
 			end
 		end
 		return spellIDs

@@ -1143,6 +1143,34 @@ describe("Spell Identity", function()
 				assert.are_not.equal(DRAIN_SOUL, spells[#spells])
 			end)
 
+			-- Codex review: the Immolate tick at 108.905 has a secret school, so it
+			-- may be Shadow, but it did not make the frame two Shadow ticks. Counted
+			-- as one, it moved both Shadow spells that fit Agony's tick, and
+			-- Corruption lost its true rhythm.
+			it("counts a tick whose school is secret as no tick of a crowded frame's school", function()
+				local entries = entriesOf({ castEntries(102.905, IMMOLATE) },
+					{ lineEntry(102.905, "direct"), hitEntry(102.905, "nameplate1", FIRE) },
+					{ castEntries(102.96, CORRUPTION) }, { castEntries(104.905, AGONY) },
+					{ castEntries(105.01, DRAIN_LIFE) },
+					{ lineEntry(105.905, "tick"), hitEntry(105.905, "nameplate1", FIRE) },
+					{ tickEntries(106.01) }, { tickEntries(106.08) }, { stopEntry(106.1, DRAIN_LIFE) },
+					{ tickEntries(106.905) }, { castEntries(108.03, DRAIN_LIFE) },
+					{ lineEntry(108.905, "tick"), hitEntry(108.905, "nameplate1", "<secret>") },
+					{ tickEntries(108.905) }, { tickEntries(109.01) })
+				assert.are.equal("none", shownSpells(entries)[8])
+			end)
+
+			-- Codex review: Siphon Life's cast had a secret spell ID, so it had no
+			-- rhythm, and a Drain Life rhythm that the ties kept fit its tick alone.
+			it("gives no icon from a rhythm that a tie kept while a cast with a secret spell ID can run", function()
+				local entries = entriesOf({ castEntries(90.04, "<secret>") },
+					{ castEntries(91.92, CORRUPTION) }, { tickEntries(93.04) }, { tickEntries(94.92) },
+					{ castEntries(96, DRAIN_LIFE) }, { tickEntries(96.04) }, { tickEntries(97.01) },
+					{ tickEntries(97.92) }, { tickEntries(98) }, { tickEntries(99.04) },
+					{ stopEntry(99.04, DRAIN_LIFE) })
+				assert.are.equal("none", shownSpells(entries)[7])
+			end)
+
 			-- Limits, from Codex reviews: a Tick Tie's other spell ticks a little
 			-- more than TICK_TOLERANCE off its rhythm, so only the tie's owner fits
 			-- that tick, and takes it. Ticks that far off are rare in the Traces.
