@@ -29,6 +29,14 @@ Trace.LOST = { ["warlock-spells"] = { [302] = true }, ["warlock-drain-life"] = {
 -- lost its rhythm, which fit the first tick of a Siphon Life cast 2.95 s before.
 Trace.WRONG = { ["warlock-drain-life"] = { [3011] = true, [3527] = true, [3575] = true } }
 
+-- Your Hits in those Traces whose Possible Spells are known to miss the
+-- Label's spell, by Trace and Hit entry. The replay fails on any other, and on
+-- a Hit here whose list now holds it, so this list only shrinks.
+-- warlock-drain-life 1901: Bane of Agony and Drain Life ticked in one frame;
+-- Drain Life missed its rhythm, and Siphon Life fit through a rhythm that a
+-- Tick Tie kept (its real tick came 0.125 s before).
+Trace.POSSIBLE_WRONG = { ["warlock-drain-life"] = { [1901] = true } }
+
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111
 

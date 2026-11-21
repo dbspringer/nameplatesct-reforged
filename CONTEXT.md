@@ -17,7 +17,7 @@ The health bar the game shows above a unit in the world. Plate Text exists only 
 _Avoid_: Plate, enemy health bar
 
 **Spell Filter**:
-The player's list of spells, by name or ID, and of key words. Plate Text for a Hit that the list matches hides, or, with the list inverted, only that Plate Text shows. A spell in the list means all of its ranks. The key word `melee` matches swings and their misses, the pet's too; `missed` matches every miss; `unknown` matches a Hit that is not a swing and has no Spell Identity. An empty list hides nothing.
+The player's list of spells, by name or ID, and of key words. Plate Text for a Hit that the list matches hides, or, with the list inverted, only that Plate Text shows. A spell in the list means all of its ranks. The key word `melee` matches swings and their misses, the pet's too; `missed` matches every miss; `unknown` matches a Hit that is not a swing and has no Spell Identity. A Hit with Possible Spells matches when each of them is in the list. An empty list hides nothing.
 _Avoid_: Spell blacklist, spell whitelist
 
 **NPC Type**:
@@ -82,6 +82,10 @@ _Avoid_: Weapon icon, melee icon, white hit icon
 Which spell made Your Hit. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
 
+**Possible Spells**:
+The spells that could have made Your Hit when it has no Spell Identity, when the addon is sure that one of them did: two to three spells that fit a Tick Tie, the ticks of one frame, or a direct Hit or shot. Text for players calls their icons possible icons.
+_Avoid_: Candidates, ambiguous spells, guess
+
 **Active Seal**:
 The Seal that the player's casts say is on them now.
 _Avoid_: Current seal, seal buff
@@ -103,7 +107,7 @@ The times at which one spell's ticks come on one Nameplate: one interval apart, 
 _Avoid_: DoT timer, tick schedule
 
 **Tick Tie**:
-A tick, alone of its school on its Nameplate in its frame, that the Tick Rhythms of two or more spells fit. Only one of the spells made it, but nothing tells which, so it gets no icon.
+A tick, alone of its school on its Nameplate in its frame, that the Tick Rhythms of two or more spells fit. Only one of the spells made it, but nothing tells which, so it has no Spell Identity; when the addon is sure that one of them made it, they are its Possible Spells.
 _Avoid_: Tie, rhythm clash
 
 **Stop Tick**:

@@ -37,15 +37,30 @@ function Filter.ReadSpells(text, nameOf)
 	return list
 end
 
+-- Whether names holds names and each of them is in the list.
+local function allListed(list, names)
+	if not names or #names == 0 then
+		return false
+	end
+	for _, name in ipairs(names) do
+		if not list.names[name:lower()] then
+			return false
+		end
+	end
+	return true
+end
+
 -- Whether the Spell Filter lets the Plate Text for a Hit through. A list
 -- hides the Hits it matches, or, inverted, shows only them. spellName is the
 -- name of the Hit's spell from Spell Identity, or nil when that is not
 -- known; action is the Hit's ("WOUND" or a miss), and swing whether it is a
 -- swing. A swing has no Spell Identity, but unknown
--- never matches it: melee does, and missed too for a swing miss. A list with
+-- never matches it: melee does, and missed too for a swing miss. A Hit with
+-- no Spell Identity matches when each of its Possible Spells is listed, as
+-- one of them made it; possibleNames holds their names, or is nil. A list with
 -- no entries lets everything through, also inverted, so turning on Inverse
 -- before typing a spell hides nothing.
-function Filter.SpellShows(list, inverse, spellName, action, swing)
+function Filter.SpellShows(list, inverse, spellName, action, swing, possibleNames)
 	if list.empty then
 		return true
 	end
@@ -53,7 +68,7 @@ function Filter.SpellShows(list, inverse, spellName, action, swing)
 	local listed = (spellName ~= nil and list.names[spellName:lower()])
 		or (miss and list.words.missed)
 		or (swing and list.words.melee)
-		or (not swing and spellName == nil and list.words.unknown)
+		or (not swing and spellName == nil and (list.words.unknown or allListed(list, possibleNames)))
 	return (listed == true) == (inverse == true)
 end
 

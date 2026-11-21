@@ -18,11 +18,12 @@ end
 -- Connects the adapter, Pairing and Spell Identity, and sends on Your Hits
 -- on enemies. Raw events go in through Push, in the shape of Trace entries.
 -- Tick(now) closes the open frame and ends the holds that are over; call it
--- once each frame. show(hit, spellID, late, swinger, how, lineKind) gets Your
--- Hit on an enemy Nameplate, with the spell that made it or nil (see
+-- once each frame. show(hit, spellID, late, swinger, how, lineKind, possible)
+-- gets Your Hit on an enemy Nameplate, with the spell that made it or nil (see
 -- Identity.New), and who swung (see swingerOf). how and lineKind, the Line Kind
 -- of its Log Line or nil when the colour told none, say how it was decided;
--- the renderer needs neither. noPlate(hit, how), which is optional, gets Your
+-- the renderer needs neither. possible is the Hit's Possible Spells, a list
+-- of spell IDs, or nil. noPlate(hit, how), which is optional, gets Your
 -- Hit on target or a soft target that has no Nameplate.
 -- spellFacts, which is required, holds the Spell Facts, which
 -- Identity changes in place. class, the player's class token, turns on the
@@ -68,7 +69,7 @@ function Flow.New(options)
 		if #decisions == 0 then
 			return
 		end
-		local spellIDs = identity.OfAll(decisions)
+		local spellIDs, possibles = identity.OfAll(decisions)
 		for i, decision in ipairs(decisions) do
 			local hit, life = decision.hit, decision.hit.life
 			if not life then
@@ -76,7 +77,8 @@ function Flow.New(options)
 					noPlate(hit, decision.how)
 				end
 			elseif not life.reused then
-				show(hit, spellIDs[i], life.hid, swingerOf(decision.how, decision.line), decision.how, decision.line.lineKind)
+				show(hit, spellIDs[i], life.hid, swingerOf(decision.how, decision.line), decision.how, decision.line.lineKind,
+					possibles[i])
 			end
 		end
 	end

@@ -47,6 +47,8 @@ local function ticks(interval, school, duration, kind, ids)
 		hits = kind.hits == true,
 		travels = kind.travels == true,
 		area = kind.area == true,
+		-- Sets the order of Possible Spells (see Identity).
+		firstRank = ids[1],
 	}
 	for _, id in ipairs(ids) do
 		spells[id] = spell

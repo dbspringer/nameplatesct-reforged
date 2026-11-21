@@ -16,7 +16,12 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -- COMPATIBILITY --
 -------------------
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+local spellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+-- One value only: Forever's C_Spell.GetSpellTexture also gives the original
+-- icon, which a list of textures would take as a second icon.
+local function GetSpellTexture(spellID)
+	return (spellTexture(spellID))
+end
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- The spell whose icon the player's swing shows. The pet's swing shows the
 -- pet Attack button's icon, PET_ATTACK_TEXTURE.
@@ -103,6 +108,23 @@ local inversePositions = {
 	["CENTER"]  = "CENTER"
 }
 
+-- A stack of Possible Spells' icons: each next icon goes behind the one
+-- before it, STACK_STEP of the icon size further from the number and across.
+-- By icon Position: { away x, away y, across x, across y }. Center has no
+-- side, so it steps as Right does.
+local STACK_STEP = 1 / 3
+local STACK_DIRECTIONS = {
+	LEFT = { -1, 0, 0, 1 },
+	TOPLEFT = { -1, 0, 0, 1 },
+	BOTTOMLEFT = { -1, 0, 0, 1 },
+	RIGHT = { 1, 0, 0, 1 },
+	TOPRIGHT = { 1, 0, 0, 1 },
+	BOTTOMRIGHT = { 1, 0, 0, 1 },
+	CENTER = { 1, 0, 0, 1 },
+	TOP = { 0, 1, 1, 0 },
+	BOTTOM = { 0, -1, 1, 0 },
+}
+
 --------
 -- DB --
 --------
@@ -141,6 +163,7 @@ local defaults = {
 
 		showIcon = true,
 		showSwingIcon = true,
+		showPossibleIcons = false,
 		enableMSQ = true,
 		iconScale = 1,
 		iconPosition = "RIGHT",
@@ -403,6 +426,21 @@ local function recycleFontString(fontString)
 			fontString.icon.button:ClearAllPoints()
 		end
 	end
+	if fontString.stackIcons then
+		for _, icon in pairs(fontString.stackIcons) do
+			icon:ClearAllPoints()
+			icon:Hide()
+			if icon.skinned then
+				NameplateSCT.frame.MSQGroup:RemoveButton(icon.button)
+				icon.skinned = nil
+			end
+			if icon.button then
+				icon.button:Hide()
+				icon.button:ClearAllPoints()
+			end
+		end
+	end
+	fontString.iconCount = nil
 
 	fontString:ClearAllPoints()
 
@@ -504,8 +542,8 @@ function NameplateSCT:OnEnable()
 	ns.LogFilterWindow.Start()
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	self:CheckRangedItem()
-	ns.Events.Start(function(hit, spellID, late, swinger)
-		self:ShowHit(hit, spellID, late, swinger)
+	ns.Events.Start(function(hit, spellID, late, swinger, _, _, possible)
+		self:ShowHit(hit, spellID, late, swinger, possible)
 	end, function()
 		self:NoPlate()
 	end, self.db.global.spellFacts)
@@ -584,6 +622,60 @@ end
 -- The region that sets an icon's size and place: the Masque button when skinned.
 local function iconRegion(icon)
 	return MSQ and NameplateSCT.db.global.enableMSQ and icon.button or icon
+end
+
+-- The font string's icon at place i of its stack, ready to show: the first
+-- is its own icon, and each next one, made when first needed, draws behind
+-- the one before it. Masque skins each one, as it does the first.
+local function stackIcon(fontString, i)
+	if i == 1 then
+		return fontString.icon
+	end
+	fontString.stackIcons = fontString.stackIcons or {}
+	local icon = fontString.stackIcons[i]
+	local frame = fontString:GetParent()
+	if not icon then
+		icon = frame:CreateTexture(nil, "OVERLAY", nil, 1 - i)
+		fontString.stackIcons[i] = icon
+	end
+	local global = NameplateSCT.db.global
+	if global.removeBorder then
+		icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	else
+		icon:SetTexCoord(0, 1, 0, 1)
+	end
+	if MSQ and global.enableMSQ and not icon.skinned then
+		if not icon.button then
+			local button = CreateFrame("Button", nil, frame)
+			button:EnableMouse(false)
+			button:Disable()
+			icon.button = button
+		end
+		local first = fontString.icon.button
+		icon.button:SetFrameLevel(math.max(0, (first and first:GetFrameLevel() or frame:GetFrameLevel()) - i + 1))
+		NameplateSCT.frame.MSQGroup:AddButton(icon.button, { Icon = icon })
+		icon.skinned = true
+	end
+	return icon
+end
+
+-- Sizes and places the font string's icons for a text of this size. One
+-- icon goes at its Position. A stack goes away from the number one step per
+-- icon, and its middle across is where one icon goes.
+local function placeIcons(fontString, size)
+	local global = NameplateSCT.db.global
+	local iconSize = size * global.iconScale
+	local step = iconSize * STACK_STEP
+	local direction = STACK_DIRECTIONS[global.iconPosition] or STACK_DIRECTIONS.RIGHT
+	local count = fontString.iconCount
+	for i = 1, count do
+		local away, across = i - 1, i - 1 - (count - 1) / 2
+		local region = iconRegion(i == 1 and fontString.icon or fontString.stackIcons[i])
+		region:SetSize(iconSize, iconSize)
+		region:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition,
+			global.xOffsetIcon + (direction[1] * away + direction[3] * across) * step,
+			global.yOffsetIcon + (direction[2] * away + direction[4] * across) * step)
+	end
 end
 
 -- CSS linear() points
@@ -691,8 +783,8 @@ local function AnimationOnUpdate()
 						applyFont(fontString, fontString.NSCTFontSize)
 						fontString:SetText(fontString.NSCTText)
 					end
-					if fontString.icon then
-						iconRegion(fontString.icon):SetSize(size*global.iconScale, size*global.iconScale)
+					if fontString.iconCount then
+						placeIcons(fontString, size)
 					end
 				end
 
@@ -811,8 +903,8 @@ end
 local eastAsiaLetter = L["Truncate Letter East Asia"]
 
 -- swinger is who swung, "player" or "pet", or nil for a Hit that is no
--- swing. texture is the icon's texture, or nil for none.
-function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
+-- swing. textures is the list of icon textures, or nil for none.
+function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, textures)
 	if not issecretvalue(amount) then
 		amount = amount or 0
 	end
@@ -844,9 +936,9 @@ function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
 
 	local size = formattingFor(isTarget).size
 
-	-- Icon only draws just the icon, so a Hit shows its number when it would
+	-- Icon only draws just the icons, so a Hit shows its number when it would
 	-- have no icon: icons are off, or its texture is not known.
-	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and texture ~= nil
+	local iconOnly = NameplateSCT.db.global.showIconOnly and NameplateSCT.db.global.showIcon and textures ~= nil
     if not iconOnly then
         -- truncate
         text = ns.Amount.Format(amount, self.db.global, eastAsiaLetter)
@@ -869,13 +961,13 @@ function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, texture)
 	end
 
     if iconOnly then
-        self:DisplayIconWithoutText(where, size, animation, texture, pow)
+        self:DisplayIconWithoutText(where, size, animation, textures, pow)
     else
-        self:DisplayText(where, text, color, size, animation, texture, pow)
+        self:DisplayText(where, text, color, size, animation, textures, pow)
     end
 end
 
-function NameplateSCT:MissEvent(where, missType, texture)
+function NameplateSCT:MissEvent(where, missType, textures)
 	local animation = self.db.global.animations.miss
 	local color = self.db.global.useMissColor and self.db.global.missColor or defaults.global.missColor
 
@@ -889,16 +981,30 @@ function NameplateSCT:MissEvent(where, missType, texture)
 		size = size * self.db.global.sizing.missScale
 	end
 
-	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, texture, true)
+	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, textures, true)
+end
+
+-- fn of each spell ID, or nil when fn gives none for one of them.
+local function allOf(spellIDs, fn)
+	local values = {}
+	for i, spellID in ipairs(spellIDs) do
+		values[i] = fn(spellID)
+		if values[i] == nil then
+			return nil
+		end
+	end
+	return values
 end
 
 -- Plate Text for Your Hit on an enemy Nameplate. A swing gets the autoattack
 -- animation, the colour of who swung, and its Swing Icon unless the player
 -- turned that off: swinger is "player", "pet", or nil for a Hit that is no
 -- swing. spellID, from Spell Identity, gives the
--- icon, and is nil when the spell is not known. late is the Nameplate as it
--- hid, for a late Hit (see Flow.New).
-function NameplateSCT:ShowHit(hit, spellID, late, swinger)
+-- icon, and is nil when the spell is not known. possible, the Hit's Possible
+-- Spells or nil, gives a stack of their icons when the player turned that on,
+-- and the Spell Filter reads it either way.
+-- late is the Nameplate as it hid, for a late Hit (see Flow.New).
+function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 	-- Where the text goes. A late Hit's token can name another unit by now,
 	-- so its text has no unit: it starts in the Grace Period on the frame its
 	-- Nameplate hid with, and keeps the look it had then.
@@ -911,7 +1017,10 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger)
 	end
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
-		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swinger ~= nil) then
+		-- A spell with no name cannot be listed.
+		local possibleNames = possible and allOf(possible, GetSpellName)
+		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swinger ~= nil,
+			possibleNames) then
 			return
 		end
 		local npcType
@@ -925,20 +1034,24 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger)
 			return
 		end
 	end
-	local texture
+	local textures
 	if self.db.global.showIcon then
+		-- A missing texture shows no icon, and a stack shows only when each of
+		-- its spells has one.
 		if spellID then
-			texture = GetSpellTexture(spellID)
+			textures = allOf({ spellID }, GetSpellTexture)
+		elseif possible and self.db.global.showPossibleIcons then
+			textures = allOf(possible, GetSpellTexture)
 		elseif swinger and self.db.global.showSwingIcon then
-			texture = swinger == "pet" and PET_ATTACK_TEXTURE or GetSpellTexture(AUTO_ATTACK)
+			textures = swinger == "pet" and { PET_ATTACK_TEXTURE } or allOf({ AUTO_ATTACK }, GetSpellTexture)
 		end
 	end
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(where, swinger, hit.amount, school, crit, texture)
+		self:DamageEvent(where, swinger, hit.amount, school, crit, textures)
 	elseif MISS_EVENT_STRINGS[hit.action] then
-		self:MissEvent(where, hit.action, texture)
+		self:MissEvent(where, hit.action, textures)
 	end
 end
 
@@ -972,9 +1085,9 @@ function NameplateSCT:PLAYER_EQUIPMENT_CHANGED(_, slot)
 	end
 end
 
--- Shows a font string's icon, when it has one, and starts its animation on
--- the Nameplate.
-local function startPlateText(fontString, where, size, animation, texture)
+-- Shows a font string's icons, when it has some, and starts its animation on
+-- the Nameplate. textures is the list of their textures, or nil.
+local function startPlateText(fontString, where, size, animation, textures)
 	-- A late Hit's text is in the Grace Period from the start, and other text
 	-- can enter it before its first update, so wasTarget is set here.
 	fontString.unit = where.unit
@@ -983,16 +1096,17 @@ local function startPlateText(fontString, where, size, animation, texture)
 	local global = NameplateSCT.db.global
 	local icon = fontString.icon
 	local skinned = MSQ and global.enableMSQ
-	if global.showIcon and texture then
-		icon:Show()
-		icon:SetTexture(texture)
-		local placed = iconRegion(icon)
-		placed:SetSize(size * global.iconScale, size * global.iconScale)
-		placed:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition, global.xOffsetIcon,
-			global.yOffsetIcon)
-		if skinned then
-			icon.button:Show()
+	if global.showIcon and textures then
+		fontString.iconCount = #textures
+		for i, texture in ipairs(textures) do
+			local shown = stackIcon(fontString, i)
+			shown:Show()
+			shown:SetTexture(texture)
+			if skinned then
+				shown.button:Show()
+			end
 		end
+		placeIcons(fontString, size)
 	elseif icon then
 		icon:Hide()
 		if skinned then
@@ -1010,7 +1124,7 @@ end
 -- The text takes its colour from SetTextColor, not from a colour code joined
 -- to it: a Secret Amount's text is a secret, and a join with one is not known
 -- to work.
-function NameplateSCT:DisplayText(where, text, color, size, animation, texture, pow)
+function NameplateSCT:DisplayText(where, text, color, size, animation, textures, pow)
 	if (not where.frame) then
 		return
 	end
@@ -1032,11 +1146,11 @@ function NameplateSCT:DisplayText(where, text, color, size, animation, texture, 
 		fontString.startHeight = 5
 	end
 
-	startPlateText(fontString, where, size, animation, texture)
+	startPlateText(fontString, where, size, animation, textures)
 end
 
 -- DamageEvent keeps size at 5 or more, so it serves as the start height.
-function NameplateSCT:DisplayIconWithoutText(where, size, animation, texture, pow)
+function NameplateSCT:DisplayIconWithoutText(where, size, animation, textures, pow)
 	if (not where.frame) then
 		return
 	end
@@ -1047,7 +1161,7 @@ function NameplateSCT:DisplayIconWithoutText(where, size, animation, texture, po
 	fontString.startHeight = size
 	fontString.pow = pow
 
-	startPlateText(fontString, where, size, animation, texture)
+	startPlateText(fontString, where, size, animation, textures)
 end
 
 -- The hex colour of a damage text. swinger is as in DamageEvent.
@@ -1434,6 +1548,16 @@ local menu = {
 							order = 3,
 							width = "Half"
 						},
+						showPossibleIcons = {
+							type = 'toggle',
+							name = L["Display Possible Icons"],
+							desc = L["When two or three of your spells could have made a number, show all of their icons. One of them is right."],
+							hidden = function() return not NameplateSCT.db.global.showIcon end,
+							get = function() return NameplateSCT.db.global.showPossibleIcons end,
+							set = function(_, newValue) NameplateSCT.db.global.showPossibleIcons = newValue end,
+							order = 3.5,
+							width = "Half"
+						},
 						removeBorders = {
 							type = 'toggle',
 							name = L["Remove Icon borders"],
@@ -1732,7 +1856,7 @@ local filters = {
 			type = "input",
 			name = L["Spells"],
 			multiline = 20,
-			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells"],
+			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."],
 			order = 3,
 			width = 1,
 			get = function() return NameplateSCT.db.char.spellFilter end,

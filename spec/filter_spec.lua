@@ -16,10 +16,11 @@ local function nameOf(spellID)
 end
 
 -- Whether a hide list (or a show-only list, when inverse) lets the Hit
--- through. A hit is a WOUND and no swing unless it says otherwise.
+-- through. A hit is a WOUND and no swing unless it says otherwise; possible
+-- holds the names of its Possible Spells.
 local function shows(text, inverse, hit)
 	return Filter.SpellShows(Filter.ReadSpells(text, nameOf), inverse, hit.spell, hit.action or "WOUND",
-		hit.swing == true)
+		hit.swing == true, hit.possible)
 end
 
 local BOLT = { spell = "Shadow Bolt" }
@@ -49,6 +50,15 @@ describe("Filter.SpellShows", function()
 		assert.is_false(shows("unknown", false, unsure))
 		assert.is_true(shows("Unknown", true, unsure))
 		assert.is_true(shows("unknown", false, BOLT))
+	end)
+
+	it("matches a Hit with Possible Spells when each of them is listed, and else only with unknown", function()
+		local either = { possible = { "Shadow Bolt", "Corruption" } }
+		assert.is_false(shows("Shadow Bolt\nCorruption", false, either))
+		assert.is_true(shows("Corruption", false, either))
+		assert.is_false(shows("Corruption\nunknown", false, either))
+		assert.is_true(shows("Shadow Bolt\nCorruption", true, either))
+		assert.is_false(shows("Corruption", true, either))
 	end)
 
 	it("matches swings and swing misses with melee, never with unknown", function()

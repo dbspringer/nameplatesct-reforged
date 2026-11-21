@@ -32,6 +32,8 @@ ns.DirectSpells = spells
 
 -- The ranks of a spell share one table, as nothing changes an entry.
 local function addSpell(spell, ids)
+	-- Sets the order of Possible Spells (see Identity).
+	spell.firstRank = ids[1]
 	for _, id in ipairs(ids) do
 		spells[id] = spell
 	end

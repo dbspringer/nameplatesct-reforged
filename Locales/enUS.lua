@@ -37,6 +37,8 @@ L["Display Icon"] = true
 L["Display Auto Attacks"] = true
 L["Show an icon on your auto attacks and your pet's: the Auto Attack icon on yours, the pet Attack icon on your pet's."] = true
 L["Display Icon Only"] = true
+L["Display Possible Icons"] = true
+L["When two or three of your spells could have made a number, show all of their icons. One of them is right."] = true
 L["Display only the icon for damage.\nWill not change Miss, Dodge, Parry, etc displays"] = true
 L["Normal"] = true
 L["NPC Types"] = true
@@ -93,7 +95,7 @@ L["None"] = true
 L["Not now"] = true
 L["Off-Target Strata"] = true
 L["Off-Target Text Appearance"] = true
-L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells"] = true
+L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."] = true
 L["Outline"] = true
 L["Parried"] = true
 L["Position"] = true

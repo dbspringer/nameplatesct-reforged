@@ -1412,18 +1412,198 @@ describe("Spell Identity", function()
 		assert.are.same({}, saved)
 	end)
 
+	-- Possible Spells: a Hit with no Spell Identity gets the spells that could
+	-- have made it, when one of them surely did.
+	describe("Possible Spells", function()
+		local SHADOWBURN = 17877
+
+		local function targetedCast(time, spellID)
+			return { time, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-" .. time .. "-" .. tostring(spellID), spellID, "<nil>",
+				target = "nameplate1" }
+		end
+
+		-- For each Hit that Flow shows: its spell, its Possible Spells, or
+		-- "none". Unless atStart, the entries come 100 s after a cast at 0, so
+		-- that Identity has run longer than any DoT cast before it started.
+		local function shown(entries, atStart)
+			local results = {}
+			local flow = ns.Flow.New({
+				spellFacts = {},
+				show = function(_, spellID, _, _, _, _, possible)
+					results[#results + 1] = spellID or possible or "none"
+				end,
+			})
+			if not atStart then
+				flow.Push(castEntry(0, SHADOW_BOLT))
+			end
+			for _, entry in ipairs(entries) do
+				flow.Push(entry)
+			end
+			flow.Tick(math.huge)
+			return results
+		end
+
+		-- count ticks at one time, Shadow unless school says otherwise.
+		local function ticks(time, count, school)
+			local entries = {}
+			for _ = 1, count or 1 do
+				entries[#entries + 1] = lineEntry(time, "tick")
+				entries[#entries + 1] = hitEntry(time, "nameplate1", school or SHADOW)
+			end
+			return unpack(entries)
+		end
+
+		it("gives a Tick Tie the spells that fit it, in the order of their first rank", function()
+			assert.are.same({ { CORRUPTION, AGONY } }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				ticks(104) }))
+		end)
+
+		it("gives both ticks of a frame that two spells fit the same two spells", function()
+			assert.are.same({ { CORRUPTION, AGONY }, { CORRUPTION, AGONY } }, shown({ targetedCast(102, AGONY),
+				targetedCast(101, CORRUPTION), ticks(104, 2) }))
+		end)
+
+		it("gives both ticks of a frame that three spells fit all three", function()
+			assert.are.same({ { CORRUPTION, AGONY, SIPHON_LIFE }, { CORRUPTION, AGONY, SIPHON_LIFE } }, shown({
+				targetedCast(102, AGONY), targetedCast(101, CORRUPTION), targetedCast(101, SIPHON_LIFE), ticks(104, 2) }))
+		end)
+
+		it("gives none to a tick that four spells fit", function()
+			assert.are.same({ "none" }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				targetedCast(101, SIPHON_LIFE), targetedCast(103, DRAIN_LIFE), ticks(104) }))
+		end)
+
+		it("gives a direct hit that two spells' casts fit both spells", function()
+			assert.are.same({ { SHADOW_BOLT, SHADOWBURN } }, shown({ castEntry(100, SHADOW_BOLT), castEntry(100.5, SHADOWBURN),
+				lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW) }))
+		end)
+
+		-- Codex review: a Consecration tick is a Holy direct hit with no cast,
+		-- so the casts that fit are not all the spells that could have made it.
+		it("gives none to a Holy direct hit during Consecration", function()
+			local EXORCISM, JUDGEMENT = 879, 20271
+			local identity = Identity.New({})
+			cast(identity, 0, SHADOW_BOLT)
+			cast(identity, 96, CONSECRATION)
+			cast(identity, 99.5, EXORCISM)
+			cast(identity, 99.9, JUDGEMENT)
+			assert.is_nil(select(2, identity.Of({ time = 100, unit = "nameplate1", school = HOLY }, { lineKind = "direct" })))
+		end)
+
+		-- A Seal Proc has no cast either, and its miss reports no school.
+		it("gives none to a direct miss that a Seal Proc could have made", function()
+			local EXORCISM, JUDGEMENT, RIGHTEOUSNESS = 879, 20271, 20154
+			local identity = Identity.New({})
+			cast(identity, 0, SHADOW_BOLT)
+			cast(identity, 90, RIGHTEOUSNESS)
+			cast(identity, 99.5, EXORCISM)
+			cast(identity, 99.9, JUDGEMENT)
+			identity.Line({ kind = "line", time = 99.95, lineKind = "swing" })
+			assert.is_nil(select(2, identity.Of({ time = 100, unit = "nameplate1", school = PHYSICAL }, { lineKind = "directMiss" })))
+		end)
+
+		-- Codex review: a Consecration cast before Identity started, as before
+		-- a /reload, is in no list, but its ticks still come.
+		it("gives none to a Holy direct hit while a Consecration from before Identity started can run", function()
+			local EXORCISM, JUDGEMENT = 879, 20271
+			local identity = Identity.New({})
+			cast(identity, 4.5, EXORCISM)
+			cast(identity, 4.9, JUDGEMENT)
+			assert.is_nil(select(2, identity.Of({ time = 5, unit = "nameplate1", school = HOLY }, { lineKind = "direct" })))
+		end)
+
+		-- Each list must hold the spell that made the Hit, so a guard that could
+		-- let in a list without it gets a spec (review of the Possible Spells PR).
+
+		it("gives none to a Tick Tie whose school is secret, as it can be another spell's", function()
+			assert.are.same({ "none" }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				ticks(104, 1, "<secret>") }))
+		end)
+
+		it("gives none to a Tick Tie while a Curse of Doom tick is due", function()
+			assert.are.same({ "none" }, shown({ targetedCast(44, 603), targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				ticks(104) }))
+		end)
+
+		it("gives none to the ticks of a frame that fewer spells fit than ticks came", function()
+			assert.are.same({ "none", "none", "none" }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				ticks(104, 3) }))
+		end)
+
+		it("shares a frame's list only with ticks of its own public school", function()
+			for _, other in ipairs({ FIRE, "<secret>" }) do
+				local entries = { targetedCast(102, AGONY), targetedCast(101, CORRUPTION), lineEntry(104, "tick"),
+					hitEntry(104, "nameplate1", SHADOW), ticks(104, 1, other) }
+				assert.are.same({ { CORRUPTION, AGONY }, "none" }, shown(entries), tostring(other))
+			end
+		end)
+
+		it("shares a direct hit's list with no tick of its frame", function()
+			assert.are.same({ { SHADOW_BOLT, SHADOWBURN }, "none" }, shown({ castEntry(100, SHADOW_BOLT),
+				castEntry(100.5, SHADOWBURN), lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW), ticks(101) }))
+		end)
+
+		it("gives none to a direct hit that a cast of the pet fits too, as the pet's casts never win", function()
+			assert.are.same({ "none" }, shown({ castEntry(100, IMMOLATE),
+				{ 100.5, "UNIT_SPELLCAST_SUCCEEDED", "pet", "Cast-pet-100.5", FIREBOLT, "<nil>" },
+				lineEntry(101, "direct"), hitEntry(101, "nameplate1", FIRE) }))
+		end)
+
+		it("gives none, not one spell twice, to a direct hit that two casts of one spell fit", function()
+			assert.are.same({ "none" }, shown({ castEntry(100, SHADOW_BOLT), castEntry(100.5, SHADOW_BOLT),
+				lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW) }))
+		end)
+
+		-- Codex review: a Nameplate that hides and shows again starts a new
+		-- plate life, which has none of the old one's Tick Rhythms, so a DoT
+		-- cast before the hide ticks there unseen.
+		-- The same for a cast with no known plate life, as its SENT's cast GUID
+		-- was secret.
+		it("gives none to the ticks of a frame while a DoT cast on a plate life that hid, or on none known, can run",
+			function()
+				local sent = { 105, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-105-" .. CORRUPTION, CORRUPTION,
+					target = "nameplate1" }
+				for _, withSent in ipairs({ true, false }) do
+					local entries = { { 100, "NAME_PLATE_UNIT_ADDED", "nameplate1" } }
+					for _, group in ipairs({ { withSent and sent or nil }, { targetedCast(105, CORRUPTION) }, { ticks(108) },
+						{ ticks(111) }, { { 111.5, "NAME_PLATE_UNIT_REMOVED", "nameplate1" }, { 112, "NAME_PLATE_UNIT_ADDED", "nameplate1" },
+						targetedCast(117.0625, SIPHON_LIFE), targetedCast(118, AGONY) }, { ticks(120, 2) } }) do
+						for _, entry in ipairs(group) do
+							entries[#entries + 1] = entry
+						end
+					end
+					assert.are.same({ CORRUPTION, CORRUPTION, "none", "none" }, shown(entries), tostring(withSent))
+				end
+			end)
+
+		-- A cast whose spell ID is secret can be a DoT that fits too.
+		it("gives none to a Tick Tie while a cast with a secret spell ID can run", function()
+			assert.are.same({ "none" }, shown({ targetedCast(99, "<secret>"), targetedCast(102, AGONY),
+				targetedCast(101, CORRUPTION), ticks(104) }))
+		end)
+
+		-- A DoT cast before Identity started, as before a /reload, is in no list.
+		it("gives none to a Tick Tie before Identity has run longer than any DoT", function()
+			assert.are.same({ "none" }, shown({ targetedCast(2, AGONY), targetedCast(1, CORRUPTION), ticks(4) }, true))
+		end)
+	end)
+
 	-- Every Warlock Trace through Flow, as the live addon runs, against the
 	-- spell of each Label. Wrong is an icon of another spell, or any icon on
-	-- a Hit that has none; Unknown is no icon on a Hit whose spell is known.
-	-- The Wrong icons in Trace.WRONG are known: each must still be Wrong, so a
-	-- fix removes it from the list.
+	-- a Hit that has none, or Possible Spells that miss the Label's spell;
+	-- Unknown is no icon on a Hit whose spell is known. The Wrongs in
+	-- Trace.WRONG and Trace.POSSIBLE_WRONG are known: each must still be
+	-- Wrong, so a fix removes it from its list.
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
 		local UNKNOWN_FLOOR = 250
+		-- The Unknown Hits of the current build whose Possible Spells hold the
+		-- Label's spell: a change that lowers it loses stacks.
+		local POSSIBLE_FLOOR = 118
 
 		local function replay(carryFacts)
-			local wrong, unknown, perSpell = {}, 0, {}
+			local wrong, unknown, perSpell, possibleRight = {}, 0, {}, 0
 			local facts = {}
 			for _, name in ipairs(Trace.NAMES) do
 				if not carryFacts then
@@ -1435,11 +1615,26 @@ describe("Spell Identity", function()
 					spellOf[row.hit] = row.spell
 				end
 				local known, stillWrong = Trace.WRONG[name] or {}, {}
+				local knownPossible, stillPossibleWrong = Trace.POSSIBLE_WRONG[name] or {}, {}
 				local flow = ns.Flow.New({
 					spellFacts = facts,
 					class = trace.header.class,
-					show = function(hit, spellID)
+					show = function(hit, spellID, _, _, _, _, possible)
 						local want = spellOf[hit.entry]
+						if possible then
+							local holds = false
+							for _, possibleID in ipairs(possible) do
+								holds = holds or possibleID == want
+							end
+							if holds then
+								possibleRight = possibleRight + 1
+							elseif knownPossible[hit.entry] then
+								stillPossibleWrong[hit.entry] = true
+							else
+								wrong[#wrong + 1] = ("%s hit %d: Possible Spells %s, Label %s"):format(name, hit.entry,
+									table.concat(possible, ","), tostring(want))
+							end
+						end
 						if spellID == nil and want then
 							unknown = unknown + 1
 							perSpell[want] = (perSpell[want] or 0) + 1
@@ -1461,20 +1656,29 @@ describe("Spell Identity", function()
 						wrong[#wrong + 1] = ("%s hit %d: no longer Wrong, so remove it from Trace.WRONG"):format(name, entry)
 					end
 				end
+				for entry in pairs(knownPossible) do
+					if not stillPossibleWrong[entry] then
+						wrong[#wrong + 1] = ("%s hit %d: no longer Wrong, so remove it from Trace.POSSIBLE_WRONG"):format(name,
+							entry)
+					end
+				end
 			end
-			return wrong, unknown, perSpell
+			return wrong, unknown, perSpell, possibleRight
 		end
 
 		it("gives no Wrong icon but the known ones, with Spell Facts learned in each Trace alone", function()
-			local wrong, unknown, perSpell = replay(false)
+			local wrong, unknown, perSpell, possibleRight = replay(false)
 			local parts = {}
 			for spellID, count in pairs(perSpell) do
 				parts[#parts + 1] = spellID .. ": " .. count
 			end
 			table.sort(parts)
-			print(("\nSpell Identity: %d Unknown (%s)"):format(unknown, table.concat(parts, ", ")))
+			print(("\nSpell Identity: %d Unknown (%s), %d with Possible Spells"):format(unknown, table.concat(parts, ", "),
+				possibleRight))
 			assert.are.same({}, wrong)
 			assert.is_true(unknown <= UNKNOWN_FLOOR, ("%d Unknown, more than %d"):format(unknown, UNKNOWN_FLOOR))
+			assert.is_true(possibleRight >= POSSIBLE_FLOOR, ("%d with Possible Spells, fewer than %d"):format(possibleRight,
+				POSSIBLE_FLOOR))
 		end)
 
 		it("gives no Wrong icon but the known ones, and fewer Unknown, with Spell Facts carried from Trace to Trace", function()
