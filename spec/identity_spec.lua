@@ -13,6 +13,7 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 
 local SHADOW_BOLT, SHOOT, FIREBOLT = 705, 5019, 3110
 local IMMOLATE, CORRUPTION, AGONY, DRAIN_LIFE, FIREBALL, MIND_FLAY, SERPENT_STING = 707, 6222, 1014, 689, 133, 15407, 1978
+local SIPHON_LIFE = 18265
 local AUTO_SHOT, RAIN_OF_FIRE, RAIN_OF_FIRE_2, VOLLEY, CONSECRATION = 75, 5740, 6219, 1510, 20116
 local PHYSICAL, HOLY, FIRE, NATURE, SHADOW, ARCANE = 1, 2, 4, 8, 32, 64
 
@@ -1064,6 +1065,166 @@ describe("Spell Identity", function()
 				end
 			end)
 
+			-- warlock-drain-life: a Drain Life tick tied with a rival DoT's, whose
+			-- own tick came just after it. A rival rhythm moved onto the Tick Tie
+			-- missed the rival's later ticks; its old rhythm fits them.
+			it("keeps each tied spell's old rhythm at a Tick Tie", function()
+				local identity = Identity.New({})
+				castOn(identity, 0, CORRUPTION)
+				local spells = { of(identity, 3, "tick", SHADOW) }
+				castOn(identity, 4.91, DRAIN_LIFE)
+				spells[2] = of(identity, 5.91, "tick", SHADOW)
+				spells[3] = of(identity, 6, "tick", SHADOW)
+				spells[4] = of(identity, 6.91, "tick", SHADOW)
+				identity.Cast({ kind = "cast", stage = "CHANNEL_STOP", time = 7.5, spellID = DRAIN_LIFE, unit = "player" })
+				spells[5] = of(identity, 9.03, "tick", SHADOW)
+				assert.are.same({ CORRUPTION, nil, nil, DRAIN_LIFE, CORRUPTION }, { spells[1], spells[2], spells[3], spells[4], spells[5] })
+			end)
+
+			-- warlock-rfk 2154: Agony's tick tied with the first tick of a new
+			-- Siphon Life cast, and Siphon Life's own first tick came 0.03 s later,
+			-- which Agony's old rhythm also fits. Siphon Life had no rhythm before
+			-- the tie, so its cast can still give that first tick.
+			it("keeps a cast's first tick open for a spell that had no rhythm before a Tick Tie", function()
+				local entries = entriesOf({ castEntries(0, AGONY) }, { tickEntries(2) }, { tickEntries(4) },
+					{ castEntries(3.03, SIPHON_LIFE) }, { tickEntries(6) }, { tickEntries(6.03) })
+				assert.are.same({ AGONY, AGONY, "none", "none" }, shownSpells(entries))
+			end)
+
+			-- warlock-rfk 19406: the same for a recast, whose refresh ended the
+			-- spell's old rhythm before the tie.
+			it("keeps a recast's first tick open at a Tick Tie", function()
+				local entries = entriesOf({ castEntries(0, AGONY) }, { tickEntries(2) }, { castEntries(0.5, CORRUPTION) },
+					{ tickEntries(3.5) }, { tickEntries(4) }, { castEntries(3.03, CORRUPTION) }, { tickEntries(6) },
+					{ tickEntries(6.03) })
+				assert.are.same({ AGONY, CORRUPTION, AGONY, "none", "none" }, shownSpells(entries))
+			end)
+
+			-- Drain Life's ticks at 8 and 8.05 tied with Agony's, but the channel
+			-- had ticked 0.75 s before its stop.
+			it("gives a Stop Tick its channel's spell when the channel's last tick was a Tick Tie", function()
+				local entries = entriesOf({ castEntries(0.05, AGONY) }, { tickEntries(2.05) }, { tickEntries(4.05) },
+					{ castEntries(5, DRAIN_LIFE) }, { tickEntries(6) }, { tickEntries(6.05) }, { tickEntries(7) },
+					{ tickEntries(8) }, { tickEntries(8.05) }, { tickEntries(8.75) }, { stopEntry(8.75, DRAIN_LIFE) })
+				local spells = shownSpells(afterStartup(entries))
+				assert.are.equal(DRAIN_LIFE, spells[#spells])
+			end)
+
+			-- Codex review: Siphon Life's tie at 108.96 left it an older rhythm too,
+			-- which also fit the crowded frame of Agony's and Drain Life's ticks at
+			-- 109.075, so that frame moved all three spells and Siphon Life lost
+			-- its true rhythm.
+			it("keeps the rhythms of a spell that a crowded frame need not hold", function()
+				local entries = entriesOf({ castEntries(99.98, SIPHON_LIFE) }, { tickEntries(102.98) },
+					{ castEntries(103.075, AGONY) }, { tickEntries(105.075) }, { tickEntries(105.98) }, { tickEntries(107.075) },
+					{ castEntries(108.04, DRAIN_LIFE) }, { tickEntries(108.96) }, { tickEntries(109.075) },
+					{ lineEntry(109.075, "tick"), hitEntry(109.075, "nameplate1", SHADOW) }, { tickEntries(110.02) },
+					{ tickEntries(111.1) }, { tickEntries(111.11) }, { tickEntries(111.94) })
+				local spells = shownSpells(entries)
+				assert.are_not.equal(DRAIN_LIFE, spells[#spells])
+			end)
+
+			-- Codex review: the old Drain Soul channel's stop had a secret spell ID,
+			-- so its cast stayed open in a rhythm that the tie with Siphon Life kept,
+			-- and took the recast's stop. The recast's channel then never stopped.
+			it("gives a channel's stop to its newest cast that a rhythm holds", function()
+				local DRAIN_SOUL, CURSE_OF_DOOM = 1120, 603
+				local function secretCast(time, spellID)
+					return { time, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", spellID, target = "nameplate1" },
+						{ time, "UNIT_SPELLCAST_SUCCEEDED", "player", "<secret>", spellID, "<nil>", target = "nameplate1" }
+				end
+				local entries = entriesOf({ castEntries(56.7, CURSE_OF_DOOM) }, { castEntries(95.67, SIPHON_LIFE) },
+					{ tickEntries(98.67) }, { castEntries(100, DRAIN_SOUL) }, { tickEntries(101.67) }, { tickEntries(103) },
+					{ tickEntries(104.67) }, { tickEntries(106) }, { tickEntries(107.67) }, { tickEntries(109) },
+					{ { 110.6, "UNIT_SPELLCAST_CHANNEL_STOP", "player", "<nil>", "<secret>", "<nil>", "CastBar-1" } },
+					{ tickEntries(110.67) }, { secretCast(110.7, DRAIN_SOUL) }, { tickEntries(113.67) }, { tickEntries(113.7) },
+					{ stopEntry(114.6, DRAIN_SOUL) }, { castEntries(115, SIPHON_LIFE) }, { tickEntries(116.7) })
+				local spells = shownSpells(entries)
+				assert.are_not.equal(DRAIN_SOUL, spells[#spells])
+			end)
+
+			-- Codex review: the Immolate tick at 108.905 has a secret school, so it
+			-- may be Shadow, but it did not make the frame two Shadow ticks. Counted
+			-- as one, it moved both Shadow spells that fit Agony's tick, and
+			-- Corruption lost its true rhythm.
+			it("counts a tick whose school is secret as no tick of a crowded frame's school", function()
+				local entries = entriesOf({ castEntries(102.905, IMMOLATE) },
+					{ lineEntry(102.905, "direct"), hitEntry(102.905, "nameplate1", FIRE) },
+					{ castEntries(102.96, CORRUPTION) }, { castEntries(104.905, AGONY) },
+					{ castEntries(105.01, DRAIN_LIFE) },
+					{ lineEntry(105.905, "tick"), hitEntry(105.905, "nameplate1", FIRE) },
+					{ tickEntries(106.01) }, { tickEntries(106.08) }, { stopEntry(106.1, DRAIN_LIFE) },
+					{ tickEntries(106.905) }, { castEntries(108.03, DRAIN_LIFE) },
+					{ lineEntry(108.905, "tick"), hitEntry(108.905, "nameplate1", "<secret>") },
+					{ tickEntries(108.905) }, { tickEntries(109.01) })
+				assert.are.equal("none", shownSpells(entries)[8])
+			end)
+
+			-- Codex review: Siphon Life's cast had a secret spell ID, so it had no
+			-- rhythm, and a Drain Life rhythm that the ties kept fit its tick alone.
+			it("gives no icon from a rhythm that a tie kept while a cast with a secret spell ID can run", function()
+				local entries = entriesOf({ castEntries(90.04, "<secret>") },
+					{ castEntries(91.92, CORRUPTION) }, { tickEntries(93.04) }, { tickEntries(94.92) },
+					{ castEntries(96, DRAIN_LIFE) }, { tickEntries(96.04) }, { tickEntries(97.01) },
+					{ tickEntries(97.92) }, { tickEntries(98) }, { tickEntries(99.04) },
+					{ stopEntry(99.04, DRAIN_LIFE) })
+				assert.are.equal("none", shownSpells(entries)[7])
+			end)
+
+			-- Codex review: the guard above blocked the icon of a secret Siphon Life
+			-- cast's tick, but the tick still narrowed Corruption's kept rhythms to
+			-- one, so Siphon Life's next tick took Corruption's icon.
+			it("narrows no rhythm with a tick whose icon a cast with a secret spell ID blocks", function()
+				local entries = entriesOf({ castEntries(99.15, "<secret>") }, { castEntries(102.09, CORRUPTION) },
+					{ tickEntries(102.15) }, { tickEntries(105.09) }, { tickEntries(105.15) },
+					{ castEntries(107, DRAIN_LIFE) }, { tickEntries(108) }, { tickEntries(108.09) },
+					{ tickEntries(108.15) }, { tickEntries(109) }, { stopEntry(109.2, DRAIN_LIFE) },
+					{ tickEntries(111.15) }, { tickEntries(111.18) })
+				assert.are.equal("none", shownSpells(entries)[8])
+			end)
+
+			-- Codex review: Curse of Doom ticked with Siphon Life at 108.92, and a
+			-- Corruption rhythm that a tie kept fit that frame too. Two Shadow ticks
+			-- and two spells that fit, so Corruption took the frame and lost its
+			-- true rhythm, and its tick at 109.045 took Drain Life's icon.
+			it("counts a due Curse of Doom as a spell that fits a crowded frame", function()
+				local CURSE_OF_DOOM = 603
+				local entries = entriesOf({ castEntries(48.92, CURSE_OF_DOOM) }, { castEntries(100, CORRUPTION) },
+					{ castEntries(102.84, SIPHON_LIFE) }, { tickEntries(103) }, { castEntries(105.09, DRAIN_LIFE) },
+					{ tickEntries(105.84) }, { tickEntries(106.09) }, { tickEntries(106.095) }, { stopEntry(106.5, DRAIN_LIFE) },
+					{ castEntries(108.04, DRAIN_LIFE) }, { tickEntries(108.92) }, { tickEntries(108.92) },
+					{ tickEntries(109.045) }, { tickEntries(109.06) })
+				assert.are_not.equal(DRAIN_LIFE, shownSpells(entries)[7])
+			end)
+
+			-- Limits, from Codex reviews: a Tick Tie's other spell ticks a little
+			-- more than TICK_TOLERANCE off its rhythm, so only the tie's owner fits
+			-- that tick, and takes it. Ticks that far off are rare in the Traces.
+			describe("when the tie's other spell ticks past the tolerance", function()
+				it("gives the tick to the spell whose cast's first tick fits it", function()
+					local entries = entriesOf({ castEntries(0, AGONY) }, { tickEntries(1.97) }, { castEntries(3.05, SIPHON_LIFE) },
+						{ tickEntries(3.97) }, { tickEntries(6) }, { tickEntries(6.08) })
+					assert.are.same({ AGONY, AGONY, "none", SIPHON_LIFE }, shownSpells(entries))
+				end)
+
+				it("gives the first tick after the tie to the spell whose rhythm fits it", function()
+					local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(2.94) }, { castEntries(2.97, DRAIN_LIFE) },
+						{ tickEntries(3.97) }, { tickEntries(4.95) }, { tickEntries(5.92) }, { tickEntries(6.045) })
+					local spells = shownSpells(entries)
+					assert.are.equal(DRAIN_LIFE, spells[#spells])
+				end)
+
+				it("does so across a tick of another school", function()
+					local entries = entriesOf({ castEntries(0, IMMOLATE) }, { lineEntry(0, "direct"), hitEntry(0, "nameplate1", FIRE) },
+						{ lineEntry(3, "tick"), hitEntry(3, "nameplate1", FIRE) }, { castEntries(3.02, CORRUPTION) },
+						{ tickEntries(5.96) }, { castEntries(5.99, DRAIN_LIFE) }, { lineEntry(6, "tick"), hitEntry(6, "nameplate1", FIRE) },
+						{ tickEntries(6.99) }, { tickEntries(7.97) }, { tickEntries(8.94) },
+						{ lineEntry(9, "tick"), hitEntry(9, "nameplate1", FIRE) }, { tickEntries(9.065) })
+					local spells = shownSpells(entries)
+					assert.are.equal(DRAIN_LIFE, spells[#spells])
+				end)
+			end)
+
 			it("takes no target for a cast whose SENT it cannot match, as its end target can be another mob", function()
 				local entries = {
 					{ 0, "UNIT_SPELLCAST_SENT", "player", "<secret>", "<secret>", IMMOLATE, target = "nameplate1" },
@@ -1259,7 +1420,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 270
+		local UNKNOWN_FLOOR = 250
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell = {}, 0, {}

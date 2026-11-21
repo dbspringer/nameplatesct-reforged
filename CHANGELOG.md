@@ -1,5 +1,9 @@
 # Changelog
 
+## 10
+
+- After two of your DoTs tick at nearly the same moment, their later ticks keep their icon. The close tick itself still shows no icon.
+
 ## 9
 
 - Rogue poisons show their icon: Instant Poison's hits and Deadly Poison's ticks. A Nature proc from an item can show a poison icon too.
