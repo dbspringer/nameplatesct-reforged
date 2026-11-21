@@ -2,7 +2,7 @@
 
 ## 11
 
-- New option, Display Possible Icons (off by default): when more than one of your spells could have made a number, it shows a small stack of all their icons. One of them is right.
+- New option, Display Possible Icons (off by default): when two or three of your spells could have made a number, it shows a small stack of their icons. One of them is right.
 - The spell filter now hides a number when every spell that could have made it is on your list.
 
 ## 10
