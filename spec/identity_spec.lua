@@ -1412,18 +1412,108 @@ describe("Spell Identity", function()
 		assert.are.same({}, saved)
 	end)
 
+	-- Possible Spells: a Hit with no Spell Identity gets the spells that could
+	-- have made it, when one of them surely did.
+	describe("Possible Spells", function()
+		local SHADOWBURN = 17877
+
+		local function targetedCast(time, spellID)
+			return { time, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-" .. time .. "-" .. tostring(spellID), spellID, "<nil>",
+				target = "nameplate1" }
+		end
+
+		-- For each Hit that Flow shows: its spell, its Possible Spells, or
+		-- "none". The entries come 100 s after a cast at 0, so that Identity has
+		-- run longer than any DoT cast before it started.
+		local function shown(entries)
+			local results = {}
+			local flow = ns.Flow.New({
+				spellFacts = {},
+				show = function(_, spellID, _, _, _, _, possible)
+					results[#results + 1] = spellID or possible or "none"
+				end,
+			})
+			flow.Push(castEntry(0, SHADOW_BOLT))
+			for _, entry in ipairs(entries) do
+				flow.Push(entry)
+			end
+			flow.Tick(math.huge)
+			return results
+		end
+
+		local function ticks(time, count)
+			local entries = {}
+			for _ = 1, count or 1 do
+				entries[#entries + 1] = lineEntry(time, "tick")
+				entries[#entries + 1] = hitEntry(time, "nameplate1", SHADOW)
+			end
+			return unpack(entries)
+		end
+
+		it("gives a Tick Tie the spells that fit it, in the order of their first rank", function()
+			assert.are.same({ { CORRUPTION, AGONY } }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				ticks(104) }))
+		end)
+
+		it("gives both ticks of a frame that two spells fit the same two spells", function()
+			assert.are.same({ { CORRUPTION, AGONY }, { CORRUPTION, AGONY } }, shown({ targetedCast(102, AGONY),
+				targetedCast(101, CORRUPTION), ticks(104, 2) }))
+		end)
+
+		it("gives both ticks of a frame that three spells fit all three", function()
+			assert.are.same({ { CORRUPTION, AGONY, SIPHON_LIFE }, { CORRUPTION, AGONY, SIPHON_LIFE } }, shown({
+				targetedCast(102, AGONY), targetedCast(101, CORRUPTION), targetedCast(101, SIPHON_LIFE), ticks(104, 2) }))
+		end)
+
+		it("gives none to a tick that four spells fit", function()
+			assert.are.same({ "none" }, shown({ targetedCast(102, AGONY), targetedCast(101, CORRUPTION),
+				targetedCast(101, SIPHON_LIFE), targetedCast(103, DRAIN_LIFE), ticks(104) }))
+		end)
+
+		it("gives a direct hit that two spells' casts fit both spells", function()
+			assert.are.same({ { SHADOW_BOLT, SHADOWBURN } }, shown({ castEntry(100, SHADOW_BOLT), castEntry(100.5, SHADOWBURN),
+				lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW) }))
+		end)
+
+		-- A cast whose spell ID is secret can be a DoT that fits too.
+		it("gives none to a Tick Tie while a cast with a secret spell ID can run", function()
+			assert.are.same({ "none" }, shown({ targetedCast(99, "<secret>"), targetedCast(102, AGONY),
+				targetedCast(101, CORRUPTION), ticks(104) }))
+		end)
+
+		-- A DoT cast before Identity started, as before a /reload, is in no list.
+		it("gives none to a Tick Tie before Identity has run longer than any DoT", function()
+			local results = {}
+			local flow = ns.Flow.New({
+				spellFacts = {},
+				show = function(_, spellID, _, _, _, _, possible)
+					results[#results + 1] = spellID or possible or "none"
+				end,
+			})
+			for _, entry in ipairs({ targetedCast(2, AGONY), targetedCast(1, CORRUPTION), ticks(4) }) do
+				flow.Push(entry)
+			end
+			flow.Tick(math.huge)
+			assert.are.same({ "none" }, results)
+		end)
+	end)
+
 	-- Every Warlock Trace through Flow, as the live addon runs, against the
 	-- spell of each Label. Wrong is an icon of another spell, or any icon on
-	-- a Hit that has none; Unknown is no icon on a Hit whose spell is known.
-	-- The Wrong icons in Trace.WRONG are known: each must still be Wrong, so a
-	-- fix removes it from the list.
+	-- a Hit that has none, or Possible Spells that miss the Label's spell;
+	-- Unknown is no icon on a Hit whose spell is known. The Wrongs in
+	-- Trace.WRONG and Trace.POSSIBLE_WRONG are known: each must still be
+	-- Wrong, so a fix removes it from its list.
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
 		local UNKNOWN_FLOOR = 250
+		-- The Unknown Hits of the current build whose Possible Spells hold the
+		-- Label's spell: a change that lowers it loses stacks.
+		local POSSIBLE_FLOOR = 133
 
 		local function replay(carryFacts)
-			local wrong, unknown, perSpell = {}, 0, {}
+			local wrong, unknown, perSpell, possibleRight = {}, 0, {}, 0
 			local facts = {}
 			for _, name in ipairs(Trace.NAMES) do
 				if not carryFacts then
@@ -1435,11 +1525,26 @@ describe("Spell Identity", function()
 					spellOf[row.hit] = row.spell
 				end
 				local known, stillWrong = Trace.WRONG[name] or {}, {}
+				local knownPossible, stillPossibleWrong = Trace.POSSIBLE_WRONG[name] or {}, {}
 				local flow = ns.Flow.New({
 					spellFacts = facts,
 					class = trace.header.class,
-					show = function(hit, spellID)
+					show = function(hit, spellID, _, _, _, _, possible)
 						local want = spellOf[hit.entry]
+						if possible then
+							local holds = false
+							for _, possibleID in ipairs(possible) do
+								holds = holds or possibleID == want
+							end
+							if holds then
+								possibleRight = possibleRight + 1
+							elseif knownPossible[hit.entry] then
+								stillPossibleWrong[hit.entry] = true
+							else
+								wrong[#wrong + 1] = ("%s hit %d: Possible Spells %s, Label %s"):format(name, hit.entry,
+									table.concat(possible, ","), tostring(want))
+							end
+						end
 						if spellID == nil and want then
 							unknown = unknown + 1
 							perSpell[want] = (perSpell[want] or 0) + 1
@@ -1461,20 +1566,29 @@ describe("Spell Identity", function()
 						wrong[#wrong + 1] = ("%s hit %d: no longer Wrong, so remove it from Trace.WRONG"):format(name, entry)
 					end
 				end
+				for entry in pairs(knownPossible) do
+					if not stillPossibleWrong[entry] then
+						wrong[#wrong + 1] = ("%s hit %d: no longer Wrong, so remove it from Trace.POSSIBLE_WRONG"):format(name,
+							entry)
+					end
+				end
 			end
-			return wrong, unknown, perSpell
+			return wrong, unknown, perSpell, possibleRight
 		end
 
 		it("gives no Wrong icon but the known ones, with Spell Facts learned in each Trace alone", function()
-			local wrong, unknown, perSpell = replay(false)
+			local wrong, unknown, perSpell, possibleRight = replay(false)
 			local parts = {}
 			for spellID, count in pairs(perSpell) do
 				parts[#parts + 1] = spellID .. ": " .. count
 			end
 			table.sort(parts)
-			print(("\nSpell Identity: %d Unknown (%s)"):format(unknown, table.concat(parts, ", ")))
+			print(("\nSpell Identity: %d Unknown (%s), %d with Possible Spells"):format(unknown, table.concat(parts, ", "),
+				possibleRight))
 			assert.are.same({}, wrong)
 			assert.is_true(unknown <= UNKNOWN_FLOOR, ("%d Unknown, more than %d"):format(unknown, UNKNOWN_FLOOR))
+			assert.is_true(possibleRight >= POSSIBLE_FLOOR, ("%d with Possible Spells, fewer than %d"):format(possibleRight,
+				POSSIBLE_FLOOR))
 		end)
 
 		it("gives no Wrong icon but the known ones, and fewer Unknown, with Spell Facts carried from Trace to Trace", function()

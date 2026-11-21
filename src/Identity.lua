@@ -19,7 +19,9 @@ ns.Identity = Identity
 -- travels (see areaOf). A Seal Proc and a Rogue's Poison Procs have no cast:
 -- a Seal Proc goes by the Active Seal and a landed swing, a poison by its
 -- school and a landed melee hit (see newSealTracker and newPoisonTracker).
--- When it is not sure, it gives none.
+-- When it is not sure, it gives none. A Hit that gets none can still get its
+-- Possible Spells, when one of two or three known spells surely made it (see
+-- possibleOf).
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -155,6 +157,36 @@ local function sameTick(a, b)
 	end
 	local schoolA, schoolB = a.hit.school, b.hit.school
 	return issecretvalue(schoolA) or issecretvalue(schoolB) or schoolA == schoolB
+end
+
+-- The most Possible Spells a Hit can have: a stack of more icons tells the
+-- player little.
+local MAX_POSSIBLE = 3
+
+local function firstRankOf(spellID)
+	local spell = ns.TickSpells[spellID] or ns.DirectSpells[spellID]
+	return spell and spell.firstRank or spellID
+end
+
+-- The Possible Spells from these spell IDs: each spell once, in the order of
+-- its first rank, so a given set always shows the same stack. nil for fewer
+-- than two spells, or more than MAX_POSSIBLE.
+local function possibleOf(spellIDs)
+	local seen, list = {}, {}
+	for _, spellID in ipairs(spellIDs) do
+		local first = firstRankOf(spellID)
+		if not seen[first] then
+			seen[first] = true
+			list[#list + 1] = spellID
+		end
+	end
+	if #list < 2 or #list > MAX_POSSIBLE then
+		return nil
+	end
+	table.sort(list, function(a, b)
+		return firstRankOf(a) < firstRankOf(b)
+	end)
+	return list
 end
 
 -- Follows the player's Active Seal, Consecration, and landed swings, which are
@@ -313,7 +345,8 @@ end
 -- Only a ranged attack learns, so its facts are always for shots.
 -- Cast(record) takes the adapter's cast records, and Line(record) its Log
 -- Lines. Of(hit, line, together, sure) gives the spell ID of Your Hit on an
--- enemy, or nil; Hits come in about the
+-- enemy, or nil and the Hit's Possible Spells, a list of spell IDs, or nil;
+-- Hits come in about the
 -- order of their time, a held Hit up to DECIDE_LATE late. together, for a
 -- tick, is how many ticks that could be the same spell's came at that time on
 -- that unit, this one included, and sure how many of them surely have its
@@ -409,7 +442,8 @@ function Identity.New(saved, class)
 	end
 
 	-- The one cast that fits a direct hit or a shot by time and whose school
-	-- is not known to differ from the Hit's, and how many casts fit. A cast of
+	-- is not known to differ from the Hit's, how many casts fit, and those
+	-- casts. A cast of
 	-- a spell that learns its school and that fits alone by time is taken even
 	-- with another school, as a new wand changes Shoot's. Shots can overlap, as a
 	-- flight can outlast the time between casts, and a shot's Hit can go unpaired.
@@ -417,7 +451,7 @@ function Identity.New(saved, class)
 	-- the spell is sure, and no cast stays to block the next shot.
 	local function castOf(hit, group, school, miss)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
-		local oldestFitting, oneSpell = nil, true
+		local oldestFitting, oneSpell, fittingCasts = nil, true, {}
 		local groupWindow = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
@@ -428,6 +462,7 @@ function Identity.New(saved, class)
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
 					fitting, lastFitting = fitting + 1, cast
+					fittingCasts[#fittingCasts + 1] = cast
 					if not oldestFitting then
 						oldestFitting = cast
 					elseif cast.secret or oldestFitting.secret or cast.spellID ~= oldestFitting.spellID then
@@ -437,12 +472,27 @@ function Identity.New(saved, class)
 			end
 		end
 		if timely == 1 and learns(lastTimely) then
-			return lastTimely, fitting
+			return lastTimely, fitting, fittingCasts
 		end
 		if group == "shot" and fitting > 1 and oneSpell then
-			return oldestFitting, fitting
+			return oldestFitting, fitting, fittingCasts
 		end
-		return fitting == 1 and lastFitting or nil, fitting
+		return fitting == 1 and lastFitting or nil, fitting, fittingCasts
+	end
+
+	-- The Possible Spells of a direct hit or a shot that these casts fit, or
+	-- nil when one of them could be another spell: a cast whose spell ID is
+	-- secret, the pet's, or one of a spell whose school is not known to match.
+	local function possibleOfCasts(fittingCasts, school)
+		local spellIDs = {}
+		for _, cast in ipairs(fittingCasts) do
+			local known = not cast.secret and cast.unit == "player" and schoolOf(cast.spellID)
+			if not known or (school and known ~= school) then
+				return nil
+			end
+			spellIDs[#spellIDs + 1] = cast.spellID
+		end
+		return possibleOf(spellIDs)
 	end
 
 	-- The casts of the area spell whose tick this direct hit is, nil when none
@@ -499,7 +549,7 @@ function Identity.New(saved, class)
 			local _, fitting = castOf(hit, group, school, miss)
 			return fitting == 0 and areaCasts[1].spellID or nil
 		end
-		local found, fitting = castOf(hit, group, school, miss)
+		local found, fitting, fittingCasts = castOf(hit, group, school, miss)
 		-- A cast that fits could have made the Hit too, so it goes on as any
 		-- direct Hit, and uses that cast up.
 		local poison = poisons and group == "direct" and school == SCHOOL_NATURE and fitting == 0
@@ -514,7 +564,7 @@ function Identity.New(saved, class)
 			return fitting == 0 and seal or nil
 		end
 		if not found then
-			return nil
+			return nil, possibleOfCasts(fittingCasts, school)
 		end
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
@@ -787,7 +837,8 @@ function Identity.New(saved, class)
 		end
 		-- A due tick of a spell that the tick table leaves out, such as Curse of
 		-- Doom's, competes too, but has no rhythm to move or keep.
-		if rivalOnlyDue(hit, school) then
+		local rivalOnly = rivalOnlyDue(hit, school)
+		if rivalOnly then
 			fits = fits + 1
 		end
 		-- A tick that fits one spell alone is that spell's, so it keeps only the
@@ -834,7 +885,24 @@ function Identity.New(saved, class)
 		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
-		return fits == 1 and not together and not (unsettled and secretDotRuns(hit)) and found or nil
+		if fits == 1 and not together and not (unsettled and secretDotRuns(hit)) then
+			return found
+		end
+		-- A tick that no spell surely made alone has the spells that fit it as
+		-- its Possible Spells, but only when it can be no other spell's: its
+		-- school is public, no tick of a spell that the tick table leaves out
+		-- is due, at least as many spells fit as ticks came, and no DoT can run
+		-- unseen, from a cast whose spell ID is secret or from before Identity
+		-- started (as before a /reload).
+		if not school or rivalOnly or fits < (together or 1) or secretDotRuns(hit)
+			or hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE then
+			return nil
+		end
+		local spellIDs = {}
+		for spellID in pairs(moved) do
+			spellIDs[#spellIDs + 1] = spellID
+		end
+		return nil, possibleOf(spellIDs)
 	end
 
 	local identity = {}
@@ -927,17 +995,21 @@ function Identity.New(saved, class)
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
 		end
-		return group and ofDirect(hit, group, school, miss, plate) or nil
+		if not group then
+			return nil
+		end
+		return ofDirect(hit, group, school, miss, plate)
 	end
 
-	-- Of for each { hit, line } of decisions that came together, with the
+	-- Of for each { hit, line } of decisions that came together, as a list of
+	-- spell IDs and a list of Possible Spells by decision, with the
 	-- number of ticks that came with each tick, and of those whose school is
 	-- surely its own. A resisted tick reports school
 	-- 1 whatever its spell, so only real ticks count. A Hit paired as melee has no spell. A
 	-- Weapon Proc's line is a direct one, but its Hit must not use up a cast that
 	-- it did not come from.
 	function identity.OfAll(decisions)
-		local spellIDs = {}
+		local spellIDs, possibles = {}, {}
 		for i, decision in ipairs(decisions) do
 			local together, sure
 			if decision.line.lineKind == "tick" then
@@ -951,10 +1023,24 @@ function Identity.New(saved, class)
 				end
 			end
 			if decision.how ~= "melee" then
-				spellIDs[i] = identity.Of(decision.hit, decision.line, together, sure)
+				spellIDs[i], possibles[i] = identity.Of(decision.hit, decision.line, together, sure)
 			end
 		end
-		return spellIDs
+		-- The first tick of a frame moves the rhythms of the spells that fit it
+		-- onto the frame, so the frame's other ticks fit none. They are ticks
+		-- of the same spells, so each takes the first one's Possible Spells,
+		-- unless its school is secret and so could be another.
+		for i, decision in ipairs(decisions) do
+			if possibles[i] and decision.line.lineKind == "tick" then
+				for j, other in ipairs(decisions) do
+					if j ~= i and other.line.lineKind == "tick" and spellIDs[j] == nil and possibles[j] == nil
+						and other.how ~= "melee" and not issecretvalue(other.hit.school) and sameTick(decision, other) then
+						possibles[j] = possibles[i]
+					end
+				end
+			end
+		end
+		return spellIDs, possibles
 	end
 
 	return identity

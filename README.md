@@ -23,6 +23,12 @@ Enemy nameplates need to be on (press V), since the numbers draw on them.
 - `/nsctr record` records your combat events, and typing it again stops. If something looks wrong, attach the recording to an [issue](https://github.com/dbspringer/nameplatesct-reforged/issues).
 - `/nsctr forget` clears what the addon learned about your wand.
 
+## Icons
+
+The game doesn't tell addons which spell made a number, so the addon works it out from your casts and the timing of each hit. When two of your spells hit at the same moment, nothing tells which number is which. The game hides the amounts from addons, so those can't settle it either.
+
+Those numbers show no icon. With Display Possible Icons on, each one shows a small stack with the icon of every spell that could have made it.
+
 ## Develop
 
 Run `./fetch-libs.sh` to fetch the libraries into `Libs/`, then link the repo as `NameplateSCT_Reforged` into your Forever client's `Interface/AddOns` folder. Lint with `luacheck .` and run the specs with `busted` (on Lua 5.1, since that's what WoW runs).
