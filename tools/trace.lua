@@ -30,7 +30,8 @@ Trace.LOST = { ["warlock-spells"] = { [302] = true }, ["warlock-drain-life"] = {
 Trace.WRONG = { ["warlock-drain-life"] = { [3011] = true, [3527] = true, [3575] = true } }
 
 -- Your Hits in those Traces whose Possible Spells are known to miss the
--- Label's spell, by Trace and Hit entry; the replay fails on any other.
+-- Label's spell, by Trace and Hit entry. The replay fails on any other, and on
+-- a Hit here whose list now holds it, so this list only shrinks.
 -- warlock-drain-life 1901: Bane of Agony and Drain Life ticked in one frame;
 -- Drain Life missed its rhythm, and Siphon Life fit through a rhythm that a
 -- Tick Tie kept (its real tick came 0.125 s before).

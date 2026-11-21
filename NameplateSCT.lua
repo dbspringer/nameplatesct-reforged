@@ -16,7 +16,12 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -- COMPATIBILITY --
 -------------------
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+local spellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+-- One value only: Forever's C_Spell.GetSpellTexture also gives the original
+-- icon, which a list of textures would take as a second icon.
+local function GetSpellTexture(spellID)
+	return (spellTexture(spellID))
+end
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- The spell whose icon the player's swing shows. The pet's swing shows the
 -- pet Attack button's icon, PET_ATTACK_TEXTURE.
@@ -421,16 +426,18 @@ local function recycleFontString(fontString)
 			fontString.icon.button:ClearAllPoints()
 		end
 	end
-	for _, icon in pairs(fontString.stackIcons or {}) do
-		icon:ClearAllPoints()
-		icon:Hide()
-		if icon.skinned then
-			NameplateSCT.frame.MSQGroup:RemoveButton(icon.button)
-			icon.skinned = nil
-		end
-		if icon.button then
-			icon.button:Hide()
-			icon.button:ClearAllPoints()
+	if fontString.stackIcons then
+		for _, icon in pairs(fontString.stackIcons) do
+			icon:ClearAllPoints()
+			icon:Hide()
+			if icon.skinned then
+				NameplateSCT.frame.MSQGroup:RemoveButton(icon.button)
+				icon.skinned = nil
+			end
+			if icon.button then
+				icon.button:Hide()
+				icon.button:ClearAllPoints()
+			end
 		end
 	end
 	fontString.iconCount = nil
@@ -660,11 +667,10 @@ local function placeIcons(fontString, size)
 	local iconSize = size * global.iconScale
 	local step = iconSize * STACK_STEP
 	local direction = STACK_DIRECTIONS[global.iconPosition] or STACK_DIRECTIONS.RIGHT
-	local count = fontString.iconCount or 1
+	local count = fontString.iconCount
 	for i = 1, count do
 		local away, across = i - 1, i - 1 - (count - 1) / 2
 		local region = iconRegion(i == 1 and fontString.icon or fontString.stackIcons[i])
-		region:ClearAllPoints()
 		region:SetSize(iconSize, iconSize)
 		region:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition,
 			global.xOffsetIcon + (direction[1] * away + direction[3] * across) * step,
@@ -897,7 +903,7 @@ end
 local eastAsiaLetter = L["Truncate Letter East Asia"]
 
 -- swinger is who swung, "player" or "pet", or nil for a Hit that is no
--- swing. texture is the icon's texture, or nil for none.
+-- swing. textures is the list of icon textures, or nil for none.
 function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, textures)
 	if not issecretvalue(amount) then
 		amount = amount or 0
@@ -978,12 +984,25 @@ function NameplateSCT:MissEvent(where, missType, textures)
 	self:DisplayText(where, MISS_EVENT_STRINGS[missType], color, size, animation, textures, true)
 end
 
+-- fn of each spell ID, or nil when fn gives none for one of them.
+local function allOf(spellIDs, fn)
+	local values = {}
+	for i, spellID in ipairs(spellIDs) do
+		values[i] = fn(spellID)
+		if values[i] == nil then
+			return nil
+		end
+	end
+	return values
+end
+
 -- Plate Text for Your Hit on an enemy Nameplate. A swing gets the autoattack
 -- animation, the colour of who swung, and its Swing Icon unless the player
 -- turned that off: swinger is "player", "pet", or nil for a Hit that is no
 -- swing. spellID, from Spell Identity, gives the
 -- icon, and is nil when the spell is not known. possible, the Hit's Possible
--- Spells or nil, gives a stack of their icons when the player turned that on.
+-- Spells or nil, gives a stack of their icons when the player turned that on,
+-- and the Spell Filter reads it either way.
 -- late is the Nameplate as it hid, for a late Hit (see Flow.New).
 function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 	-- Where the text goes. A late Hit's token can name another unit by now,
@@ -998,17 +1017,8 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 	end
 	if self.db.global.filterEnabled then
 		local name = spellID and GetSpellName(spellID)
-		local possibleNames
-		if possible then
-			possibleNames = {}
-			for _, possibleID in ipairs(possible) do
-				possibleNames[#possibleNames + 1] = GetSpellName(possibleID)
-			end
-			-- A spell with no name cannot be listed.
-			if #possibleNames < #possible then
-				possibleNames = nil
-			end
-		end
+		-- A spell with no name cannot be listed.
+		local possibleNames = possible and allOf(possible, GetSpellName)
 		if not ns.Filter.SpellShows(spellFilter, self.db.char.inverseSpellFilter, name, hit.action, swinger ~= nil,
 			possibleNames) then
 			return
@@ -1026,19 +1036,14 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 	end
 	local textures
 	if self.db.global.showIcon then
+		-- A missing texture shows no icon, and a stack shows only when each of
+		-- its spells has one.
 		if spellID then
-			textures = { GetSpellTexture(spellID) }
+			textures = allOf({ spellID }, GetSpellTexture)
 		elseif possible and self.db.global.showPossibleIcons then
-			textures = {}
-			for _, possibleID in ipairs(possible) do
-				textures[#textures + 1] = GetSpellTexture(possibleID)
-			end
+			textures = allOf(possible, GetSpellTexture)
 		elseif swinger and self.db.global.showSwingIcon then
-			textures = { swinger == "pet" and PET_ATTACK_TEXTURE or GetSpellTexture(AUTO_ATTACK) }
-		end
-		-- A spell whose texture is not known shows no icon, as before.
-		if textures and (#textures == 0 or (possible and not spellID and #textures < #possible)) then
-			textures = nil
+			textures = swinger == "pet" and { PET_ATTACK_TEXTURE } or allOf({ AUTO_ATTACK }, GetSpellTexture)
 		end
 	end
 	if hit.action == "WOUND" then

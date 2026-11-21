@@ -21,7 +21,7 @@ ns.Identity = Identity
 -- school and a landed melee hit (see newSealTracker and newPoisonTracker).
 -- When it is not sure, it gives none. A Hit that gets none can still get its
 -- Possible Spells, when one of two or three known spells surely made it (see
--- possibleOf).
+-- ofTick and possibleOfCasts).
 
 -- How long after its cast a spell can land: a direct hit, a shot, or a
 -- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
@@ -293,6 +293,15 @@ local function newSealTracker()
 		end
 	end
 
+	-- Whether a Holy Hit with no cast could have made this direct Hit: a
+	-- Consecration tick, or a Seal Proc, whose miss reports no school.
+	function tracker.CastlessCould(hit, school)
+		if school ~= nil and school ~= SCHOOL_HOLY then
+			return false
+		end
+		return tracker.Consecrated(hit) or tracker.ProcSpell(hit, SCHOOL_HOLY) ~= nil
+	end
+
 	return tracker
 end
 
@@ -344,9 +353,9 @@ end
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
 -- Cast(record) takes the adapter's cast records, and Line(record) its Log
--- Lines. Of(hit, line, together, sure) gives the spell ID of Your Hit on an
--- enemy, or nil and the Hit's Possible Spells, a list of spell IDs, or nil;
--- Hits come in about the
+-- Lines. Of(hit, line, together, sure) gives two values for Your Hit on an
+-- enemy: its spell ID or nil, and, when that is nil, its Possible Spells (a
+-- list of spell IDs) or nil. Hits come in about the
 -- order of their time, a held Hit up to DECIDE_LATE late. together, for a
 -- tick, is how many ticks that could be the same spell's came at that time on
 -- that unit, this one included, and sure how many of them surely have its
@@ -482,12 +491,16 @@ function Identity.New(saved, class)
 
 	-- The Possible Spells of a direct hit or a shot that these casts fit, or
 	-- nil when one of them could be another spell: a cast whose spell ID is
-	-- secret, the pet's, or one of a spell whose school is not known to match.
-	local function possibleOfCasts(fittingCasts, school)
+	-- secret, the pet's, or one of a spell whose school is not known (castOf
+	-- already leaves out a cast whose school differs from the Hit's).
+	local function possibleOfCasts(fittingCasts)
+		if #fittingCasts < 2 then
+			return nil
+		end
 		local spellIDs = {}
 		for _, cast in ipairs(fittingCasts) do
 			local known = not cast.secret and cast.unit == "player" and schoolOf(cast.spellID)
-			if not known or (school and known ~= school) then
+			if not known then
 				return nil
 			end
 			spellIDs[#spellIDs + 1] = cast.spellID
@@ -564,7 +577,16 @@ function Identity.New(saved, class)
 			return fitting == 0 and seal or nil
 		end
 		if not found then
-			return nil, possibleOfCasts(fittingCasts, school)
+			-- A Consecration tick or a Seal Proc has no cast, so when one could
+			-- have made the Hit, the casts that fit are not all its possible
+			-- spells. A Seal or a Consecration from before Identity started, as
+			-- before a /reload, is in no list, so a Holy Hit gets none until a
+			-- Seal from then has run out.
+			if seals.CastlessCould(hit, school)
+				or (school == nil or school == SCHOOL_HOLY) and hit.time - startedAt <= SEAL_DURATION then
+				return nil
+			end
+			return nil, possibleOfCasts(fittingCasts)
 		end
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
@@ -761,6 +783,22 @@ function Identity.New(saved, class)
 		return false
 	end
 
+	-- Whether a DoT of this school that none of the spells in fits can still
+	-- run from a cast on a plate life that has hid, or on no known one: its
+	-- unit can be back on another plate life, which has none of the old one's
+	-- Tick Rhythms, so its ticks there fit no spell.
+	local function hiddenDotRuns(hit, school, fits, plate)
+		for _, cast in ipairs(dotCasts) do
+			local spell = cast.spellID and ns.TickSpells[cast.spellID]
+			if spell and not spell.area and spell.school == school and not cast.missed and not fits[cast.spellID]
+				and (not cast.plate or cast.plate ~= plate and cast.plate.hid)
+				and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- Whether a RIVAL_ONLY spell's tick, from a cast on any unit as in
 	-- rivalDue, is due at this Hit.
 	local function rivalOnlyDue(hit, school)
@@ -892,10 +930,10 @@ function Identity.New(saved, class)
 		-- its Possible Spells, but only when it can be no other spell's: its
 		-- school is public, no tick of a spell that the tick table leaves out
 		-- is due, at least as many spells fit as ticks came, and no DoT can run
-		-- unseen, from a cast whose spell ID is secret or from before Identity
-		-- started (as before a /reload).
+		-- unseen, from a cast whose spell ID is secret, from before Identity
+		-- started (as before a /reload), or on a plate life that hid.
 		if not school or rivalOnly or fits < (together or 1) or secretDotRuns(hit)
-			or hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE then
+			or hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE or hiddenDotRuns(hit, school, moved, plate) then
 			return nil
 		end
 		local spellIDs = {}
@@ -1026,10 +1064,10 @@ function Identity.New(saved, class)
 				spellIDs[i], possibles[i] = identity.Of(decision.hit, decision.line, together, sure)
 			end
 		end
-		-- The first tick of a frame moves the rhythms of the spells that fit it
-		-- onto the frame, so the frame's other ticks fit none. They are ticks
-		-- of the same spells, so each takes the first one's Possible Spells,
-		-- unless its school is secret and so could be another.
+		-- When no more spells fit n ticks than n, the first tick moves their
+		-- rhythms onto the frame, so the frame's other ticks fit none. They are
+		-- ticks of the same spells, so each takes the first one's Possible
+		-- Spells, unless its school is secret and so could be another.
 		for i, decision in ipairs(decisions) do
 			if possibles[i] and decision.line.lineKind == "tick" then
 				for j, other in ipairs(decisions) do
