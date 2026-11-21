@@ -103,15 +103,15 @@ What the addon has learned about a spell whose school is not fixed, such as a wa
 _Avoid_: Spell data, spell profile
 
 **Tick Rhythm**:
-The times at which one spell's ticks come on one Nameplate: one interval apart, from its cast or landing. One tick can come a little early or late, but the next tick comes on the rhythm again, so a rhythm does not drift. A tick that comes on a spell's Tick Rhythm can be that spell's.
+The times at which one spell's ticks come on one unit: one interval apart, from its cast or landing. One tick can come a little early or late, but the next tick comes on the rhythm again, so a rhythm does not drift. A tick that comes on a spell's Tick Rhythm can be that spell's. A unit keeps its Tick Rhythms when its Nameplate hides and shows again, if the game lets the addon know that it is the same unit.
 _Avoid_: DoT timer, tick schedule
 
 **Tick Tie**:
-A tick, alone of its school on its Nameplate in its frame, that the Tick Rhythms of two or more spells fit. Only one of the spells made it, but nothing tells which, so it has no Spell Identity; when the addon is sure that one of them made it, they are its Possible Spells.
+A tick, alone of its school on its unit in its frame, that the Tick Rhythms of two or more spells fit. Only one of the spells made it, but nothing tells which, so it has no Spell Identity; when the addon is sure that one of them made it, they are its Possible Spells.
 _Avoid_: Tie, rhythm clash
 
 **Stop Tick**:
-A channel's tick that comes in the same frame as the channel's stop. It can come before the next tick on the channel's Tick Rhythm, when the channel ends early. It is the channel's tick only when the channel ticked on the same Nameplate less than one interval before.
+A channel's tick that comes in the same frame as the channel's stop. It can come before the next tick on the channel's Tick Rhythm, when the channel ends early. It is the channel's tick only when the channel ticked on the same unit less than one interval before.
 _Avoid_: Last tick, final tick, partial tick
 
 **Secret Amount**:

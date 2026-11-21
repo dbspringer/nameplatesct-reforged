@@ -19,6 +19,10 @@ local LATE_REPORT_WINDOW = ns.LineKind.LONGEST_PROC_DELAY
 -- time, which is 2.0 s for Immolate in the Traces. A cast that fails never
 -- succeeds, so its SENT goes after this.
 local SENT_TARGET_AGE = 10
+-- How long a hidden unit keeps its unit key (see Adapter.New): as long as any
+-- DoT can run, so a DoT that ran at the hide keeps its Tick Rhythms, and after
+-- that no DoT from before the hide can tick.
+local UNIT_KEY_AGE = ns.LONGEST_DOT
 
 -- Hits on the player and the pet stay, so Pairing can give the Log Lines for
 -- heals and self-damage to them, not to an enemy's Hit. Events.lua records
@@ -195,7 +199,45 @@ function Adapter.New(onRecord)
 	-- Nameplate hid, and which one, however often the token moves on before
 	-- Pairing decides the Hit. At the hide, hid is the Nameplate as it hid
 	-- (see Flow.New); reused says that its frame has shown a unit since.
+	-- unitKey is what all plate lives of one unit share, so Identity keeps the
+	-- unit's Tick Rhythms and casts when its Nameplate hides and shows again.
+	-- A plate life whose unit's GUID is secret or not known has none.
 	local lives, lifeOnFrame = {}, {}
+	-- The unit key of each unit by its public GUID. A secret GUID cannot be
+	-- compared, so such a unit is not here. A key's hid is the Nameplate as it
+	-- last hid, and hiddenAt when, both nil while the unit shows: Identity
+	-- reads hid to know that a unit can be on no Nameplate. A key goes when its
+	-- unit has been hidden for UNIT_KEY_AGE.
+	local unitKeys = {}
+
+	local function unitKeyOf(entry)
+		local time, guid = entry[1], entry.guid
+		for known, key in pairs(unitKeys) do
+			if key.hiddenAt and time - key.hiddenAt > UNIT_KEY_AGE then
+				unitKeys[known] = nil
+			end
+		end
+		if guid == nil or issecretvalue(guid) then
+			return nil
+		end
+		local key = unitKeys[guid] or {}
+		unitKeys[guid] = key
+		key.hid, key.hiddenAt = nil, nil
+		return key
+	end
+
+	-- The unit keys of the units that are hidden now, or nil when there is none.
+	local function hiddenUnitKeys()
+		local hidden
+		for _, key in pairs(unitKeys) do
+			if key.hiddenAt then
+				hidden = hidden or {}
+				hidden[#hidden + 1] = key
+			end
+		end
+		return hidden
+	end
+
 	-- Nameplates that hid within LATE_REPORT_WINDOW, by their unit's public GUID.
 	-- A secret GUID cannot be compared, so such a Nameplate is not here, and a
 	-- late report on its unit stays with no Nameplate (unverified how often this
@@ -282,7 +324,7 @@ function Adapter.New(onRecord)
 		frameTime = time
 
 		if event == "NAME_PLATE_UNIT_ADDED" then
-			local life = {}
+			local life = { unitKey = unitKeyOf(entry) }
 			lives[entry[3]] = life
 			if entry.frame then
 				if lifeOnFrame[entry.frame] then
@@ -296,6 +338,9 @@ function Adapter.New(onRecord)
 				isBoss = entry.isBoss, isPlayer = entry.isPlayer }
 			if entry.frame then
 				lifeOnFrame[entry.frame] = life
+			end
+			if life.unitKey then
+				life.unitKey.hid, life.unitKey.hiddenAt = life.hid, time
 			end
 			lives[entry[3]] = nil
 			rememberHidden(entry, life)
@@ -325,9 +370,14 @@ function Adapter.New(onRecord)
 			rememberSent(entry)
 			add(entry, { kind = "cast", stage = "SENT", unit = entry[3], spellID = entry[6] })
 		elseif CAST_STAGES[event] then
+			-- A cast whose target has no known plate life can be on a hidden unit,
+			-- so it takes the hidden units as they are now: Identity gets the cast
+			-- later, when a unit can already show again.
+			local succeeded = event == "UNIT_SPELLCAST_SUCCEEDED"
+			local startLife = succeeded and startTargetLife(entry) or nil
 			add(entry, { kind = "cast", stage = CAST_STAGES[event], unit = entry[3], spellID = entry[5],
 				target = entry.target, targetLife = entry.target and lifeOf(entry.target) or nil,
-				startTargetLife = event == "UNIT_SPELLCAST_SUCCEEDED" and startTargetLife(entry) or nil })
+				startTargetLife = startLife, hiddenUnits = succeeded and not startLife and hiddenUnitKeys() or nil })
 		elseif event == "PLAYER_SWING" then
 			add(entry, { kind = "swing", swingType = entry[4] })
 		end

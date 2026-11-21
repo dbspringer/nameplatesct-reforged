@@ -96,6 +96,9 @@ local function onEvent(_, event, ...)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		plateFrames[unit] = C_NamePlate.GetNamePlateForUnit(unit)
 		entry.frame = plateFrames[unit]
+		-- A public GUID tells that a unit shows again, so it keeps its Tick
+		-- Rhythms (see Adapter.New).
+		entry.guid = UnitGUID(unit)
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		-- The Nameplate as it hid, for a late Hit on it (see Flow.New). The
 		-- token still names the leaving unit here (unverified on Forever; the
