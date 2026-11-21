@@ -4,7 +4,7 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
-for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua", "src/DirectSpells.lua", "src/Identity.lua",
+for _, file in ipairs({ "src/LineKind.lua", "src/TickSpells.lua", "src/Adapter.lua", "src/Pairing.lua", "src/DirectSpells.lua", "src/Identity.lua",
 	"src/Flow.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
 end
@@ -1597,10 +1597,10 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 250
+		local UNKNOWN_FLOOR = 236
 		-- The Unknown Hits of the current build whose Possible Spells hold the
 		-- Label's spell: a change that lowers it loses stacks.
-		local POSSIBLE_FLOOR = 118
+		local POSSIBLE_FLOOR = 120
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell, possibleRight = {}, 0, {}, 0

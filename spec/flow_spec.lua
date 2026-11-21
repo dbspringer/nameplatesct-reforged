@@ -4,7 +4,7 @@ end
 _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
-for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua", "src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua" }) do
+for _, file in ipairs({ "src/LineKind.lua", "src/TickSpells.lua", "src/Adapter.lua", "src/Pairing.lua", "src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
 end
 local Flow = ns.Flow
@@ -334,6 +334,51 @@ describe("Flow", function()
 		assert.are.same({}, { shown[1].late, shown[2].late })
 	end)
 
+	describe("a unit whose Nameplate hides and shows again", function()
+		local CORRUPTION = 172
+		-- Corruption cast on the unit at 1, its first tick at 4, a hide at 5 and
+		-- a show on another token at 6, then the next tick at 7.
+		local function reshown(guid, castWhileHidden)
+			local entries = {
+				{ 0, "NAME_PLATE_UNIT_ADDED", "nameplate1", frame = FRAME, guid = guid },
+				{ 1, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-1", CORRUPTION, target = "nameplate1" },
+				{ 1, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", CORRUPTION, "CastBar-1", target = "nameplate1" },
+				{ 4, "UNIT_COMBAT", "nameplate1", "WOUND", "", 29, 32, plate = "nameplate1" },
+				{ 4, "COMBAT_LOG_MESSAGE", "|Ky1|k", 0.7, 0.7, 0.7, 0, lineKind = "tick" },
+				{ 5, "NAME_PLATE_UNIT_REMOVED", "nameplate1", frame = FRAME, guid = guid },
+			}
+			if castWhileHidden then
+				entries[#entries + 1] = { 5.5, "UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-2", CORRUPTION }
+				entries[#entries + 1] = { 5.5, "UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-2", CORRUPTION, "CastBar-2" }
+			end
+			for _, entry in ipairs({
+				{ 6, "NAME_PLATE_UNIT_ADDED", "nameplate2", frame = {}, guid = guid },
+				{ 7, "UNIT_COMBAT", "nameplate2", "WOUND", "", 29, 32, plate = "nameplate2" },
+				{ 7, "COMBAT_LOG_MESSAGE", "|Ky2|k", 0.7, 0.7, 0.7, 0, lineKind = "tick" },
+			}) do
+				entries[#entries + 1] = entry
+			end
+			local shown = run(entries)
+			return shown[1] and shown[1].spellID, shown[2] and shown[2].spellID
+		end
+
+		it("keeps its Tick Rhythms when its GUID is public", function()
+			assert.are.same({ CORRUPTION, CORRUPTION }, { reshown("Creature-1") })
+		end)
+
+		-- A cast with no Nameplate for its target can be a refresh on the hidden
+		-- unit, whose ticks then leave the old rhythm: the tick at 7 can be
+		-- another spell's.
+		it("drops a spell's Tick Rhythm when the spell was cast with no known target while it hid", function()
+			assert.are.same({ CORRUPTION }, { reshown("Creature-1", true) })
+		end)
+
+		-- A secret GUID cannot be compared, so the shown unit can be another.
+		it("starts with no Tick Rhythms when its GUID is secret", function()
+			assert.are.same({ CORRUPTION }, { reshown("<secret>") })
+		end)
+	end)
+
 	-- A live Trace: every amount is secret, so only the descriptor tells the
 	-- real Hit. The second Heroic Strike was a crit in the Combat Log File.
 	it("shows the real Hit of each Heroic Strike in the Warrior Trace, with its icon", function()
@@ -595,8 +640,10 @@ describe("Flow", function()
 	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel
 	-- on Forever only, and the other DoTs and Drain Life (2026-11-21): the
 	-- first Trace with Wrack. Its Labels are all unsure; as above, a row unsure
-	-- only for its secret amount has a sure spell. 22 of its 30 Wrack ticks
-	-- showed Wrack's icon, and 8 none.
+	-- only for its secret amount has a sure spell. 20 of its 30 Wrack ticks
+	-- show Wrack's icon, and 10 none. Two of those (hits 260 and 320) are Tick
+	-- Ties with Bane of Agony or Siphon Life, whose Tick Rhythms the mob keeps
+	-- when its Nameplate shows again at 48.9 s.
 	it("shows Wrack's icon on Wrack's ticks, and no wrong icon", function()
 		local WRACK = 1316697
 		local trace, labels = Trace.LoadChecked("warlock-wrack")
@@ -617,6 +664,6 @@ describe("Flow", function()
 			end
 		end
 		assert.are.same({}, wrong)
-		assert.is_true(wrack >= 22, ("%d Wrack ticks shown with Wrack's icon"):format(wrack))
+		assert.is_true(wrack >= 20, ("%d Wrack ticks shown with Wrack's icon"):format(wrack))
 	end)
 end)

@@ -116,3 +116,12 @@ do
 	ticks(3, PHYSICAL, 18, {}, { 1265065, 1265066, 1265067, 1265068, 1265069 }) -- Savage Rend, Forever only
 	ticks(1, NATURE, 4, {}, { 1265843, 1265878, 1265880, 1265881, 1265883 }) -- Web, Forever only
 end
+
+-- How long any DoT can run: the longest in the table, and at least 60 s, for
+-- Curse of Doom, which it leaves out, and for a cast whose spell ID is secret.
+-- The adapter loads after this file, as it keeps a hidden unit this long.
+local longest = 60
+for _, spell in pairs(spells) do
+	longest = math.max(longest, spell.duration)
+end
+ns.LONGEST_DOT = longest

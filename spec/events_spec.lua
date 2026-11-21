@@ -49,7 +49,7 @@ local ns = { Recorder = {
 	IsRecording = function() return recording end,
 	Record = function(_, event, extra) recorded[event] = extra end,
 } }
-for _, file in ipairs({ "src/LineKind.lua", "src/Adapter.lua", "src/Pairing.lua", "src/TickSpells.lua",
+for _, file in ipairs({ "src/LineKind.lua", "src/TickSpells.lua", "src/Adapter.lua", "src/Pairing.lua",
 	"src/DirectSpells.lua", "src/Identity.lua", "src/Flow.lua", "src/Events.lua", "src/LogFilter.lua" }) do
 	assert(loadfile(file))("NameplateSCT_Reforged", ns)
 end
@@ -159,6 +159,33 @@ describe("Events, with no recording on", function()
 		finish()
 		assert.are.equal(1, #shown)
 		assert.is_table(shown[1].late)
+	end)
+
+	it("keeps a unit's Tick Rhythms when its Nameplate hides and shows again on another token", function()
+		_G.Blizzard_CombatLog_Filters = fixedFilters()
+		guids.nameplate1, guids.nameplate2 = "Creature-2", "Creature-2"
+		finally(function()
+			_G.Blizzard_CombatLog_Filters = nil
+			guids.nameplate1, guids.nameplate2 = nil, nil
+		end)
+		local function tick(token)
+			fire("UNIT_COMBAT", token, "WOUND", "", "<secret>", 32)
+			fire("COMBAT_LOG_MESSAGE", "|Ky1|k", 0.75, 0.55, 1, 0)
+		end
+		local shown = start()
+		fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+		fire("UNIT_SPELLCAST_SENT", "player", "<secret>", "Cast-1", 172)
+		fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 172)
+		now = 4
+		tick("nameplate1")
+		now = 5
+		fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+		now = 6
+		fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
+		now = 7
+		tick("nameplate2")
+		finish()
+		assert.are.same({ 172, 172 }, { shown[1] and shown[1].spellID, shown[2] and shown[2].spellID })
 	end)
 end)
 

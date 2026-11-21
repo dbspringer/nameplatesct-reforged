@@ -19,6 +19,7 @@ _G.Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } }
 
 local ns = {}
 assert(loadfile("src/LineKind.lua"))("NameplateSCT_Reforged", ns)
+assert(loadfile("src/TickSpells.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/Adapter.lua"))("NameplateSCT_Reforged", ns)
 local Adapter = ns.Adapter
 local Trace = assert(loadfile("tools/trace.lua"))()

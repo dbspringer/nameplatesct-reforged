@@ -155,7 +155,7 @@ end
 
 local modules
 
--- LineKind.lua and Adapter.lua, loaded as the game loads them.
+-- LineKind.lua, TickSpells.lua, and Adapter.lua, loaded as the game loads them.
 local function load()
 	if modules then
 		return modules
@@ -169,7 +169,7 @@ local function load()
 		Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } },
 	}, { __index = _G })
 	modules = {}
-	for _, file in ipairs({ "LineKind.lua", "Adapter.lua" }) do
+	for _, file in ipairs({ "LineKind.lua", "TickSpells.lua", "Adapter.lua" }) do
 		local chunk = assert(loadfile(here .. "../src/" .. file))
 		setfenv(chunk, env)
 		chunk("NameplateSCT_Reforged", modules)

@@ -6,7 +6,7 @@ ns.Identity = Identity
 -- Spell Identity: which spell made Your Hit, from the player's casts, the
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
 -- from the table of spells that tick (TickSpells.lua): whole intervals after
--- the spell's cast on that Nameplate or its landing there, then on its Tick
+-- the spell's cast on that unit or its landing there, then on its Tick
 -- Rhythm there (see rhythmSource), or with its channel's stop (see
 -- stopTickOf). At a Tick Tie each tied spell keeps every rhythm that can be
 -- its own (see ofTick). A direct
@@ -50,10 +50,7 @@ for _, spellID in ipairs({ 603, 30910 }) do
 	RIVAL_ONLY[spellID] = { interval = 60, duration = 60, school = 32 }
 end
 -- How long any DoT can run, for a cast whose spell ID is secret.
-local LONGEST_DOT = 60
-for _, spell in pairs(ns.TickSpells) do
-	LONGEST_DOT = math.max(LONGEST_DOT, spell.duration)
-end
+local LONGEST_DOT = ns.LONGEST_DOT
 -- A school counts once this many Hits agree on it.
 local AGREEING_HITS = 2
 -- How long after its cast the miss of a spell's application can come, for
@@ -143,10 +140,17 @@ local function cameBefore(record, hit)
 	return not record.entry or not hit.entry or record.entry < hit.entry
 end
 
--- The key of a Hit's unit for its Tick Rhythms: its plate life (see
--- Adapter.New), as one token shows other units over time, or the unit.
+-- The key of a plate life's unit for its Tick Rhythms and the casts on it: the
+-- unit key that all plate lives of the unit share, or, when its GUID is secret,
+-- the plate life itself (see Adapter.New).
+local function keyOfLife(life)
+	return life and life.unitKey or life
+end
+
+-- The key of a Hit's unit for its Tick Rhythms: its plate life's key, as one
+-- token shows other units over time, or the unit.
 local function plateOf(hit)
-	return hit.life or hit.unit
+	return keyOfLife(hit.life) or hit.unit
 end
 
 -- Whether two tick decisions can be the same spell's: the same time on the
@@ -365,10 +369,11 @@ end
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret, lastTick, stopped, plate }. A cast whose spell ID is
+	-- missed, secret, lastTick, stopped, plate, hidden }. A cast whose spell ID is
 	-- secret still competes, but never wins. lastTick is an area spell's last
-	-- tick on any unit, stopped when its channel stopped, and plate the plate
-	-- life of the player's target when it started (see Adapter.New), or nil.
+	-- tick on any unit, stopped when its channel stopped, and plate the key of
+	-- the player's target when it started (see plateOf), or nil. hidden is the
+	-- keys of the units that were hidden at a cast with no plate.
 	local casts = {}
 	-- The player's casts of spells that tick, of RIVAL_ONLY spells, and of
 	-- secret spells, kept while their DoT can run, longer than casts: what
@@ -383,8 +388,8 @@ function Identity.New(saved, class)
 	-- is { source, cast, last, ends }: source is the time of the cast or
 	-- landing that started it, cast that cast, last its last tick (none yet
 	-- after a landing), and ends when its duration ends. NO_RHYTHM stands for
-	-- none yet, which a cast can still start. Weak keys, so a plate life's
-	-- rhythms go with the life.
+	-- none yet, which a cast can still start. Weak keys, so a unit's rhythms
+	-- go with its key.
 	local rhythms = setmetatable({}, { __mode = "k" })
 	local NO_RHYTHM = {}
 	local seals = newSealTracker()
@@ -623,13 +628,16 @@ function Identity.New(saved, class)
 	-- Hit, replaced the ticks from since: a refresh ends the old rhythm, and
 	-- the older cast's grid, even before its own first tick fits. A cast with
 	-- no target could be on any unit, and one that travels replaces the rhythm
-	-- when it lands, so neither replaces anything here.
+	-- when it lands, so neither replaces anything here. But a cast with no
+	-- target, made while this unit was hidden, counts as a refresh on it (see
+	-- identity.Cast).
 	local function refreshed(spellID, spell, plate, since, hit)
 		if spell.travels then
 			return false
 		end
 		for _, cast in ipairs(casts) do
-			if cast.spellID == spellID and cast.unit == "player" and not cast.missed and cast.plate == plate
+			if cast.spellID == spellID and cast.unit == "player" and not cast.missed
+				and (cast.plate == plate or cast.hidden and cast.hidden[plate])
 				and cast.time > since and cast.time < hit.time then
 				return true
 			end
@@ -736,8 +744,8 @@ function Identity.New(saved, class)
 			if cast.secret and hit.time - cast.time <= LONGEST_DOT + window then
 				return true
 			end
-			-- On any unit: the same mob gets a new plate life when its Nameplate
-			-- shows again, and a cast's plate is its first life.
+			-- On any unit: a mob whose GUID is secret gets a new key when its
+			-- Nameplate shows again, so a cast's plate need not be its tick's.
 			local spell = not cast.secret and not cast.missed and rival(cast.spellID)
 			if spell and not stoppedBefore(cast, hit)
 				and due(spell, cast.time, spell.travels and DIRECT_WINDOW or 0) then
@@ -784,9 +792,10 @@ function Identity.New(saved, class)
 	end
 
 	-- Whether a DoT of this school that none of the spells in fits can still
-	-- run from a cast on a plate life that has hid, or on no known one: its
-	-- unit can be back on another plate life, which has none of the old one's
-	-- Tick Rhythms, so its ticks there fit no spell.
+	-- run from a cast on a unit that hid and is not known to be back, or on
+	-- no known one: a unit whose GUID is secret can be back on another plate
+	-- life, which has none of the old one's Tick Rhythms, so its ticks there
+	-- fit no spell. A unit key's hid clears when its unit shows again.
 	local function hiddenDotRuns(hit, school, fits, plate)
 		for _, cast in ipairs(dotCasts) do
 			local spell = cast.spellID and ns.TickSpells[cast.spellID]
@@ -931,7 +940,7 @@ function Identity.New(saved, class)
 		-- school is public, no tick of a spell that the tick table leaves out
 		-- is due, at least as many spells fit as ticks came, and no DoT can run
 		-- unseen, from a cast whose spell ID is secret, from before Identity
-		-- started (as before a /reload), or on a plate life that hid.
+		-- started (as before a /reload), or on a unit that hid.
 		if not school or rivalOnly or fits < (together or 1) or secretDotRuns(hit)
 			or hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE or hiddenDotRuns(hit, school, moved, plate) then
 			return nil
@@ -1002,8 +1011,23 @@ function Identity.New(saved, class)
 			seals.Cast(record, secret)
 		end
 		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
-			secret = secret or nil, plate = record.startTargetLife }
+			secret = secret or nil, plate = keyOfLife(record.startTargetLife) }
 		casts[#casts + 1] = cast
+		-- A cast with no known target can be a refresh on a unit that was hidden
+		-- then. A refresh moves the spell's ticks off the old rhythm, which
+		-- could then fit another spell's tick when the unit shows again. So
+		-- such a unit loses the spell's rhythms, and the cast counts as a
+		-- refresh there (see refreshed), which also ends an older cast's grid.
+		if record.unit == "player" and cast.spellID and not cast.plate and record.hiddenUnits then
+			cast.hidden = {}
+			for _, key in ipairs(record.hiddenUnits) do
+				cast.hidden[key] = true
+				local unitRhythms = rhythms[key]
+				if unitRhythms then
+					unitRhythms[cast.spellID] = nil
+				end
+			end
+		end
 		local kept = {}
 		for _, old in ipairs(dotCasts) do
 			local spell = old.spellID and (ns.TickSpells[old.spellID] or RIVAL_ONLY[old.spellID])
