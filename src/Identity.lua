@@ -370,11 +370,12 @@ end
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret, lastTick, stopped, plate, hidden }. A cast whose spell ID is
+	-- missed, secret, lastTick, stopped, plate, hidden, unitKnown }. A cast whose spell ID is
 	-- secret still competes, but never wins. lastTick is an area spell's last
 	-- tick on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
-	-- keys of the units that were hidden at a cast with no plate.
+	-- keys of the units that were hidden at a cast with no plate, and
+	-- unitKnown says that plate is a unit key, so its unit is no other one.
 	local casts = {}
 	-- The player's casts of spells that tick, of RIVAL_ONLY spells, and of
 	-- secret spells, kept while their DoT can run, longer than casts: what
@@ -804,15 +805,16 @@ function Identity.New(saved, class)
 	end
 
 	-- Whether a DoT of this school that none of the spells in fits can still
-	-- run from a cast on a unit that hid and is not known to be back, or on
-	-- no known one: a unit whose GUID is secret can be back on another plate
-	-- life, which has none of the old one's Tick Rhythms, so its ticks there
-	-- fit no spell. A unit key's hid clears when its unit shows again.
+	-- run from a cast on a plate life that hid, whose unit's GUID is secret,
+	-- or on no known one: such a unit can be back on another plate life,
+	-- which has none of the old one's Tick Rhythms, so its ticks there fit no
+	-- spell. A unit whose GUID is public keeps its key when it shows
+	-- again, so a cast on such a unit is never on another unit's tick.
 	local function hiddenDotRuns(hit, school, fits, plate)
 		for _, cast in ipairs(dotCasts) do
 			local spell = cast.spellID and ns.TickSpells[cast.spellID]
 			if spell and not spell.area and spell.school == school and not cast.missed and not fits[cast.spellID]
-				and (not cast.plate or cast.plate ~= plate and cast.plate.hid)
+				and (not cast.plate or cast.plate ~= plate and cast.plate.hid and not cast.unitKnown)
 				and hit.time - cast.time <= spell.duration + TICK_TOLERANCE then
 				return true
 			end
@@ -1032,7 +1034,8 @@ function Identity.New(saved, class)
 			seals.Cast(record, secret)
 		end
 		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
-			secret = secret or nil, plate = keyOfLife(record.startTargetLife) }
+			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
+			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
 		-- A cast with no known target can be a refresh on a unit that was hidden
 		-- then. A refresh moves the spell's ticks off the old rhythm, which

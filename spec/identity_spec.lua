@@ -1610,6 +1610,23 @@ describe("Spell Identity", function()
 				end
 			end)
 
+		-- A unit whose GUID is public keeps its key when it shows again, so a
+		-- hidden one is not the unit of this tick, and its DoT cannot tick here.
+		-- A secret GUID tells nothing, so the tick's unit can be that unit.
+		it("gives a Tick Tie its spells while a DoT runs on a hidden unit, but only when that unit's GUID is public",
+			function()
+				for guid, want in pairs({ ["Creature-2"] = { CORRUPTION, AGONY }, ["<secret>"] = "none" }) do
+					local castGUID = "Cast-100.5-" .. SIPHON_LIFE
+					assert.are.same({ want }, shown({
+						{ 100, "NAME_PLATE_UNIT_ADDED", "nameplate1", guid = "Creature-1" },
+						{ 100, "NAME_PLATE_UNIT_ADDED", "nameplate2", guid = guid },
+						{ 100.5, "UNIT_SPELLCAST_SENT", "player", "<secret>", castGUID, SIPHON_LIFE, target = "nameplate2" },
+						{ 100.5, "UNIT_SPELLCAST_SUCCEEDED", "player", castGUID, SIPHON_LIFE, "<nil>", target = "nameplate2" },
+						{ 100.75, "NAME_PLATE_UNIT_REMOVED", "nameplate2", guid = guid },
+						targetedCast(102, AGONY), targetedCast(101, CORRUPTION), ticks(104) }), guid)
+				end
+			end)
+
 		-- A cast whose spell ID is secret can be a DoT that fits too.
 		it("gives none to a Tick Tie while a cast with a secret spell ID can run", function()
 			assert.are.same({ "none" }, shown({ targetedCast(99, "<secret>"), targetedCast(102, AGONY),
@@ -1634,7 +1651,7 @@ describe("Spell Identity", function()
 		local UNKNOWN_FLOOR = 227
 		-- The Unknown Hits of the current build whose Possible Spells hold the
 		-- Label's spell: a change that lowers it loses stacks.
-		local POSSIBLE_FLOOR = 118
+		local POSSIBLE_FLOOR = 132
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell, possibleRight = {}, 0, {}, 0
