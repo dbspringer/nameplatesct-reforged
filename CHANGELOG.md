@@ -6,6 +6,7 @@
 - The spell filter now hides a number when every spell that could have made it is on your list.
 - Your DoTs keep their icon when an enemy's nameplate hides and comes back, like when it leaves your view for a moment. In dungeons the ticks after it comes back can still show no icon.
 - Your DoTs keep their icon when one tick lands a little late and the next a little early. Before, the second tick could show no icon.
+- Possible icons show more often in the open world. Before, a DoT on an enemy that died could hide them on your other enemies for up to 30 seconds.
 
 ## 10
 
