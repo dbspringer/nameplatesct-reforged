@@ -591,4 +591,32 @@ describe("Flow", function()
 		assert.are.same({}, wrong)
 		assert.is_true(icons >= 800, ("%d ticks shown with an icon"):format(icons))
 	end)
+
+	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel
+	-- on Forever only, and the other DoTs and Drain Life (2026-11-21): the
+	-- first Trace with Wrack. Its Labels are all unsure; as above, a row unsure
+	-- only for its secret amount has a sure spell. 22 of its 30 Wrack ticks
+	-- showed Wrack's icon, and 8 none.
+	it("shows Wrack's icon on Wrack's ticks, and no wrong icon", function()
+		local WRACK = 1316697
+		local trace, labels = Trace.LoadChecked("warlock-wrack")
+		local spellOf = {}
+		for _, row in ipairs(labels) do
+			if row.unsure == "secret amount" then
+				spellOf[row.hit] = row.spell
+			end
+		end
+		local wrack, wrong = 0, {}
+		for _, result in ipairs(run(trace.entries)) do
+			local spell = spellOf[result.hit.entry]
+			if result.spellID == WRACK and spell == WRACK then
+				wrack = wrack + 1
+			end
+			if result.spellID and spell ~= nil and result.spellID ~= spell then
+				wrong[#wrong + 1] = ("hit %d: %s, Label %s"):format(result.hit.entry, result.spellID, tostring(spell))
+			end
+		end
+		assert.are.same({}, wrong)
+		assert.is_true(wrack >= 22, ("%d Wrack ticks shown with Wrack's icon"):format(wrack))
+	end)
 end)
