@@ -7,7 +7,8 @@ ns.Identity = Identity
 -- Hit's time and school, and its Log Line's Line Kind. A tick takes its spell
 -- from the table of spells that tick (TickSpells.lua): whole intervals after
 -- the spell's cast on that unit or its landing there, then on its Tick
--- Rhythm there (see rhythmSource), or with its channel's stop (see
+-- Rhythm there, from the mean of its ticks (see rhythmSource and rhythmOf),
+-- or with its channel's stop (see
 -- stopTickOf). At a Tick Tie each tied spell keeps every rhythm that can be
 -- its own (see ofTick). A direct
 -- hit or a shot takes the one cast that fits it of a spell that can make it
@@ -385,9 +386,11 @@ function Identity.New(saved, class)
 	local startedAt
 	-- For each unit and spell that ticks, the Tick Rhythms it can have there:
 	-- one, or after a Tick Tie each one that can be true (see ofTick). A rhythm
-	-- is { source, cast, last, ends }: source is the time of the cast or
-	-- landing that started it, cast that cast, last its last tick (none yet
-	-- after a landing), and ends when its duration ends. NO_RHYTHM stands for
+	-- is { source, cast, last, anchor, ticks, ends }: source is the time of the
+	-- cast or landing that started it, cast that cast, last its last tick (none
+	-- yet after a landing), anchor where its grid puts that tick (see
+	-- rhythmOf), ticks how many ticks the anchor is the mean of, and ends when
+	-- its duration ends. NO_RHYTHM stands for
 	-- none yet, which a cast can still start. Weak keys, so a unit's rhythms
 	-- go with its key.
 	local rhythms = setmetatable({}, { __mode = "k" })
@@ -690,24 +693,33 @@ function Identity.New(saved, class)
 	-- The Tick Rhythm that this tick gives the spell, or nil if it does not
 	-- fit. A tick that fits a cast or landing starts a new rhythm and duration,
 	-- as a refresh does, even on the old rhythm. Otherwise a rhythm fits whole
-	-- intervals after its last tick until its duration ends, so one tick that
+	-- intervals after its anchor until its duration ends, so one tick that
 	-- came late, or a resisted one, costs only its own icon; one that ran out
 	-- fits no more, nor does a channel's after it stopped.
+	-- The anchor is the mean of the rhythm's ticks, each moved by whole
+	-- intervals onto the last one. A tick comes a little early or late around
+	-- a grid that does not drift, so a late tick and an early one after it can
+	-- be more than TICK_TOLERANCE apart though each is near the grid. Of 707
+	-- labelled ticks after a rhythm's first in the checked Traces, 28 came
+	-- more than 0.1 s off the last tick, and 18 off the mean.
 	local function rhythmOf(hit, spellID, spell, rhythm, plate)
 		local source, steps, cast = rhythmSource(hit, spellID, spell, rhythm, plate)
 		if source then
-			return { source = source, cast = cast, last = hit.time,
+			return { source = source, cast = cast, last = hit.time, anchor = hit.time, ticks = 1,
 				ends = hit.time - steps * spell.interval + spell.duration }
 		end
-		if rhythm and rhythm.last and intervalsAfter(hit, spell, rhythm.last)
-			and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+		local intervals = rhythm and rhythm.anchor and intervalsAfter(hit, spell, rhythm.anchor)
+		if intervals and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
 			and not refreshed(spellID, spell, plate, rhythm.source, hit) then
-			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends }
+			local onGrid = rhythm.anchor + intervals * spell.interval
+			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends,
+				anchor = onGrid + (hit.time - onGrid) / (rhythm.ticks + 1), ticks = rhythm.ticks + 1 }
 		end
 	end
 
 	-- Whether a tick of another DoT of the school on this unit is due within
-	-- STOP_RIVAL of this one, on a running rhythm's last tick or source grid,
+	-- STOP_RIVAL of this one, on a running rhythm's anchor, last tick, or
+	-- source grid,
 	-- or from a cast that no rhythm holds, while its DoT can run: its tick can
 	-- kill the mob, which stops the channel in the same frame, and come a
 	-- little off time.
@@ -734,7 +746,7 @@ function Identity.New(saved, class)
 			local spell = rival(spellID)
 			for _, rhythm in ipairs(spell and candidates or {}) do
 				if rhythm ~= NO_RHYTHM and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-					and (rhythm.last and hit.time <= rhythm.ends + window and due(spell, rhythm.last, 0)
+					and (rhythm.last and hit.time <= rhythm.ends + window and (due(spell, rhythm.anchor, 0) or due(spell, rhythm.last, 0))
 						or due(spell, rhythm.source, 0)) then
 					return true
 				end
@@ -821,14 +833,22 @@ function Identity.New(saved, class)
 		return false
 	end
 
+	-- Rhythms with one source that met the same tick are one rhythm, though
+	-- their anchors can differ by a little: keeping both lets the spell fit
+	-- more ticks than its own, as a Tick Tie does (warlock-drain-life 4664).
+	-- The one rhythm keeps the anchor that is the mean of more ticks (see
+	-- addRhythm).
 	local function sameRhythm(a, b)
 		return a.source == b.source and (a.cast and a.cast.time) == (b.cast and b.cast.time) and a.last == b.last
 			and a.ends == b.ends
 	end
 
 	local function addRhythm(list, rhythm)
-		for _, kept in ipairs(list) do
+		for i, kept in ipairs(list) do
 			if sameRhythm(kept, rhythm) then
+				if rhythm.ticks and rhythm.ticks > (kept.ticks or 0) then
+					list[i] = rhythm
+				end
 				return
 			end
 		end
@@ -876,10 +896,11 @@ function Identity.New(saved, class)
 				try(cast.spellID)
 			end
 		end
-		-- A Stop Tick that its rhythm does not fit competes like a rhythm.
+		-- A Stop Tick that its rhythm does not fit competes like a rhythm. It is
+		-- off the rhythm's grid, so it starts a new anchor.
 		if stopSpell and not moved[stopSpell] then
 			moved[stopSpell] = { { source = stopRhythm.source, cast = stopRhythm.cast, last = hit.time,
-				ends = stopRhythm.ends } }
+				anchor = hit.time, ticks = 1, ends = stopRhythm.ends } }
 			fits, found = fits + 1, stopSpell
 		end
 		-- A due tick of a spell that the tick table leaves out, such as Curse of
@@ -903,7 +924,7 @@ function Identity.New(saved, class)
 		-- A rhythm that ran out, stopped, or was replaced by a recast becomes
 		-- NO_RHYTHM, so that the cast can still give the spell's first tick
 		-- (warlock-rfk 2154, 19406). Each spell keeps its true rhythm only while
-		-- every tick comes within TICK_TOLERANCE of it.
+		-- every tick comes within TICK_TOLERANCE of its anchor's grid.
 		-- A spell that still holds rhythms from a tie fits more ticks than its
 		-- own. A DoT cast whose spell ID is secret has no rhythm, so such a
 		-- spell could be the only one that fits that DoT's tick: while one can
