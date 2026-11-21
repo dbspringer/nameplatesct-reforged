@@ -23,19 +23,14 @@ Trace.LOST = { ["warlock-spells"] = { [302] = true }, ["warlock-drain-life"] = {
 -- Your Hits in those Traces that Spell Identity is known to give a wrong icon,
 -- by Trace and Hit entry. The replay fails on any other wrong icon, and on a
 -- Hit here that no longer gets one, so this list only shrinks.
--- warlock-drain-life 3011: a Corruption tick that killed its mob, 0.95 s after
--- Drain Life's last tick; Corruption's rhythm missed it by 0.100 s.
 -- warlock-drain-life 3527, 3575: Corruption ticks on a mob where Corruption had
 -- lost its rhythm, which fit the first tick of a Siphon Life cast 2.95 s before.
-Trace.WRONG = { ["warlock-drain-life"] = { [3011] = true, [3527] = true, [3575] = true } }
+Trace.WRONG = { ["warlock-drain-life"] = { [3527] = true, [3575] = true } }
 
 -- Your Hits in those Traces whose Possible Spells are known to miss the
 -- Label's spell, by Trace and Hit entry. The replay fails on any other, and on
 -- a Hit here whose list now holds it, so this list only shrinks.
--- warlock-drain-life 1901: Bane of Agony and Drain Life ticked in one frame;
--- Drain Life missed its rhythm, and Siphon Life fit through a rhythm that a
--- Tick Tie kept (its real tick came 0.125 s before).
-Trace.POSSIBLE_WRONG = { ["warlock-drain-life"] = { [1901] = true } }
+Trace.POSSIBLE_WRONG = {}
 
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111

@@ -614,7 +614,7 @@ describe("Flow", function()
 	-- unsure, but a row unsure only for its secret amount has one file event,
 	-- so its spell is sure. Before Tick Rhythms took a cast's target (#69), 15
 	-- such ticks showed another DoT's icon and 772 ticks showed an icon; now
-	-- none and 808.
+	-- none and 811.
 	it("keeps every DoT's icon on its own mob through a dungeon run", function()
 		local trace, labels = Trace.LoadChecked("warlock-sm-armory")
 		local spellOf = {}
@@ -640,10 +640,10 @@ describe("Flow", function()
 	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel
 	-- on Forever only, and the other DoTs and Drain Life (2026-11-21): the
 	-- first Trace with Wrack. Its Labels are all unsure; as above, a row unsure
-	-- only for its secret amount has a sure spell. 20 of its 30 Wrack ticks
-	-- show Wrack's icon, and 10 none. Two of those (hits 260 and 320) are Tick
-	-- Ties with Bane of Agony or Siphon Life, whose Tick Rhythms the mob keeps
-	-- when its Nameplate shows again at 48.9 s.
+	-- only for its secret amount has a sure spell. 29 of its 30 Wrack ticks
+	-- have one: 20 show Wrack's icon, and 9 none. Two of those (hits 260 and 1502) are Tick
+	-- Ties with Bane of Agony; at hit 260 the mob kept Agony's Tick Rhythm when
+	-- its Nameplate showed again at 48.9 s.
 	it("shows Wrack's icon on Wrack's ticks, and no wrong icon", function()
 		local WRACK = 1316697
 		local trace, labels = Trace.LoadChecked("warlock-wrack")

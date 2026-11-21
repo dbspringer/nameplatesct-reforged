@@ -995,6 +995,15 @@ describe("Spell Identity", function()
 				assert.are.same({ CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(afterStartup(refresh)))
 			end)
 
+			-- Codex review: the rival's killing tick came 0.185 s off its last
+			-- tick's grid, but 0.205 s off the mean of its ticks.
+			it("gives no Stop Tick when another DoT's tick is due near it on its last tick's grid", function()
+				local entries = entriesOf({ castEntries(0, CORRUPTION) }, { tickEntries(3.02) }, { tickEntries(6) },
+					{ tickEntries(9.04) }, { castEntries(10.4, DRAIN_LIFE) }, { tickEntries(11.4) }, { tickEntries(12.225) },
+					{ stopEntry(12.225, DRAIN_LIFE) })
+				assert.are.same({ CORRUPTION, CORRUPTION, CORRUPTION, DRAIN_LIFE, "none" }, shownSpells(afterStartup(entries)))
+			end)
+
 			-- Codex review: the rival's last tick came 0.07 s early and its killing
 			-- tick 0.17 s late, off its last tick's grid but near its cast's.
 			it("gives no Stop Tick when another DoT's tick is due near it on its cast's grid", function()
@@ -1305,6 +1314,31 @@ describe("Spell Identity", function()
 			assert.are.same({ CORRUPTION, CORRUPTION, CORRUPTION }, ticks)
 		end)
 
+		-- A tick 0.06 s late and the next 0.05 s early are 0.11 s off each
+		-- other, but each is within TICK_TOLERANCE of the rhythm's grid.
+		it("measures a tick from the mean of its rhythm's ticks, so a late tick and then an early one both fit", function()
+			local identity = Identity.New({})
+			cast(identity, 0, AGONY)
+			local ticks = { of(identity, 2, "tick", SHADOW), of(identity, 4.06, "tick", SHADOW), of(identity, 5.95, "tick", SHADOW) }
+			assert.are.same({ AGONY, AGONY, AGONY }, ticks)
+		end)
+
+		-- Codex review: after a Tick Tie a spell holds two rhythms, one with the
+		-- tied tick and one without. When both meet the same tick they become
+		-- one, which keeps the mean of more ticks. With the other mean, Agony's
+		-- next tick came 0.103 s off, and Corruption's first tick took it alone.
+		it("keeps the mean of more ticks when two rhythms of a spell meet after a Tick Tie", function()
+			local identity = Identity.New({})
+			cast(identity, 0, AGONY)
+			local first = of(identity, 1.95, "tick", SHADOW)
+			cast(identity, 3.04, DRAIN_LIFE)
+			local tied = of(identity, 4.04, "tick", SHADOW)
+			cast(identity, 4.5, DRAIN_LIFE, "player", "CHANNEL_STOP")
+			cast(identity, 5.05, CORRUPTION)
+			local alone = of(identity, 6.04, "tick", SHADOW)
+			assert.are.same({ AGONY, nil, AGONY, nil }, { first, tied, alone, of(identity, 8.098, "tick", SHADOW) })
+		end)
+
 		it("follows a Tick Rhythm on its own Nameplate only", function()
 			local identity = Identity.New({})
 			cast(identity, 1, DRAIN_LIFE)
@@ -1597,10 +1631,10 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 236
+		local UNKNOWN_FLOOR = 227
 		-- The Unknown Hits of the current build whose Possible Spells hold the
 		-- Label's spell: a change that lowers it loses stacks.
-		local POSSIBLE_FLOOR = 120
+		local POSSIBLE_FLOOR = 118
 
 		local function replay(carryFacts)
 			local wrong, unknown, perSpell, possibleRight = {}, 0, {}, 0

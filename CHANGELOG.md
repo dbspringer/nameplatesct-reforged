@@ -5,6 +5,7 @@
 - New option, Display Possible Icons (off by default): when two or three of your spells could have made a number, it shows a small stack of their icons. One of them is right.
 - The spell filter now hides a number when every spell that could have made it is on your list.
 - Your DoTs keep their icon when an enemy's nameplate hides and comes back, like when it leaves your view for a moment. In dungeons the ticks after it comes back can still show no icon.
+- Your DoTs keep their icon when one tick lands a little late and the next a little early. Before, the second tick could show no icon.
 
 ## 10
 
