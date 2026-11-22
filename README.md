@@ -21,6 +21,7 @@ Enemy nameplates need to be on (press V), since the numbers draw on them.
 - `/nsctr` opens the options. The Filters page can hide some spells, or some kinds of enemies.
 - If your combat log filter isn't set up the way the addon needs, a window offers to fix it with one click and a reload. The colour of each combat log line is how the addon tells your hits from everything else.
 - `/nsctr record` records your combat events, and typing it again stops. If something looks wrong, attach the recording to an [issue](https://github.com/dbspringer/nameplatesct-reforged/issues).
+- `/nsctr record clear` deletes the recording once you've sent it. A long one can slow down your login.
 - `/nsctr forget` clears what the addon learned about your wand.
 
 ## Icons

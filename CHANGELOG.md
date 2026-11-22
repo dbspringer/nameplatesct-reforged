@@ -1,5 +1,9 @@
 # Changelog
 
+## 12
+
+- New command, `/nsctr record clear`, deletes your recording once you've sent it. A long recording can slow down your login.
+
 ## 11
 
 - New option, Display Possible Icons (off by default): when two or three of your spells could have made a number, it shows a small stack of their icons. One of them is right.

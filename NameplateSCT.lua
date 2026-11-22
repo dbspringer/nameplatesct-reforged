@@ -1893,9 +1893,9 @@ function NameplateSCT:PLAYER_REGEN_ENABLED()
 end
 
 function NameplateSCT:ChatCommand(input)
-	local command = self:GetArgs(input)
+	local command, argument, extra = self:GetArgs(input, 3)
 	if command == "record" then
-		ns.Recorder.Toggle()
+		ns.Recorder.Command(argument, extra)
 	elseif command == "forget" then
 		self:ForgetSpellFacts()
 	else

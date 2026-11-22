@@ -123,9 +123,33 @@ function Recorder.Toggle()
 	if recording then
 		local size = Recorder.Stop()
 		say(L["Recording stopped with %d events. Type /reload, then attach WTF\\Account\\<account>\\SavedVariables\\NameplateSCT_Reforged.lua to your issue."]:format(size))
+		say(L["Type /nsctr record clear to delete the recording after you send it."])
 	else
 		Recorder.Start()
 	end
+end
+
+-- Runs /nsctr record with the words after it. Only a bare "record" starts or
+-- stops, and only "record clear" with nothing after it deletes, so a typo can
+-- neither replace nor delete a saved Trace.
+function Recorder.Command(argument, extra)
+	if argument == nil then
+		Recorder.Toggle()
+	elseif argument == "clear" and extra == nil then
+		Recorder.Clear()
+	else
+		say(L["Type /nsctr record to start or stop a recording, or /nsctr record clear to delete it."])
+	end
+end
+
+-- A saved Trace can be megabytes, and the game reads it at each login, so the
+-- player deletes it once it is sent. A running recording ends unsaved, since
+-- Stop at logout would write it back.
+function Recorder.Clear()
+	recording = false
+	entries = nil
+	NameplateSCTReforgedTraces = nil
+	say(L["Deleted the recording."])
 end
 
 -- WoW writes SavedVariables after PLAYER_LOGOUT, which a /reload also fires.
