@@ -17,10 +17,14 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -------------------
 
 local spellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+-- Spells that show another spell's icon: a Brand Proc's damage spell shows
+-- the icon of the Demonic Brand debuff, the one players see on the mob
+-- (4226151; the damage spell's own is 135827, checked in game 2026-11-22).
+local ICON_OF = { [1293697] = 1293696 }
 -- One value only: Forever's C_Spell.GetSpellTexture also gives the original
 -- icon, which a list of textures would take as a second icon.
 local function GetSpellTexture(spellID)
-	return (spellTexture(spellID))
+	return (spellTexture(ICON_OF[spellID] or spellID))
 end
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- The spell whose icon the player's swing shows. The pet's swing shows the
