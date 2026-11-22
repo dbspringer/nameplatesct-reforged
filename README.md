@@ -26,7 +26,7 @@ Enemy nameplates need to be on (press V), since the numbers draw on them.
 
 ## Icons
 
-The game doesn't tell addons which spell made a number, so the addon works it out from your casts and the timing of each hit. When two of your spells hit at the same moment, nothing tells which number is which. The game hides the amounts from addons, so those can't settle it either.
+The game doesn't tell addons which spell made a number, so the addon works it out from your casts, your pet's, and the timing of each hit. When two of your spells hit at the same moment, nothing tells which number is which. The game hides the amounts from addons, so those can't settle it either.
 
 Those numbers show no icon. With Display Possible Icons on, each one shows a small stack with the icons of the two or three spells that could have made it.
 

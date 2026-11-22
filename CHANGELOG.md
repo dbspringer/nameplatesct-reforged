@@ -4,6 +4,8 @@
 
 - New command, `/nsctr record clear`, deletes your recording once you've sent it. A long recording can slow down your login.
 - New option, Prevent Overlap (off by default, in Animations): new numbers push older ones with the same animation out of the way, with a Line Gap you can set. It leaves Fountain and Fireworks alone, since they spread their text already.
+- Your pet's spells, like the Succubus's Lash of Pain, now show their icons, and so does Demonic Brand. If your spell filter lists `unknown` to hide them, list their names instead.
+- Demonic Brand no longer takes the icon of a Shadow Bolt or Death Coil that's still flying, so those keep their own icon.
 
 ## 11
 

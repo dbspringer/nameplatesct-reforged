@@ -1909,7 +1909,7 @@ local filters = {
 			type = "input",
 			name = L["Spells"],
 			multiline = 20,
-			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."],
+			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."],
 			order = 3,
 			width = 1,
 			get = function() return NameplateSCT.db.char.spellFilter end,

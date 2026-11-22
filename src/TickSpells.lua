@@ -30,8 +30,7 @@ local _, ns = ...
 -- the tick grid. During Consecration such procs would take its icon.
 --
 -- Ticks come only from the player's casts. The pets' spells are here so that
--- a pet's missed application competes with the player's casts, as in
--- DirectSpells.lua.
+-- a pet's missed application gets its spell, as in DirectSpells.lua.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
 

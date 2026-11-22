@@ -14,10 +14,12 @@ local Trace = assert(loadfile("tools/trace.lua"))()
 -- Pushes the entries through a new Flow, ends every hold, and returns the
 -- Hits that went to show and to noPlate, each with its how, and for show
 -- the Line Kind, who swung, and for a late Hit its Nameplate as it hid.
-local function run(entries)
+-- class is the player's class token, or nil.
+local function run(entries, class)
 	local shown, plateless = {}, {}
 	local flow = Flow.New({
 		spellFacts = {},
+		class = class,
 		show = function(hit, spellID, late, swinger, how, lineKind)
 			shown[#shown + 1] = { hit = hit, how = how, spellID = spellID, lineKind = lineKind, late = late,
 				swinger = swinger }
@@ -635,6 +637,38 @@ describe("Flow", function()
 		end
 		assert.are.same({}, wrong)
 		assert.is_true(icons >= 800, ("%d ticks shown with an icon"):format(icons))
+	end)
+
+	-- warlock-zf is a Zul'Farrak run in a party (2026-11-22), a Warlock with a
+	-- Succubus and Demonic Brand: each of the pet's Hits can set off a Brand
+	-- Proc, a Shadow Hit with no cast. Its Labels are all unsure; as above, a
+	-- row unsure only for its secret amount has a sure spell. Before Brand
+	-- Procs had a rule, 6 of them took the icon of a Shadow Bolt or Death Coil
+	-- still in flight, whose own Hit then had none; and before the pet's casts
+	-- could win, Lash of Pain showed no icon. Now 237 Brand Procs show Demonic
+	-- Brand, 61 Lash of Pain Hits show theirs, and no icon is wrong.
+	it("shows Demonic Brand on Brand Procs and Lash of Pain on its Hits, and leaves Shadow Bolt its own", function()
+		local DEMONIC_BRAND, LASH_OF_PAIN = 1293697, 11778
+		local trace, labels = Trace.LoadChecked("warlock-zf")
+		local spellOf = {}
+		for _, row in ipairs(labels) do
+			if row.unsure == "secret amount" then
+				spellOf[row.hit] = row.spell
+			end
+		end
+		local brands, lashes, wrong = 0, 0, {}
+		for _, result in ipairs(run(trace.entries, trace.header.class)) do
+			local spell = spellOf[result.hit.entry]
+			if result.spellID and spell == result.spellID then
+				brands = brands + (spell == DEMONIC_BRAND and 1 or 0)
+				lashes = lashes + (spell == LASH_OF_PAIN and 1 or 0)
+			elseif result.spellID and spell ~= nil then
+				wrong[#wrong + 1] = ("hit %d: %s, Label %s"):format(result.hit.entry, result.spellID, tostring(spell))
+			end
+		end
+		assert.are.same({}, wrong)
+		assert.is_true(brands >= 235, ("%d Brand Procs shown with Demonic Brand's icon"):format(brands))
+		assert.is_true(lashes >= 58, ("%d Lash of Pain Hits shown with its icon"):format(lashes))
 	end)
 
 	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel
