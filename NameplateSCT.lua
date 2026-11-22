@@ -195,6 +195,8 @@ local defaults = {
 			animationspeed = 1,
 			fireworksRadius = 100,
 			fireworksDuration = 1,
+			preventOverlap = false,
+			lineGap = 4,
 		},
 
 		formatting = {
@@ -408,6 +410,8 @@ local function recycleFontString(fontString)
 	fontString.animatingDuration = nil
 	fontString.animatingStartTime = nil
 	fontString.anchorFrame = nil
+	fontString.push = nil
+	fontString.pushTarget = nil
 
 	fontString.unit = nil
 	fontString.wasTarget = nil
@@ -738,7 +742,37 @@ local function startGracePeriod(fontString)
 	fontString.unit = nil
 end
 
-local function AnimationOnUpdate()
+-- Where a text's path puts it after elapsed seconds, as x and y offsets
+-- from its Nameplate, before the global offset, Y Variance, and push.
+local function pathOffsets(fontString, elapsed, global)
+	local xOffset, yOffset = 0, 0
+	if (fontString.animation == "verticalUp") then
+		xOffset, yOffset = verticalPath(elapsed, fontString.animatingDuration, fontString.distance)
+	elseif (fontString.animation == "verticalDown") then
+		xOffset, yOffset = verticalPath(elapsed, fontString.animatingDuration, -fontString.distance)
+	elseif (fontString.animation == "fountain") then
+		xOffset, yOffset = arcPath(elapsed, fontString.animatingDuration, fontString.arcXDist, 0, fontString.arcTop, fontString.arcBottom)
+	elseif (fontString.animation == "rainfall") then
+		_, yOffset = verticalPath(elapsed, fontString.animatingDuration, -fontString.distance)
+		xOffset = fontString.rainfallX
+		yOffset = yOffset + fontString.rainfallStartY
+	elseif (fontString.animation == "fireworks") then
+		-- Fireworks effect: radiates outward from the configured starting radius circle
+		local angle = fontString.fireworksAngle
+		local progress = elapsed / fontString.animatingDuration
+		-- Use custom linear() easing function
+		local easedProgress = GetLinearEasing(progress)
+		local distance = fontString.fireworksDistance * easedProgress
+
+		 -- Get the configured starting radius
+		local startRadius = global.animations.fireworksRadius
+		xOffset = (startRadius + distance) * math.cos(angle)
+		yOffset = (startRadius + distance) * math.sin(angle)
+	end
+	return xOffset, yOffset
+end
+
+local function AnimationOnUpdate(_, frameElapsed)
 	if (next(animating)) then
 		local now, global = GetTime(), NameplateSCT.db.global
 		for fontString, _ in pairs(animating) do
@@ -789,30 +823,13 @@ local function AnimationOnUpdate()
 				end
 
 				-- position
-				local xOffset, yOffset = 0, 0
-				if (fontString.animation == "verticalUp") then
-					xOffset, yOffset = verticalPath(elapsed, fontString.animatingDuration, fontString.distance)
-				elseif (fontString.animation == "verticalDown") then
-					xOffset, yOffset = verticalPath(elapsed, fontString.animatingDuration, -fontString.distance)
-				elseif (fontString.animation == "fountain") then
-					xOffset, yOffset = arcPath(elapsed, fontString.animatingDuration, fontString.arcXDist, 0, fontString.arcTop, fontString.arcBottom)
-				elseif (fontString.animation == "rainfall") then
-					_, yOffset = verticalPath(elapsed, fontString.animatingDuration, -fontString.distance)
-					xOffset = fontString.rainfallX
-					yOffset = yOffset + fontString.rainfallStartY
-				elseif (fontString.animation == "fireworks") then
-					-- Fireworks effect: radiates outward from the configured starting radius circle
-					local angle = fontString.fireworksAngle
-					local progress = elapsed / fontString.animatingDuration
-					-- Use custom linear() easing function
-					local easedProgress = GetLinearEasing(progress)
-					local distance = fontString.fireworksDistance * easedProgress
+				local xOffset, yOffset = pathOffsets(fontString, elapsed, global)
 
-					 -- Get the configured starting radius
-					local startRadius = global.animations.fireworksRadius
-					xOffset = (startRadius + distance) * math.cos(angle)
-					yOffset = (startRadius + distance) * math.sin(angle)
+				-- Prevent Overlap: the text glides to where newer text pushed it.
+				if fontString.push ~= fontString.pushTarget then
+					fontString.push = ns.Overlap.Glide(fontString.push, fontString.pushTarget, frameElapsed)
 				end
+				yOffset = yOffset + fontString.push
 
 				if fontString.unit and not fontString.anchorFrame:IsShown() then
 					startGracePeriod(fontString)
@@ -843,6 +860,8 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	fontString.animatingDuration = duration
 	fontString.animatingStartTime = GetTime()
 	fontString.anchorFrame = anchorFrame
+	fontString.push = 0
+	fontString.pushTarget = 0
 
 	if (animation == "verticalUp" or animation == "verticalDown") then
 		fontString.distance = ANIMATION_VERTICAL_DISTANCE
@@ -1119,6 +1138,18 @@ local function startPlateText(fontString, where, size, animation, textures)
 		duration = global.animations.fireworksDuration
 	end
 	NameplateSCT:Animate(fontString, where.frame, duration, animation)
+	if global.animations.preventOverlap then
+		local iconSize = global.showIcon and textures and size * global.iconScale or nil
+		local now = GetTime()
+		ns.Overlap.Push(animating, fontString, ns.Overlap.Line(size, iconSize, global.animations.lineGap), function(text, dt)
+			local elapsed = now + dt - text.animatingStartTime
+			if elapsed > text.animatingDuration then
+				return nil
+			end
+			local _, y = pathOffsets(text, elapsed, global)
+			return y + randomY[text]
+		end)
+	end
 end
 
 -- The text takes its colour from SetTextColor, not from a colour code joined
@@ -1241,6 +1272,28 @@ local menu = {
 					get = function() return NameplateSCT.db.global.animations.animationspeed end,
 					set = function(_, newValue) NameplateSCT.db.global.animations.animationspeed = newValue end,
 					order = 1,
+					width = "full",
+				},
+				preventOverlap = {
+					type = 'toggle',
+					name = L["Prevent Overlap"],
+					desc = L["New text on a nameplate moves older text with the same animation out of its way. Fountain and Fireworks keep their own spread."],
+					get = function() return NameplateSCT.db.global.animations.preventOverlap end,
+					set = function(_, newValue) NameplateSCT.db.global.animations.preventOverlap = newValue end,
+					order = 1.05,
+					width = "full",
+				},
+				lineGap = {
+					type = 'range',
+					name = L["Line Gap"],
+					desc = L["Pixels of space between text that Prevent Overlap moves apart. Default: 4."],
+					min = 0,
+					max = 20,
+					step = 1,
+					hidden = function() return not NameplateSCT.db.global.animations.preventOverlap end,
+					get = function() return NameplateSCT.db.global.animations.lineGap end,
+					set = function(_, newValue) NameplateSCT.db.global.animations.lineGap = newValue end,
+					order = 1.1,
 					width = "full",
 				},
 				fireworksSettings = {

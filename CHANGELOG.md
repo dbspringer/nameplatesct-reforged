@@ -3,6 +3,7 @@
 ## 12
 
 - New command, `/nsctr record clear`, deletes your recording once you've sent it. A long recording can slow down your login.
+- New option, Prevent Overlap (off by default, in Animations): new numbers push older ones with the same animation out of the way, with a Line Gap you can set. It leaves Fountain and Fireworks alone, since they spread their text already.
 
 ## 11
 
