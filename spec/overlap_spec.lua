@@ -3,9 +3,14 @@ assert(loadfile("src/Overlap.lua"))("NameplateSCT_Reforged", ns)
 local Overlap = ns.Overlap
 
 -- A text as the renderer keeps it: the frame it shows on, its animation,
--- and the y offset it glides to.
-local function text(frame, animation)
-	return { anchorFrame = frame, animation = animation, pushTarget = 0 }
+-- and the y offset it glides to. y is where its path and Y Variance put it
+-- now, without the push; 0 when not given.
+local function text(frame, animation, y)
+	return { anchorFrame = frame, animation = animation, pushTarget = 0, y = y or 0 }
+end
+
+local function yOf(t)
+	return t.y
 end
 
 -- The renderer's animating table: a set of texts, the new one among them.
@@ -21,8 +26,8 @@ describe("Overlap", function()
 	it("moves older text with the same animation on the same frame one line per new text", function()
 		local older = text("plate1", "verticalUp")
 		local first, second = text("plate1", "verticalUp"), text("plate1", "verticalUp")
-		Overlap.Push(set(older, first), first, 24)
-		Overlap.Push(set(older, first, second), second, 24)
+		Overlap.Push(set(older, first), first, 24, yOf)
+		Overlap.Push(set(older, first, second), second, 24, yOf)
 		assert.are.equal(48, older.pushTarget)
 		assert.are.equal(24, first.pushTarget)
 		assert.are.equal(0, second.pushTarget)
@@ -31,29 +36,39 @@ describe("Overlap", function()
 	it("moves older text away from where new text starts: up on rising paths, down on falling ones", function()
 		for animation, sign in pairs({ verticalUp = 1, fountain = 1, verticalDown = -1, rainfall = -1 }) do
 			local older, new = text("plate1", animation), text("plate1", animation)
-			Overlap.Push(set(older, new), new, 24)
+			Overlap.Push(set(older, new), new, 24, yOf)
 			assert.are.equal(sign * 24, older.pushTarget, animation)
 		end
+	end)
+
+	-- Opposite Y Variance rolls: the older text starts 24 below the new one.
+	-- A plain one-line push would put both on the same spot.
+	it("moves older text a full line past the new text from where it really is", function()
+		local older, new = text("plate1", "verticalUp", -12), text("plate1", "verticalUp", 12)
+		Overlap.Push(set(older, new), new, 24, yOf)
+		assert.are.equal(12 + 24, older.y + older.pushTarget)
+	end)
+
+	it("leaves older text that is a line or more away where it is, and keeps the space between older texts", function()
+		local far, nearer = text("plate1", "verticalUp", 100), text("plate1", "verticalUp", 10)
+		local farNew = text("plate1", "verticalUp", 50)
+		Overlap.Push(set(far, farNew), farNew, 24, yOf)
+		assert.are.equal(0, far.pushTarget)
+		local new = text("plate1", "verticalUp", 0)
+		Overlap.Push(set(far, nearer, new), new, 24, yOf)
+		assert.are.equal(14, nearer.pushTarget)
+		assert.are.equal(14, far.pushTarget)
 	end)
 
 	it("leaves text on another frame, with another animation, or on Fireworks where it is", function()
 		local otherFrame = text("plate2", "verticalUp")
 		local otherAnimation = text("plate1", "fountain")
 		local fireworks = text("plate1", "fireworks")
-		Overlap.Push(set(otherFrame, otherAnimation, fireworks), text("plate1", "verticalUp"), 24)
-		Overlap.Push(set(fireworks), text("plate1", "fireworks"), 24)
+		Overlap.Push(set(otherFrame, otherAnimation, fireworks), text("plate1", "verticalUp"), 24, yOf)
+		Overlap.Push(set(fireworks), text("plate1", "fireworks"), 24, yOf)
 		assert.are.equal(0, otherFrame.pushTarget)
 		assert.are.equal(0, otherAnimation.pushTarget)
 		assert.are.equal(0, fireworks.pushTarget)
-	end)
-
-	-- The renderer turns Y Variance off for these, so two opposite rolls
-	-- cannot cancel the move.
-	it("names the animations it moves, which take no Y Variance", function()
-		for _, animation in ipairs({ "verticalUp", "verticalDown", "fountain", "rainfall" }) do
-			assert.is_true(Overlap.Moves(animation), animation)
-		end
-		assert.is_false(Overlap.Moves("fireworks"))
 	end)
 
 	it("takes a line from the icon when it is larger than the text, plus the gap", function()
