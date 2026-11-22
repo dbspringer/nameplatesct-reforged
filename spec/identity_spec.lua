@@ -328,6 +328,94 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of a Brand Proc", function()
+		local DEMONIC_BRAND, LASH_OF_PAIN, DEATH_COIL = 1293697, 7814, 6789
+
+		local function swing(identity, time, fields)
+			local record = { kind = "line", time = time, lineKind = "swing", pet = true }
+			for key, value in pairs(fields or {}) do
+				record[key] = value
+			end
+			identity.Line(record)
+		end
+
+		-- A Hit on nameplate1 whose Log Line came at its own time.
+		local function hit(identity, time, school, lineKind)
+			return identity.Of({ time = time, unit = "nameplate1", school = school },
+				{ lineKind = lineKind or "direct", time = time })
+		end
+
+		it("gives Demonic Brand to a Warlock's Shadow Hit up to 60 ms after the pet's swing line", function()
+			for _, after in ipairs({ 0, 0.023, 0.059 }) do
+				local identity = Identity.New({}, "WARLOCK")
+				cast(identity, 1, IMMOLATE)
+				swing(identity, 1.3)
+				assert.are.equal(DEMONIC_BRAND, hit(identity, 1.3 + after, SHADOW), tostring(after))
+			end
+		end)
+
+		it("gives Demonic Brand to a Hit whose school is secret", function()
+			local identity = Identity.New({}, "WARLOCK")
+			swing(identity, 1.3)
+			assert.are.equal(DEMONIC_BRAND, hit(identity, 1.32, "<secret>"))
+		end)
+
+		-- warlock-zf hits 8332 and 8342: the Brand Proc took the in-flight
+		-- Shadow Bolt, whose own Hit then had no cast left. A line names no
+		-- unit, so the pet's swing could also have been on another mob.
+		it("gives a stack of Demonic Brand and the player's cast that fits too, and leaves the cast", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1, DEATH_COIL)
+			swing(identity, 1.3)
+			local brand = { hit(identity, 1.32, SHADOW) }
+			assert.are.same({ { nil, { DEATH_COIL, DEMONIC_BRAND } }, DEATH_COIL }, { brand, hit(identity, 1.6, SHADOW) })
+		end)
+
+		it("leaves a Hit to its cast after the pet's swing missed, after 60 ms, after the player's swing, or for another class", function()
+			local cases = {
+				{ fields = { lineKind = "swingMiss" } },
+				{ at = 1.37 },
+				{ fields = { pet = false } },
+				{ class = "MAGE" },
+			}
+			for i, case in ipairs(cases) do
+				local identity = Identity.New({}, case.class or "WARLOCK")
+				cast(identity, 1, SHADOW_BOLT)
+				swing(identity, 1.3, case.fields)
+				assert.are.equal(SHADOW_BOLT, hit(identity, case.at or 1.32, SHADOW), tostring(i))
+			end
+		end)
+
+		it("leaves a Fire Hit and a miss to their casts", function()
+			local fire = Identity.New({}, "WARLOCK")
+			cast(fire, 1, IMMOLATE)
+			swing(fire, 1.3)
+			local miss = Identity.New({}, "WARLOCK")
+			cast(miss, 1, SHADOW_BOLT)
+			swing(miss, 1.3)
+			assert.are.same({ IMMOLATE, SHADOW_BOLT }, { hit(fire, 1.32, FIRE), hit(miss, 1.32, nil, "directMiss") })
+		end)
+
+		-- The pet's Lash of Pain can come in the window too (warlock-zf: 29 of
+		-- 113 Lash of Pain lines within 30 ms after a pet swing line).
+		it("leaves a Hit that an unused cast of the pet fits to the normal rules", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1.29, LASH_OF_PAIN, "pet")
+			swing(identity, 1.3)
+			assert.are.equal(LASH_OF_PAIN, hit(identity, 1.32, SHADOW))
+		end)
+
+		-- warlock-zf hit 7893: a Brand Proc while Shadow Bolt flew and the
+		-- pet's Lash of Pain had not landed yet.
+		it("puts Demonic Brand in the stack when an unused cast of the pet fits too", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1, SHADOW_BOLT)
+			cast(identity, 1.29, LASH_OF_PAIN, "pet")
+			swing(identity, 1.3)
+			assert.are.same({ nil, { SHADOW_BOLT, LASH_OF_PAIN, DEMONIC_BRAND } }, { hit(identity, 1.32, SHADOW) })
+		end)
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}
@@ -405,13 +493,13 @@ describe("Spell Identity", function()
 			assert.are.equal(IMMOLATE, of(identity, 1, "direct", FIRE))
 		end)
 
-		it("gives no spell to a Hit that the pet's cast explains, and learns nothing from it", function()
+		it("gives the pet's spell to a Hit that the pet's cast explains, and learns nothing from it", function()
 			local saved = {}
 			local identity = Identity.New(saved)
 			cast(identity, 1, FIREBOLT, "pet")
 			local first = of(identity, 1.5, "direct", FIRE)
 			cast(identity, 4, FIREBOLT, "pet")
-			assert.are.same({ nil, nil }, { first, of(identity, 4.5, "direct", FIRE) })
+			assert.are.same({ FIREBOLT, FIREBOLT }, { first, of(identity, 4.5, "direct", FIRE) })
 			assert.are.same({}, saved)
 		end)
 
@@ -1577,8 +1665,8 @@ describe("Spell Identity", function()
 				castEntry(100.5, SHADOWBURN), lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW), ticks(101) }))
 		end)
 
-		it("gives none to a direct hit that a cast of the pet fits too, as the pet's casts never win", function()
-			assert.are.same({ "none" }, shown({ castEntry(100, IMMOLATE),
+		it("lists the pet's spell with the player's when a cast of the pet fits a direct hit too", function()
+			assert.are.same({ { IMMOLATE, FIREBOLT } }, shown({ castEntry(100, IMMOLATE),
 				{ 100.5, "UNIT_SPELLCAST_SUCCEEDED", "pet", "Cast-pet-100.5", FIREBOLT, "<nil>" },
 				lineEntry(101, "direct"), hitEntry(101, "nameplate1", FIRE) }))
 		end)
@@ -1648,7 +1736,7 @@ describe("Spell Identity", function()
 	describe("on the Warlock Traces", function()
 		-- The Unknown count of the current build: a change that raises it loses
 		-- icons, and one that gains icons lowers it.
-		local UNKNOWN_FLOOR = 227
+		local UNKNOWN_FLOOR = 185
 		-- The Unknown Hits of the current build whose Possible Spells hold the
 		-- Label's spell: a change that lowers it loses stacks.
 		local POSSIBLE_FLOOR = 132

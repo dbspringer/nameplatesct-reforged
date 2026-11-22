@@ -17,10 +17,14 @@ NameplateSCT.frame = CreateFrame("Frame", nil, UIParent)
 -------------------
 
 local spellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+-- Spells that show another spell's icon: a Brand Proc's damage spell shows
+-- the icon of the Demonic Brand debuff, the one players see on the mob
+-- (4226151; the damage spell's own is 135827, checked in game 2026-11-22).
+local ICON_OF = { [1293697] = 1293696 }
 -- One value only: Forever's C_Spell.GetSpellTexture also gives the original
 -- icon, which a list of textures would take as a second icon.
 local function GetSpellTexture(spellID)
-	return (spellTexture(spellID))
+	return (spellTexture(ICON_OF[spellID] or spellID))
 end
 local GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 -- The spell whose icon the player's swing shows. The pet's swing shows the
@@ -1909,7 +1913,7 @@ local filters = {
 			type = "input",
 			name = L["Spells"],
 			multiline = 20,
-			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."],
+			desc = L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."],
 			order = 3,
 			width = 1,
 			get = function() return NameplateSCT.db.char.spellFilter end,

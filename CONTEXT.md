@@ -79,7 +79,7 @@ The icon on a swing's Plate Text: the Auto Attack icon for the player's swing, t
 _Avoid_: Weapon icon, melee icon, white hit icon
 
 **Spell Identity**:
-Which spell made Your Hit. Icons and spell filters depend on it.
+Which spell made Your Hit, the player's or the pet's. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
 
 **Possible Spells**:
@@ -97,6 +97,10 @@ _Avoid_: Seal damage, seal hit
 **Poison Proc**:
 Your Hit made by a Rogue's poison on a weapon, with no cast of its own: Instant Poison's Hit just after a landed melee hit, or a Deadly Poison tick.
 _Avoid_: Poison damage, poison tick
+
+**Brand Proc**:
+Your Hit made by the pet's Demonic Brand when the pet's melee swing lands, with no cast of its own.
+_Avoid_: Brand damage, Brand hit
 
 **Spell Facts**:
 What the addon has learned about a spell whose school is not fixed, such as a wand's Shoot, from Your Hits: the school of its shots. A fact counts only once enough Hits agree on it. Other spells are known from the start, so they need none. Text for players calls them learned spells.

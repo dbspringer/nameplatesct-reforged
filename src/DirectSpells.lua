@@ -6,8 +6,8 @@ local _, ns = ...
 -- learns its school from its Hits, as a wand sets Shoot's. Which casts can
 -- be a Hit's spell is decided in Identity's canHit (ADR 0004); a cast of a
 -- spell in neither table, such as a buff or a Voidwalker's Torment, is never
--- one. The pets' spells are here so that they compete with the player's,
--- though they never win. Spells that also tick are in TickSpells.lua.
+-- one. The pets' spells are here so that a pet's Hit gets its spell, as the
+-- player's does. Spells that also tick are in TickSpells.lua.
 --
 -- From Forever's spell data (wago.tools DB2, build 1.60.1.70888: SpellEffect
 -- school damage, health leech and weapon damage effects, SpellMisc school),

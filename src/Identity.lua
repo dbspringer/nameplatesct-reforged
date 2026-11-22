@@ -17,9 +17,11 @@ ns.Identity = Identity
 -- that Spell Facts have learned (ADR 0004). On Forever an area spell's ticks
 -- come as direct hits, so a direct hit can also take an area spell, each
 -- interval after its cast, the first up to DIRECT_WINDOW later for one that
--- travels (see areaOf). A Seal Proc and a Rogue's Poison Procs have no cast:
--- a Seal Proc goes by the Active Seal and a landed swing, a poison by its
--- school and a landed melee hit (see newSealTracker and newPoisonTracker).
+-- travels (see areaOf). A Seal Proc, a Rogue's Poison Procs and a Warlock's
+-- Brand Proc have no cast: a Seal Proc goes by the Active Seal and a landed
+-- swing, a poison by its school and a landed melee hit, a Brand Proc by its
+-- school and the pet's landed swing line (see newSealTracker,
+-- newPoisonTracker and newBrandTracker).
 -- When it is not sure, it gives none. A Hit that gets none can still get its
 -- Possible Spells, when one of two or three known spells surely made it (see
 -- ofTick and possibleOfCasts).
@@ -81,6 +83,14 @@ local INSTANT_POISON, DEADLY_POISON = 8680, 2818
 -- Seal Proc's.
 local POISON_PROC_WINDOW = 0.15
 local SCHOOL_PHYSICAL, SCHOOL_NATURE = 1, 8
+-- A Brand Proc's spell: the damage spell of a Warlock's Demonic Brand
+-- (Forever), which the pet's Hits set off.
+local DEMONIC_BRAND = 1293697
+-- A Brand Proc's Log Line comes just after the pet's landed swing line that
+-- set it off: 284 of the 288 that a swing set off in warlock-zf came within
+-- this, and no Shadow line of the player's did in the Warlock Traces.
+local BRAND_PROC_WINDOW = 0.06
+local SCHOOL_SHADOW = 32
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
 -- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
@@ -354,6 +364,44 @@ local function newPoisonTracker()
 	return tracker
 end
 
+-- Follows the pet's landed swing lines, which are all that tie a Brand Proc
+-- to the player, as a proc has no cast. A Brand Proc is Shadow, so a
+-- Warlock's Shadow Hit just after such a line is one, unless a cast fits it
+-- that could be the pet's: the pet's Lash of Pain also comes just after its
+-- swing line at times (ADR 0004).
+local function newBrandTracker()
+	-- The times of the pet's latest landed swing lines.
+	local landed = {}
+
+	local tracker = {}
+
+	-- A swing that missed sets off no Brand Proc (none in warlock-zf).
+	function tracker.Line(record)
+		if record.lineKind == "swing" and record.pet then
+			while landed[1] and record.time - landed[1] > BRAND_PROC_WINDOW + DECIDE_LATE do
+				table.remove(landed, 1)
+			end
+			landed[#landed + 1] = record.time
+		end
+	end
+
+	-- Demonic Brand if this direct Hit's Log Line came just after a landed
+	-- pet swing line, or nil.
+	function tracker.ProcSpell(line)
+		if not line.time then
+			return nil
+		end
+		for _, time in ipairs(landed) do
+			local since = line.time - time
+			if since >= 0 and since <= BRAND_PROC_WINDOW then
+				return DEMONIC_BRAND
+			end
+		end
+	end
+
+	return tracker
+end
+
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
@@ -398,6 +446,7 @@ function Identity.New(saved, class)
 	local NO_RHYTHM = {}
 	local seals = newSealTracker()
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
+	local brands = class == "WARLOCK" and newBrandTracker() or nil
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -500,15 +549,16 @@ function Identity.New(saved, class)
 
 	-- The Possible Spells of a direct hit or a shot that these casts fit, or
 	-- nil when one of them could be another spell: a cast whose spell ID is
-	-- secret, the pet's, or one of a spell whose school is not known (castOf
-	-- already leaves out a cast whose school differs from the Hit's).
+	-- secret, or one of a spell whose school is not known (castOf already
+	-- leaves out a cast whose school differs from the Hit's). The pet's casts
+	-- count as the player's.
 	local function possibleOfCasts(fittingCasts)
 		if #fittingCasts < 2 then
 			return nil
 		end
 		local spellIDs = {}
 		for _, cast in ipairs(fittingCasts) do
-			local known = not cast.secret and cast.unit == "player" and schoolOf(cast.spellID)
+			local known = not cast.secret and schoolOf(cast.spellID)
 			if not known then
 				return nil
 			end
@@ -552,6 +602,18 @@ function Identity.New(saved, class)
 			end
 		end
 		return fitting
+	end
+
+	-- The unused casts that fit this Hit, and whether one of them is the
+	-- pet's.
+	local function castsFitting(hit, group, school)
+		local _, _, fittingCasts = castOf(hit, group, school, false)
+		for _, cast in ipairs(fittingCasts) do
+			if cast.unit == "pet" then
+				return fittingCasts, true
+			end
+		end
+		return fittingCasts, false
 	end
 
 	local function ofDirect(hit, group, school, miss, plate)
@@ -604,9 +666,9 @@ function Identity.New(saved, class)
 			return nil
 		end
 		found.used = true
-		-- The pet's casts, and casts whose spell ID is secret, compete but
-		-- never win.
-		if found.unit ~= "player" or found.secret then
+		-- A cast whose spell ID is secret competes but never wins. The pet's
+		-- casts win as the player's do, since Your Hit is the pet's too.
+		if found.secret then
 			return nil
 		end
 		local spellID = found.spellID
@@ -982,6 +1044,9 @@ function Identity.New(saved, class)
 		if poisons then
 			poisons.Line(record)
 		end
+		if brands then
+			brands.Line(record)
+		end
 	end
 	identity.SchoolOf = schoolOf
 
@@ -1083,6 +1148,37 @@ function Identity.New(saved, class)
 		end
 		if not group then
 			return nil
+		end
+		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
+			local brand = brands.ProcSpell(line)
+			local fittingCasts, petFits
+			if brand then
+				fittingCasts, petFits = castsFitting(hit, group, school)
+			end
+			if brand and #fittingCasts == 0 then
+				return brand
+			elseif brand and not petFits then
+				-- A line names no unit, so the pet's swing can have been on
+				-- another mob, and a cast of the player's that fits could have
+				-- made the Hit. The casts stay for their own Hits.
+				local spellIDs = { brand }
+				for _, cast in ipairs(fittingCasts) do
+					if cast.secret or not schoolOf(cast.spellID) then
+						return nil
+					end
+					spellIDs[#spellIDs + 1] = cast.spellID
+				end
+				return nil, possibleOf(spellIDs)
+			elseif brand then
+				-- The pet's cast or the Brand Proc made it, so a stack of the
+				-- casts alone could miss its spell.
+				local spellID, possible = ofDirect(hit, group, school, miss, plate)
+				if possible then
+					possible[#possible + 1] = brand
+					possible = possibleOf(possible)
+				end
+				return spellID, possible
+			end
 		end
 		return ofDirect(hit, group, school, miss, plate)
 	end
