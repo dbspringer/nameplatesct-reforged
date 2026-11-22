@@ -195,6 +195,8 @@ local defaults = {
 			animationspeed = 1,
 			fireworksRadius = 100,
 			fireworksDuration = 1,
+			preventOverlap = false,
+			lineGap = 4,
 		},
 
 		formatting = {
@@ -408,6 +410,8 @@ local function recycleFontString(fontString)
 	fontString.animatingDuration = nil
 	fontString.animatingStartTime = nil
 	fontString.anchorFrame = nil
+	fontString.push = nil
+	fontString.pushTarget = nil
 
 	fontString.unit = nil
 	fontString.wasTarget = nil
@@ -738,7 +742,7 @@ local function startGracePeriod(fontString)
 	fontString.unit = nil
 end
 
-local function AnimationOnUpdate()
+local function AnimationOnUpdate(_, frameElapsed)
 	if (next(animating)) then
 		local now, global = GetTime(), NameplateSCT.db.global
 		for fontString, _ in pairs(animating) do
@@ -814,6 +818,12 @@ local function AnimationOnUpdate()
 					yOffset = (startRadius + distance) * math.sin(angle)
 				end
 
+				-- Prevent Overlap: the text glides to where newer text pushed it.
+				if fontString.push ~= fontString.pushTarget then
+					fontString.push = ns.Overlap.Glide(fontString.push, fontString.pushTarget, frameElapsed)
+				end
+				yOffset = yOffset + fontString.push
+
 				if fontString.unit and not fontString.anchorFrame:IsShown() then
 					startGracePeriod(fontString)
 				end
@@ -843,6 +853,8 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 	fontString.animatingDuration = duration
 	fontString.animatingStartTime = GetTime()
 	fontString.anchorFrame = anchorFrame
+	fontString.push = 0
+	fontString.pushTarget = 0
 
 	if (animation == "verticalUp" or animation == "verticalDown") then
 		fontString.distance = ANIMATION_VERTICAL_DISTANCE
@@ -863,7 +875,10 @@ function NameplateSCT:Animate(fontString, anchorFrame, duration, animation)
 
 	animating[fontString] = true
 	randomX[fontString] = NameplateSCT.db.global.xVariance > 0 and math.random(-NameplateSCT.db.global.xVariance, NameplateSCT.db.global.xVariance) or 0
-	randomY[fontString] = NameplateSCT.db.global.yVariance > 0 and math.random(-NameplateSCT.db.global.yVariance, NameplateSCT.db.global.yVariance) or 0
+	-- Prevent Overlap sets the vertical space between the texts it moves, and
+	-- two opposite Y Variance rolls could cancel it.
+	local spaced = NameplateSCT.db.global.animations.preventOverlap and ns.Overlap.Moves(animation)
+	randomY[fontString] = not spaced and NameplateSCT.db.global.yVariance > 0 and math.random(-NameplateSCT.db.global.yVariance, NameplateSCT.db.global.yVariance) or 0
 
 	-- start onupdate if it's not already running
 	if (NameplateSCT.frame:GetScript("OnUpdate") == nil) then
@@ -1119,6 +1134,10 @@ local function startPlateText(fontString, where, size, animation, textures)
 		duration = global.animations.fireworksDuration
 	end
 	NameplateSCT:Animate(fontString, where.frame, duration, animation)
+	if global.animations.preventOverlap then
+		local iconSize = global.showIcon and textures and size * global.iconScale or nil
+		ns.Overlap.Push(animating, fontString, ns.Overlap.Line(size, iconSize, global.animations.lineGap))
+	end
 end
 
 -- The text takes its colour from SetTextColor, not from a colour code joined
@@ -1241,6 +1260,28 @@ local menu = {
 					get = function() return NameplateSCT.db.global.animations.animationspeed end,
 					set = function(_, newValue) NameplateSCT.db.global.animations.animationspeed = newValue end,
 					order = 1,
+					width = "full",
+				},
+				preventOverlap = {
+					type = 'toggle',
+					name = L["Prevent Overlap"],
+					desc = L["New text on a nameplate moves older text with the same animation out of its way, and Y Variance has no effect on that text. Fireworks keeps its own spread."],
+					get = function() return NameplateSCT.db.global.animations.preventOverlap end,
+					set = function(_, newValue) NameplateSCT.db.global.animations.preventOverlap = newValue end,
+					order = 1.05,
+					width = "full",
+				},
+				lineGap = {
+					type = 'range',
+					name = L["Line Gap"],
+					desc = L["Pixels of space between text that Prevent Overlap moves apart. Default: 4."],
+					min = 0,
+					max = 20,
+					step = 1,
+					hidden = function() return not NameplateSCT.db.global.animations.preventOverlap end,
+					get = function() return NameplateSCT.db.global.animations.lineGap end,
+					set = function(_, newValue) NameplateSCT.db.global.animations.lineGap = newValue end,
+					order = 1.1,
 					width = "full",
 				},
 				fireworksSettings = {

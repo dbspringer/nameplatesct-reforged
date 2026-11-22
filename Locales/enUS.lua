@@ -84,6 +84,7 @@ L["Inverse the logic and only show the spells in the list instead of filtering t
 L["Inverse NPC Filter"] = true
 L["Left"] = true
 L["Let Masque skin the icons"] = true
+L["Line Gap"] = true
 L["Low"] = true
 L["Medium"] = true
 L["Miss/Parry/Dodge/etc"] = true
@@ -92,6 +93,7 @@ L["Monochrome Outline"] = true
 L["Monochrome Thick Outline"] = true
 L["Monochrome"] = true
 L["NameplateSCT Reforged"] = true
+L["New text on a nameplate moves older text with the same animation out of its way, and Y Variance has no effect on that text. Fireworks keeps its own spread."] = true
 L["None"] = true
 L["Not now"] = true
 L["Off-Target Strata"] = true
@@ -99,7 +101,9 @@ L["Off-Target Text Appearance"] = true
 L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs and your pet's spells\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."] = true
 L["Outline"] = true
 L["Parried"] = true
+L["Pixels of space between text that Prevent Overlap moves apart. Default: 4."] = true
 L["Position"] = true
+L["Prevent Overlap"] = true
 L["Rainfall"] = true
 L["Randomly varies the starting horizontal position of each damage number."] = true
 L["Randomly varies the starting vertical position of each damage number."] = true
