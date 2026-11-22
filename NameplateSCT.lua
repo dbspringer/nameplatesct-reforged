@@ -1141,8 +1141,12 @@ local function startPlateText(fontString, where, size, animation, textures)
 	if global.animations.preventOverlap then
 		local iconSize = global.showIcon and textures and size * global.iconScale or nil
 		local now = GetTime()
-		ns.Overlap.Push(animating, fontString, ns.Overlap.Line(size, iconSize, global.animations.lineGap), function(text)
-			local _, y = pathOffsets(text, now - text.animatingStartTime, global)
+		ns.Overlap.Push(animating, fontString, ns.Overlap.Line(size, iconSize, global.animations.lineGap), function(text, dt)
+			local elapsed = now + dt - text.animatingStartTime
+			if elapsed > text.animatingDuration then
+				return nil
+			end
+			local _, y = pathOffsets(text, elapsed, global)
 			return y + randomY[text]
 		end)
 	end
@@ -1273,7 +1277,7 @@ local menu = {
 				preventOverlap = {
 					type = 'toggle',
 					name = L["Prevent Overlap"],
-					desc = L["New text on a nameplate moves older text with the same animation out of its way. Fireworks keeps its own spread."],
+					desc = L["New text on a nameplate moves older text with the same animation out of its way. Fountain and Fireworks keep their own spread."],
 					get = function() return NameplateSCT.db.global.animations.preventOverlap end,
 					set = function(_, newValue) NameplateSCT.db.global.animations.preventOverlap = newValue end,
 					order = 1.05,
