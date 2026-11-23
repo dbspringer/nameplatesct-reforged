@@ -390,6 +390,7 @@ local function getFontString()
 				Icon = fontString.icon
 			}
 			NameplateSCT.frame.MSQGroup:AddButton(fontString.icon.button, buttonData)
+			fontString.icon.skinned = true
 		end
 		if fontString.icon.button then
 			fontString.icon.button:Show()
@@ -430,6 +431,7 @@ local function recycleFontString(fontString)
 		fontString.icon:Hide()
 		if fontString.icon.button then
 			NameplateSCT.frame.MSQGroup:RemoveButton(fontString.icon.button)
+			fontString.icon.skinned = nil
 			fontString.icon.button:Hide()
 			fontString.icon.button:ClearAllPoints()
 		end
@@ -628,8 +630,10 @@ local function powSizing(elapsed, duration, start, middle, finish)
 end
 
 -- The region that sets an icon's size and place: the Masque button when skinned.
+-- An icon stays skinned or not until its Hit ends, so a change to Enable Masque
+-- takes effect from the next Hit.
 local function iconRegion(icon)
-	return MSQ and NameplateSCT.db.global.enableMSQ and icon.button or icon
+	return icon.skinned and icon.button or icon
 end
 
 -- The font string's icon at place i of its stack, ready to show: the first
@@ -678,8 +682,16 @@ local function placeIcons(fontString, size)
 	local count = fontString.iconCount
 	for i = 1, count do
 		local away, across = i - 1, i - 1 - (count - 1) / 2
-		local region = iconRegion(i == 1 and fontString.icon or fontString.stackIcons[i])
+		local icon = i == 1 and fontString.icon or fontString.stackIcons[i]
+		local region = iconRegion(icon)
 		region:SetSize(iconSize, iconSize)
+		-- Masque sizes a skinned icon from its button's size, but on a Nameplate
+		-- in combat that size is secret, so Masque would keep an older one, from
+		-- an earlier Hit. Older Masque has no SetFrameSize.
+		local group = NameplateSCT.frame.MSQGroup
+		if icon.skinned and group.SetFrameSize then
+			group:SetFrameSize(iconSize, iconSize, icon.button)
+		end
 		region:SetPoint(inversePositions[global.iconPosition], fontString, global.iconPosition,
 			global.xOffsetIcon + (direction[1] * away + direction[3] * across) * step,
 			global.yOffsetIcon + (direction[2] * away + direction[4] * across) * step)
