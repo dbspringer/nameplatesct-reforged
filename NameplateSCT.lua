@@ -630,8 +630,10 @@ local function powSizing(elapsed, duration, start, middle, finish)
 end
 
 -- The region that sets an icon's size and place: the Masque button when skinned.
+-- An icon stays skinned or not until its Hit ends, so a change to Enable Masque
+-- takes effect from the next Hit.
 local function iconRegion(icon)
-	return MSQ and NameplateSCT.db.global.enableMSQ and icon.button or icon
+	return icon.skinned and icon.button or icon
 end
 
 -- The font string's icon at place i of its stack, ready to show: the first
