@@ -16,8 +16,10 @@ local GLIDE_RATE = 15
 
 -- How far older text moves for new text: one line of the new text, the font
 -- size or the icon size when that is larger, plus the gap. A text's drawn
--- height can be secret, so the line comes from the size. iconSize is nil for
--- text with no icon.
+-- height can be secret, so the line comes from the size. A number is drawn
+-- shorter than its font size, so a gap of 0 still shows space, and the gap
+-- can be negative (down to -5 in the options). iconSize is nil for text with
+-- no icon.
 function Overlap.Line(size, iconSize, gap)
 	return math.max(size, iconSize or 0) + gap
 end

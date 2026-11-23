@@ -101,7 +101,7 @@ L["Off-Target Text Appearance"] = true
 L["One spell name or spell ID on each line. A spell means all of its ranks. Each character has its own list.\n\nKey words:\nmelee = your and your pet's melee hits and misses\nmissed = every miss, dodge, parry, and so on\nunknown = hits whose spell the addon is not sure of, such as procs\n\nWhen two or three of your spells could have made a number, it counts as listed only when all of them are on the list."] = true
 L["Outline"] = true
 L["Parried"] = true
-L["Pixels of space between text that Prevent Overlap moves apart. Default: 4."] = true
+L["Pixels of space between text that Prevent Overlap moves apart. Below 0, text moves closer together, and icons can overlap. Default: 4."] = true
 L["Position"] = true
 L["Prevent Overlap"] = true
 L["Rainfall"] = true
