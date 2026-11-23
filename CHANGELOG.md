@@ -3,6 +3,7 @@
 ## 13
 
 - With Masque, icons keep their size in combat. Before, some showed much bigger or smaller than they should.
+- Line Gap for Prevent Overlap now goes down to -5, so numbers can sit closer together. Below 0, icons can overlap.
 
 ## 12
 
