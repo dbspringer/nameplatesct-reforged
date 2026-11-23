@@ -101,6 +101,12 @@ describe("Overlap", function()
 		assert.are.equal(20, Overlap.Line(20, nil, 0))
 	end)
 
+	it("keeps at least half a line, so the least gap on the least font size still parts text", function()
+		assert.are.equal(15, Overlap.Line(20, nil, -5))
+		assert.are.equal(2.5, Overlap.Line(5, nil, -5))
+		assert.are.equal(2.5, Overlap.Line(5, 5, -5))
+	end)
+
 	it("glides toward the target and stops on it after a long frame", function()
 		local push = Overlap.Glide(0, 30, 1 / 60)
 		assert.is_true(push > 0 and push < 30)
