@@ -1,5 +1,9 @@
 # Changelog
 
+## 13
+
+- With Masque, icons keep their size in combat. Before, some showed much bigger or smaller than they should.
+
 ## 12
 
 - New command, `/nsctr record clear`, deletes your recording once you've sent it. A long recording can slow down your login.
