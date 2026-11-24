@@ -329,6 +329,34 @@ describe("Pairing", function()
 			assert.are.equal(only.entry, decided[tick.entry])
 			assert.is_false(decided[onYou.entry])
 		end)
+
+		-- warlock-sm-armory and warlock-zf: each Hellfire tick burns you with a
+		-- tick line in the frame of its direct lines, and an enemy Hit took it.
+		it("take the tick line of a channel that burns you before the enemy Hits in its frame", function()
+			local FIRE, HELLFIRE = 4, 1949
+			local onYou, tickLine, directLine, onMob = hit(1, "player", FIRE), line(1, "tick"), line(1, "direct"),
+				hit(1, "nameplate1", FIRE)
+			local decided = pair({ cast(0, HELLFIRE), onYou, tickLine, directLine, onMob })
+			assert.are.same({ tickLine.entry, directLine.entry }, { decided[onYou.entry], decided[onMob.entry] })
+		end)
+
+		it("leave a tick line to the enemy Hits for a Hit on you off the burning channel's ticks", function()
+			local FIRE, SHADOW, HELLFIRE = 4, 32, 1949
+			local onYou, tickLine, corruption = hit(2.5, "player", FIRE), line(2.5, "tick"), hit(2.5, "nameplate1", SHADOW)
+			local decided = pair({ cast(0, CORRUPTION), cast(1, HELLFIRE), onYou, tickLine, corruption })
+			assert.are.same({ false, tickLine.entry }, { decided[onYou.entry], decided[corruption.entry] })
+		end)
+
+		-- The old channel's stop can come just after the recast's cast.
+		it("keep the burn's tick line for a recast whose cast came before the old channel's stop", function()
+			local FIRE, HELLFIRE = 4, 1949
+			local stop = cast(5, HELLFIRE)
+			stop.stage = "CHANNEL_STOP"
+			local onYou, tickLine, directLine, onMob = hit(6, "player", FIRE), line(6, "tick"), line(6, "direct"),
+				hit(6, "nameplate1", FIRE)
+			local decided = pair({ cast(0, HELLFIRE), cast(5, HELLFIRE), stop, onYou, tickLine, directLine, onMob })
+			assert.are.same({ tickLine.entry, directLine.entry }, { decided[onYou.entry], decided[onMob.entry] })
+		end)
 	end)
 
 	describe("in the frame of a Next-Swing Ability", function()
@@ -507,6 +535,28 @@ describe("Pairing", function()
 			local direct, real = line(5, "direct"), hitOn(5, mob, 1)
 			local decided = pair({ drain, bite, direct, real })
 			assert.are.same({ false, direct.entry }, { decided[drain.entry], decided[real.entry] })
+		end)
+
+		-- warlock-zf hit 37310: a group mate's Holy Hit came first in a frame
+		-- with Hellfire's direct line and a Corruption tick line. It left the
+		-- direct line to Hellfire's Hit, then took the tick line, as it suited
+		-- a direct line of its frame.
+		it("gives a tick line to the Hit of its school when the other Hit leaves its frame's direct line", function()
+			local HOLY, HELLFIRE, mob = 2, 1949, {}
+			local holy, direct, fire = hitOn(5, mob, HOLY), line(5, "direct"), hitOn(5, mob, FIRE)
+			local tickLine, shadow = line(5, "tick"), hitOn(5, mob, SHADOW)
+			local decided = pair({ cast(0, CORRUPTION), cast(1, HELLFIRE), holy, direct, fire, tickLine, shadow })
+			assert.are.same({ false, direct.entry, tickLine.entry },
+				{ decided[holy.entry], decided[fire.entry], decided[shadow.entry] })
+		end)
+
+		it("gives an area channel's school no direct line after the channel stopped", function()
+			local HELLFIRE, mob = 1949, {}
+			local stop = cast(3, HELLFIRE)
+			stop.stage = "CHANNEL_STOP"
+			local fire, direct, bolt = hitOn(5, mob, FIRE), line(5, "direct"), hitOn(5, mob, SHADOW)
+			local decided = pair({ cast(0, HELLFIRE), stop, cast(4, SHADOW_BOLT), fire, direct, bolt })
+			assert.are.same({ false, direct.entry }, { decided[fire.entry], decided[bolt.entry] })
 		end)
 
 		it("gives no direct line to a Hit for a cast whose own Hit took one", function()

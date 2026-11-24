@@ -605,6 +605,12 @@ function Identity.New(saved, class)
 				local steps = math.floor((hit.time - from) / spell.interval + 0.5)
 				local fits = (steps >= 1 or (steps == 0 and cast.lastTick))
 					and math.abs(hit.time - from - steps * spell.interval) <= TICK_TOLERANCE
+				-- A channel's last tick can come in its stop's frame, off the
+				-- grid (a Stop Tick), as for the channels that tick.
+				if not fits and cast.stopped == hit.time and cast.lastTick and hit.time > cast.lastTick
+					and hit.time - cast.lastTick < spell.interval then
+					fits = true
+				end
 				-- One that travels lands up to DIRECT_WINDOW later, so its first
 				-- tick can too; later ticks, and a tick still in flight when the
 				-- channel stops, get no such allowance.

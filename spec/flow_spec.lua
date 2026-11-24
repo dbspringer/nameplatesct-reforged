@@ -683,9 +683,10 @@ describe("Flow", function()
 	-- their secret amount, wrong and missing were 47 and 127 in warlock-rfk,
 	-- and 70 and 98 in warlock-zf. A Brand Proc has no cast, so for a Warlock
 	-- the pet's landed swing line counts as one: before that, zf was at 66 and
-	-- 94. The pet's spell Hit counts too: before that, 60 and 87.
+	-- 94. The pet's spell Hit counts too: before that, 60 and 87. Hellfire's
+	-- Hits count as an area spell's: before that, zf was at 60 and 85.
 	it("gives a direct line to the Hit with its cast's school in a group", function()
-		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 60, 85 } }
+		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 55, 81 } }
 		for name, floor in pairs(floors) do
 			local trace, labels = Trace.LoadChecked(name)
 			local shown = {}
@@ -706,6 +707,39 @@ describe("Flow", function()
 			assert.is_true(wrong <= floor[1], ("%s: %d wrong"):format(name, wrong))
 			assert.is_true(missing <= floor[2], ("%s: %d missing"):format(name, missing))
 		end
+	end)
+
+	-- Hellfire is a channel whose ticks hit the mobs near you as direct hits of
+	-- another spell ID, and also burn you, with a tick line in their frame.
+	-- Before it was an area spell, its Hits showed no icon; and before the
+	-- burn took its own tick line, a Hit on a mob took it and showed none; and
+	-- before a tick in the channel's stop frame fit, 11 more showed none. Over
+	-- the rows that are sure or unsure only for their secret amount, 245 of 247
+	-- show Hellfire in warlock-zf, and 269 of 269 in warlock-sm-armory.
+	it("shows Hellfire's icon on its Hits on the mobs", function()
+		local HELLFIRE = { [1949] = true, [11683] = true }
+		local icons, wrong = 0, {}
+		for _, name in ipairs({ "warlock-zf", "warlock-sm-armory" }) do
+			local trace, labels = Trace.LoadChecked(name)
+			local spellOf = {}
+			for _, row in ipairs(labels) do
+				local unit = tostring(trace.entries[row.hit][3])
+				if HELLFIRE[row.spell] and (row.unsure == nil or row.unsure == "secret amount")
+					and unit:match("^nameplate%d+$") then
+					spellOf[row.hit] = row.spell
+				end
+			end
+			for _, result in ipairs(run(trace.entries, trace.header.class)) do
+				local spell = spellOf[result.hit.entry]
+				if spell and result.spellID == spell then
+					icons = icons + 1
+				elseif spell and result.spellID then
+					wrong[#wrong + 1] = ("%s hit %d: %s"):format(name, result.hit.entry, result.spellID)
+				end
+			end
+		end
+		assert.are.same({}, wrong)
+		assert.is_true(icons >= 512, ("%d Hellfire Hits shown with its icon"):format(icons))
 	end)
 
 	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel
