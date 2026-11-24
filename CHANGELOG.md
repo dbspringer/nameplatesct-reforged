@@ -5,7 +5,7 @@
 - In groups, your spells and your pet's (like a Hunter pet's Bite) show their numbers more often. Before, another player's hit of a different school at the same moment could show in place of yours.
 - Demonic Brand's numbers show more often, with their icon, including the ones your pet's spells set off (like Lash of Pain). Before, those had no icon, and in groups another player's hit at the same moment could take a Brand number's place.
 - Hellfire's hits now show its icon. Before, they showed only the number, and a hit that missed showed nothing.
-- In groups, a Paladin's Seal numbers and a Rogue's Instant Poison numbers should show more often. Before, another player's hit at the same moment could take their place. This one's untested in a group so far.
+- In groups, a Paladin's Seal numbers and a Rogue's Instant Poison numbers should show more often. Before, another player's hit at the same moment could take their place.
 
 ## 13
 
