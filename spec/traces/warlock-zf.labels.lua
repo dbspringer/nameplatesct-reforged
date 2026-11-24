@@ -7125,8 +7125,8 @@ return {
 	{ hit = 20583, line = false, unsure = "on time, of 2 file events" }, -- 1832.084 nameplate6 WOUND <secret> <- other: swing SWING_DAMAGE +0.641 s
 	{ hit = 20584, line = false, unsure = "secret amount" }, -- 1832.133 nameplate6 WOUND <secret> <- other: Arcane Blast SPELL_DAMAGE -0.029 s
 	{ hit = 20585, line = false, unsure = "no file event fits" }, -- 1832.366 nameplate6 WOUND <secret> <- no file event 
-	{ hit = 20590, line = 20588, spell = 5019, unsure = "secret amount" }, -- 1832.883 nameplate5 WOUND <secret> <- you: Shoot RANGE_DAMAGE -0.219 s (by hand: the wand is Shadow, and its shot hit the mob of nameplate5)
-	{ hit = 20595, line = 20594, spell = 1293697, unsure = "secret amount" }, -- 1832.933 nameplate6 WOUND <secret> <- pet: Demonic Brand SPELL_DAMAGE +0.000 s (by hand: on the mob of the pet's swing, nameplate6)
+	{ hit = 20590, line = 20588, spell = 5019, unsure = "secret amount" }, -- 1832.883 nameplate5 WOUND <secret> <- you: Shoot RANGE_DAMAGE +0.190 s (by hand: the wand is Shadow, and its shot hit the mob of nameplate5)
+	{ hit = 20595, line = 20594, spell = 1293697, unsure = "secret amount" }, -- 1832.933 nameplate6 WOUND <secret> <- pet: Demonic Brand SPELL_DAMAGE -0.029 s (by hand: on the mob of the pet's swing, nameplate6)
 	{ hit = 20596, line = false, unsure = "2 file events fit" }, -- 1832.967 nameplate5 MISS <secret> <- creature: swing SWING_MISSED +0.432 s
 	{ hit = 20599, line = false, unsure = "secret amount" }, -- 1833.073 nameplate5 MISS <secret> <- creature: swing SWING_MISSED +0.611 s
 	{ hit = 20602, line = 20603, spell = 11711, unsure = "secret amount" }, -- 1833.108 nameplate6 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.028 s
@@ -14131,7 +14131,6 @@ return {
 -- line 19743 at 1745.348 <- pet: swing SWING_DAMAGE
 -- line 19955 at 1774.406 <- pet: swing SWING_DAMAGE
 -- line 20202 at 1816.716 <- pet: swing SWING_DAMAGE
--- line 20588 at 1832.665 <- you: Shoot RANGE_DAMAGE
 -- line 20652 at 1834.268 <- you: Drain Soul SPELL_MISSED
 -- line 21252 at 1851.648 <- pet: swing SWING_DAMAGE
 -- line 21294 at 1852.331 <- you: Hellfire Effect SPELL_DAMAGE
