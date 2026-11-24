@@ -26,11 +26,8 @@ ns.Identity = Identity
 -- Possible Spells, when one of two or three known spells surely made it (see
 -- ofTick and possibleOfCasts).
 
--- How long after its cast a spell can land: a direct hit, a shot, or a
--- travelling spell that then ticks. A Shadow Bolt came up to 0.55 s and a
--- Shoot up to 0.63 s after the cast in the Warlock Traces; a cast at long
--- range flies longer.
-local DIRECT_WINDOW = 1.5
+-- How long after its cast a spell can land (see Pairing).
+local DIRECT_WINDOW = ns.Pairing.DIRECT_WINDOW
 -- A ranged attack can fly longer.
 local SHOT_FLIGHT = ns.Pairing.SHOT_FLIGHT
 -- How much later than its time a Hit can be decided, with a margin. Casts stay
