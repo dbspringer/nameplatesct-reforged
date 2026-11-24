@@ -83,10 +83,9 @@ local SCHOOL_PHYSICAL, SCHOOL_NATURE = 1, 8
 -- A Brand Proc's spell: the damage spell of a Warlock's Demonic Brand
 -- (Forever), which the pet's Hits set off.
 local DEMONIC_BRAND = 1293697
--- A Brand Proc's Log Line comes just after the pet's landed swing line that
--- set it off: 284 of the 288 that a swing set off in warlock-zf came within
--- this, and no Shadow line of the player's did in the Warlock Traces.
-local BRAND_PROC_WINDOW = 0.06
+-- How soon after the pet's landed swing line a Brand Proc's line comes (see
+-- Pairing).
+local BRAND_PROC_WINDOW = ns.Pairing.BRAND_PROC_WINDOW
 local SCHOOL_SHADOW = 32
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot

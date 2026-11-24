@@ -37,8 +37,9 @@ end
 
 -- Pushes the records through a new Pairing, ends every hold, and returns the
 -- Log Line entry that each Hit got, by the Hit's entry (false for none).
--- schoolOf, which is optional, gives the known school of a spell's hits.
-local function pair(records, schoolOf)
+-- schoolOf, which is optional, gives the known school of a spell's hits, and
+-- class the player's class.
+local function pair(records, schoolOf, class)
 	local decided = {}
 	local pairing = Pairing.New({
 		onDecision = function(decidedHit, decidedLine)
@@ -46,6 +47,7 @@ local function pair(records, schoolOf)
 			decided[decidedHit.entry] = decidedLine and decidedLine.entry or false
 		end,
 		schoolOf = schoolOf,
+		class = class,
 	})
 	for _, record in ipairs(records) do
 		pairing.Push(record)
@@ -516,6 +518,39 @@ describe("Pairing", function()
 			local decided = pair({ bite, biteLine, biteHit, fire, direct, rival })
 			assert.are.same({ biteLine.entry, direct.entry, false },
 				{ decided[biteHit.entry], decided[fire.entry], decided[rival.entry] })
+		end)
+
+		-- warlock-zf: a group mate's Holy Hit came first in the frame of a Brand
+		-- Proc, whose line came just after the pet's landed swing line.
+		local function brandFrame(class)
+			local swing = line(5, "swing")
+			swing.pet = true
+			local holy, direct, brand = hit(5.03, "nameplate2", 2), line(5.03, "direct"), hit(5.03, "nameplate1", SHADOW)
+			local decided = pair({ swing, holy, direct, brand }, nil, class)
+			return { decided[holy.entry], decided[brand.entry] }, direct.entry
+		end
+
+		it("gives a Warlock's direct line just after the pet's landed swing line to a Shadow Hit", function()
+			local decided, direct = brandFrame("WARLOCK")
+			assert.are.same({ false, direct }, decided)
+		end)
+
+		it("gives no Shadow Hit the direct line after the pet's swing line of another class", function()
+			local decided, direct = brandFrame("HUNTER")
+			assert.are.same({ direct, false }, decided)
+		end)
+
+		it("gives a Shadow Bolt's line to its Hit before a Hit on another mob just after the pet's swing line", function()
+			local mob, other = {}, {}
+			local bolt = cast(4.8, SHADOW_BOLT)
+			bolt.targetLife = mob
+			local swing = line(5, "swing")
+			swing.pet = true
+			local rival, direct, real = hitOn(5.03, other, SHADOW), line(5.03, "direct"), hitOn(5.03, mob, SHADOW)
+			local fire, nextLine, rivalOnMob = hitOn(5.5, mob, FIRE), line(5.5, "direct"), hitOn(5.5, mob, SHADOW)
+			local decided = pair({ bolt, swing, rival, direct, real, fire, nextLine, rivalOnMob }, nil, "WARLOCK")
+			assert.are.same({ false, direct.entry, nextLine.entry, false },
+				{ decided[rival.entry], decided[real.entry], decided[fire.entry], decided[rivalOnMob.entry] })
 		end)
 
 		it("gives a direct line to the Hit of the player's cast only on the cast's target", function()

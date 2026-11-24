@@ -27,6 +27,12 @@ Pairing.SHOT_FLIGHT = SHOT_FLIGHT
 -- longer. Spell Identity uses it too.
 local DIRECT_WINDOW = 1.5
 Pairing.DIRECT_WINDOW = DIRECT_WINDOW
+-- A Brand Proc's Log Line comes just after the pet's landed swing line that
+-- set it off: 284 of the 288 that a swing set off in warlock-zf came within
+-- this, and no Shadow line of the player's did in the Warlock Traces. Spell
+-- Identity uses it too.
+local BRAND_PROC_WINDOW = 0.06
+Pairing.BRAND_PROC_WINDOW = BRAND_PROC_WINDOW
 local MELEE_FROM, MELEE_TO = 0.25, ns.LineKind.LONGEST_SWING_DELAY
 -- The Swing Delays of the player and of the pet, learned in the session from
 -- their clean swings: a melee line with one Hit in its window and no other
@@ -53,7 +59,7 @@ local HIDE_KEEP = 5
 local HOLD = 0.15
 -- How much later than its time a held Hit can be decided, at the next Tick.
 Pairing.LATEST_DECISION = HOLD + SHOT_WINDOW
-local SCHOOL_PHYSICAL = 1
+local SCHOOL_PHYSICAL, SCHOOL_SHADOW = 1, 32
 -- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
 -- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
 -- after the swing or Stormstrike that made them, and their Hits 0.143 to 1.41 s
@@ -278,38 +284,58 @@ end
 -- shot line goes first to a Hit of the right school (see takesFromFrame and
 -- secondChoiceLine).
 -- options.schoolOf(spellID), which is optional, gives the known school of a
--- spell's hits, such as a wand's from the Spell Facts.
+-- spell's hits, such as a wand's from the Spell Facts. options.class is the
+-- player's class.
 function Pairing.New(options)
 	-- The player's and the pet's recent casts that can make a direct Hit, each
 	-- with its school, when its Hits can come until, the plate life of the
 	-- player's target for it, when its Hits must be there, and whether it makes
-	-- many Hits (see directHitsOf).
+	-- many Hits (see directHitsOf). For a Warlock, the pet's landed swing line
+	-- is a hint of a Brand Proc, which has no cast of its own: a hint has no
+	-- target, so it is weaker than a cast.
 	local directCasts = {}
 
-	-- The index of a cast that can have made the Hit, when the Hit is an
-	-- enemy's WOUND of its school; with single, only of a cast that makes one
-	-- Hit. A pet's cast says nothing of its target, so it counts on any unit.
+	local function addDirectCast(time, school, lasts, life, many, hint)
+		for i = #directCasts, 1, -1 do
+			if directCasts[i].ends < time then
+				table.remove(directCasts, i)
+			end
+		end
+		directCasts[#directCasts + 1] = { time = time, school = school, ends = time + lasts, life = life, many = many,
+			hint = hint }
+	end
+
+	-- The index of the cast that can best have made the Hit, when the Hit is an
+	-- enemy's WOUND of its school, and its rank: 2 for a cast, 1 for a hint.
+	-- With single, only of a cast or hint of one Hit. A pet's cast says nothing
+	-- of its target, so it counts on any unit.
 	local function castOf(hit, single)
 		if hit.action ~= "WOUND" or OWN_UNITS[hit.unit] or isZeroWound(hit) or issecretvalue(hit.school) then
-			return nil
+			return nil, 0
 		end
+		local hintAt
 		for i, cast in ipairs(directCasts) do
 			if cast.school == hit.school and hit.time >= cast.time and hit.time <= cast.ends
 				and (not cast.life or cast.life == hit.life) and not (single and cast.many) then
-				return i
+				if not cast.hint then
+					return i, 2
+				end
+				hintAt = hintAt or i
 			end
 		end
+		return hintAt, hintAt and 1 or 0
 	end
 
-	local function ofCastSchool(hit)
-		return castOf(hit) ~= nil
+	local function castRank(hit)
+		local _, rank = castOf(hit)
+		return rank
 	end
 
 	-- A Hit that took a Log Line other than a melee one is that line's, so no
 	-- swing learns its delay from it (see learnSwingDelays). A Hit that took a
-	-- direct line uses up the cast of one Hit that can have made it, so a later
-	-- Hit of a group mate's with that school cannot take the direct line of
-	-- another spell of the player's.
+	-- direct line uses up the cast or hint of one Hit that can best have made
+	-- it (see castOf), so a later Hit of a group mate's with that school cannot
+	-- take the direct line of another spell of the player's.
 	local function onDecision(hit, line, how)
 		if line and not ns.LineKind.IsMelee(line.lineKind) then
 			hit.tookOtherLine = true
@@ -525,17 +551,18 @@ function Pairing.New(options)
 	-- In a group, another player's Hit can come first in the frame of the
 	-- player's or the pet's direct spell, too (a Drain Life tick before a
 	-- Hunter pet's Bite, in Mimiche28's Trace). So a direct line goes first to a
-	-- Hit with the school of a cast that can have made it (see ofCastSchool),
-	-- but a Hit of another school still takes one when the frame's later Hits
-	-- of that school are fewer than its direct lines left: both of a frame's
-	-- Hits can be the player's (a Seal Proc and a Judgement).
+	-- Hit with the school of a cast that can have made it, and then to one with
+	-- the school of a hint (see castOf). A Hit with a lower rank still takes
+	-- one when the frame's later Hits of a higher rank are fewer than its
+	-- direct lines left: both of a frame's Hits can be the player's (a Seal
+	-- Proc and a Judgement).
 	local function leavesDirectLine(hit, line, lines, later, first)
-		if line.lineKind ~= "direct" or ofCastSchool(hit) then
+		if line.lineKind ~= "direct" then
 			return false
 		end
-		local waiting = 0
+		local rank, waiting = castRank(hit), 0
 		for i = first, #later do
-			if ofCastSchool(later[i]) and suits(later[i], line) then
+			if castRank(later[i]) > rank and suits(later[i], line) then
 				waiting = waiting + 1
 			end
 		end
@@ -754,13 +781,8 @@ function Pairing.New(options)
 			end
 			local school, lasts, anyUnit = directHitsOf(record)
 			if school then
-				for i = #directCasts, 1, -1 do
-					if directCasts[i].ends < record.time then
-						table.remove(directCasts, i)
-					end
-				end
 				local life = record.unit == "player" and not anyUnit and (record.startTargetLife or record.targetLife) or nil
-				directCasts[#directCasts + 1] = { time = record.time, school = school, ends = record.time + lasts, life = life, many = anyUnit }
+				addDirectCast(record.time, school, lasts, life, anyUnit)
 			end
 			local spell = spellTakingEffect(record)
 			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
@@ -780,6 +802,9 @@ function Pairing.New(options)
 		elseif record.kind == "line" then
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
+			if record.lineKind == "swing" and record.pet and options.class == "WARLOCK" then
+				addDirectCast(record.time, SCHOOL_SHADOW, BRAND_PROC_WINDOW, nil, false, true)
+			end
 		elseif record.kind == "hide" then
 			while hides[1] and record.time - hides[1] > HIDE_KEEP do
 				table.remove(hides, 1)

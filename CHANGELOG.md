@@ -3,6 +3,7 @@
 ## 14
 
 - In groups, your spells and your pet's (like a Hunter pet's Bite) show their numbers more often. Before, another player's hit of a different school at the same moment could show in place of yours.
+- In groups, Demonic Brand's numbers show more often, with their icon. Before, another player's hit at the same moment could take their place.
 
 ## 13
 
