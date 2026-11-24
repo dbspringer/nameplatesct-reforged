@@ -21,6 +21,12 @@ local SHOT_WINDOW = 0.35
 -- longer range, an estimate from wand data. Spell Identity uses it too.
 local SHOT_FLIGHT = 2.5
 Pairing.SHOT_FLIGHT = SHOT_FLIGHT
+-- How long after its cast a spell can land: a direct hit, or a travelling
+-- spell that then ticks. A Shadow Bolt came up to 0.55 s and a Shoot up to
+-- 0.63 s after the cast in the Warlock Traces; a cast at long range flies
+-- longer. Spell Identity uses it too.
+local DIRECT_WINDOW = 1.5
+Pairing.DIRECT_WINDOW = DIRECT_WINDOW
 local MELEE_FROM, MELEE_TO = 0.25, ns.LineKind.LONGEST_SWING_DELAY
 -- The Swing Delays of the player and of the pet, learned in the session from
 -- their clean swings: a melee line with one Hit in its window and no other
@@ -101,6 +107,32 @@ local function spellTakingEffect(record)
 		return nil
 	end
 	return ns.DirectSpells[record.spellID]
+end
+
+-- For a cast of the player's or the pet's, the school of the direct Hits it
+-- can make, how long after the cast they can come, and whether they can be on
+-- any unit; nil for a cast that makes none. These are the casts that Spell
+-- Identity can give a direct Hit: a spell that hits, in its window; a DoT that
+-- also hits; and an area spell, whose ticks come with direct lines, until its
+-- duration ends. A shot has lines of its own.
+local function directHitsOf(record)
+	if record.stage ~= "SUCCEEDED" or (record.unit ~= "player" and record.unit ~= "pet")
+		or issecretvalue(record.spellID) then
+		return nil
+	end
+	local direct = ns.DirectSpells[record.spellID]
+	if direct then
+		if direct.shot then
+			return nil
+		end
+		return direct.school, direct.window or DIRECT_WINDOW, false
+	end
+	local ticking = ns.TickSpells[record.spellID]
+	if ticking and ticking.area then
+		return ticking.school, ticking.duration + DOT_SLACK, true
+	elseif ticking and ticking.hits then
+		return ticking.school, DIRECT_WINDOW, false
+	end
 end
 
 -- The Empty Report of a Next-Swing Ability's frame, or nil when none is clear.
@@ -248,11 +280,45 @@ end
 -- options.schoolOf(spellID), which is optional, gives the known school of a
 -- spell's hits, such as a wand's from the Spell Facts.
 function Pairing.New(options)
+	-- The player's and the pet's recent casts that can make a direct Hit, each
+	-- with its school, when its Hits can come until, the plate life of the
+	-- player's target for it, when its Hits must be there, and whether it makes
+	-- many Hits (see directHitsOf).
+	local directCasts = {}
+
+	-- The index of a cast that can have made the Hit, when the Hit is an
+	-- enemy's WOUND of its school; with single, only of a cast that makes one
+	-- Hit. A pet's cast says nothing of its target, so it counts on any unit.
+	local function castOf(hit, single)
+		if hit.action ~= "WOUND" or OWN_UNITS[hit.unit] or isZeroWound(hit) or issecretvalue(hit.school) then
+			return nil
+		end
+		for i, cast in ipairs(directCasts) do
+			if cast.school == hit.school and hit.time >= cast.time and hit.time <= cast.ends
+				and (not cast.life or cast.life == hit.life) and not (single and cast.many) then
+				return i
+			end
+		end
+	end
+
+	local function ofCastSchool(hit)
+		return castOf(hit) ~= nil
+	end
+
 	-- A Hit that took a Log Line other than a melee one is that line's, so no
-	-- swing learns its delay from it (see learnSwingDelays).
+	-- swing learns its delay from it (see learnSwingDelays). A Hit that took a
+	-- direct line uses up the cast of one Hit that can have made it, so a later
+	-- Hit of a group mate's with that school cannot take the direct line of
+	-- another spell of the player's.
 	local function onDecision(hit, line, how)
 		if line and not ns.LineKind.IsMelee(line.lineKind) then
 			hit.tookOtherLine = true
+		end
+		if line and line.lineKind == "direct" then
+			local used = castOf(hit, true)
+			if used then
+				table.remove(directCasts, used)
+			end
 		end
 		options.onDecision(hit, line, how)
 	end
@@ -456,7 +522,39 @@ function Pairing.New(options)
 	-- several of the player's, so no line goes past it. A shot line with the
 	-- wrong school waits (see secondChoiceLine). later lists the frame's Hits
 	-- from first on that are still to be decided.
+	-- In a group, another player's Hit can come first in the frame of the
+	-- player's or the pet's direct spell, too (a Drain Life tick before a
+	-- Hunter pet's Bite, in Mimiche28's Trace). So a direct line goes first to a
+	-- Hit with the school of a cast that can have made it (see ofCastSchool),
+	-- but a Hit of another school still takes one when the frame's later Hits
+	-- of that school are fewer than its direct lines left: both of a frame's
+	-- Hits can be the player's (a Seal Proc and a Judgement).
+	local function leavesDirectLine(hit, line, lines, later, first)
+		if line.lineKind ~= "direct" or ofCastSchool(hit) then
+			return false
+		end
+		local waiting = 0
+		for i = first, #later do
+			if ofCastSchool(later[i]) and suits(later[i], line) then
+				waiting = waiting + 1
+			end
+		end
+		if waiting == 0 then
+			return false
+		end
+		local left = 0
+		for _, other in ipairs(lines) do
+			if other.lineKind == "direct" then
+				left = left + 1
+			end
+		end
+		return waiting >= left
+	end
+
 	local function takesFromFrame(hit, line, lines, later, first)
+		if leavesDirectLine(hit, line, lines, later, first) then
+			return false
+		end
 		if not schoolIs(hit, line, false) then
 			return true
 		end
@@ -653,6 +751,16 @@ function Pairing.New(options)
 			local dot = record.stage == "SUCCEEDED" and not issecretvalue(record.spellID) and ns.TickSpells[record.spellID]
 			if dot and not dot.area then
 				dotEnds[dot.school] = math.max(dotEnds[dot.school] or 0, record.time + dot.duration + DOT_SLACK)
+			end
+			local school, lasts, anyUnit = directHitsOf(record)
+			if school then
+				for i = #directCasts, 1, -1 do
+					if directCasts[i].ends < record.time then
+						table.remove(directCasts, i)
+					end
+				end
+				local life = record.unit == "player" and not anyUnit and (record.startTargetLife or record.targetLife) or nil
+				directCasts[#directCasts + 1] = { time = record.time, school = school, ends = record.time + lasts, life = life, many = anyUnit }
 			end
 			local spell = spellTakingEffect(record)
 			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then

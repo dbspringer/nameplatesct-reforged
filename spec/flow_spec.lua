@@ -198,6 +198,8 @@ describe("Flow", function()
 		assert.are.same({ 20, 11 }, { counts[21084], counts[20271] })
 	end)
 
+	-- The 11th Judgement is Hit 359: another player's Shadow Hit in its frame
+	-- took its line until the direct line went first to the Judgement's school.
 	it("gives no icon when a live Paladin's Judgement and Seal Proc share a frame, and keeps the Seal across fights", function()
 		local trace = assert(Trace.Load("spec/traces/paladin-seal-fights.lua"))
 		local counts, holyWithNone = {}, 0
@@ -207,7 +209,7 @@ describe("Flow", function()
 				holyWithNone = holyWithNone + 1
 			end
 		end
-		assert.are.same({ 25, 10, 4 }, { counts[21084], counts[20271], holyWithNone })
+		assert.are.same({ 25, 11, 4 }, { counts[21084], counts[20271], holyWithNone })
 	end)
 
 	-- Counts alone hid a Touch of the Grave miss with the Seal's icon.
@@ -669,6 +671,36 @@ describe("Flow", function()
 		assert.are.same({}, wrong)
 		assert.is_true(brands >= 235, ("%d Brand Procs shown with Demonic Brand's icon"):format(brands))
 		assert.is_true(lashes >= 58, ("%d Lash of Pain Hits shown with its icon"):format(lashes))
+	end)
+
+	-- In a group, another player's Hit of another school can come first in the
+	-- frame of the player's or the pet's direct spell. Before a direct line went
+	-- first to a Hit with a recent cast's school, it took the line, and the
+	-- real Hit showed nothing. Over the rows that are sure or unsure only for
+	-- their secret amount, wrong and missing were 47 and 127 in warlock-rfk,
+	-- and 70 and 98 in warlock-zf.
+	it("gives a direct line to the Hit with its cast's school in a group", function()
+		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 66, 94 } }
+		for name, floor in pairs(floors) do
+			local trace, labels = Trace.LoadChecked(name)
+			local shown = {}
+			for _, result in ipairs(run(trace.entries, trace.header.class)) do
+				shown[result.hit.entry] = true
+			end
+			local wrong, missing = 0, 0
+			for _, row in ipairs(labels) do
+				if row.unsure == nil or row.unsure == "secret amount" then
+					local unit = tostring(trace.entries[row.hit][3])
+					if shown[row.hit] and not row.line then
+						wrong = wrong + 1
+					elseif not shown[row.hit] and row.line and unit:match("^nameplate%d+$") then
+						missing = missing + 1
+					end
+				end
+			end
+			assert.is_true(wrong <= floor[1], ("%s: %d wrong"):format(name, wrong))
+			assert.is_true(missing <= floor[2], ("%s: %d missing"):format(name, missing))
+		end
 	end)
 
 	-- warlock-wrack is an open-world fight of a Warlock with Wrack, a channel

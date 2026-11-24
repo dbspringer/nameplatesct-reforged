@@ -1,5 +1,9 @@
 # Changelog
 
+## 14
+
+- In groups, your spells and your pet's (like a Hunter pet's Bite) show their numbers more often. Before, another player's hit of a different school at the same moment could show in place of yours.
+
 ## 13
 
 - With Masque, icons keep their size in combat. Before, some showed much bigger or smaller than they should.

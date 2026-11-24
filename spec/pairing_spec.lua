@@ -439,7 +439,7 @@ describe("Pairing", function()
 	end)
 
 	describe("the school check", function()
-		local FIRE, NATURE, ARCANE, FROST = 4, 8, 64, 16
+		local FIRE, NATURE, ARCANE, FROST, SHADOW = 4, 8, 64, 16, 32
 
 		local function wandOf(school)
 			return function(spellID)
@@ -485,6 +485,55 @@ describe("Pairing", function()
 			local shoot, shot, wand = cast(0, SHOOT), line(1, "shot"), hit(1.25, "nameplate1", ARCANE)
 			local decided = pair({ shoot, shot, wand }, wandOf(FROST))
 			assert.are.equal(shot.entry, decided[wand.entry])
+		end)
+
+		-- The Hits of a frame on a mob, each on the plate life given.
+		local function hitOn(time, life, school)
+			local onLife = hit(time, "nameplate1", school)
+			onLife.life = life
+			return onLife
+		end
+
+		local SHADOW_BOLT, BITE = 686, 17257
+
+		-- Mimiche28's Hunter Trace (CurseForge, 2026-11-23): a group mate's
+		-- Drain Life tick came first in the frame of the pet's Bite.
+		it("gives a direct line to the Hit with the school of the pet's cast before another Hit in its frame", function()
+			local mob = {}
+			local drain, bite = hitOn(5, mob, SHADOW), cast(5, BITE)
+			bite.unit, bite.target = "pet", nil
+			local direct, real = line(5, "direct"), hitOn(5, mob, 1)
+			local decided = pair({ drain, bite, direct, real })
+			assert.are.same({ false, direct.entry }, { decided[drain.entry], decided[real.entry] })
+		end)
+
+		it("gives no direct line to a Hit for a cast whose own Hit took one", function()
+			local mob = {}
+			local bite = cast(5, BITE)
+			bite.unit, bite.target = "pet", nil
+			local biteLine, biteHit = line(5.1, "direct"), hitOn(5.1, mob, 1)
+			local fire, direct, rival = hitOn(5.8, mob, FIRE), line(5.8, "direct"), hitOn(5.8, mob, 1)
+			local decided = pair({ bite, biteLine, biteHit, fire, direct, rival })
+			assert.are.same({ biteLine.entry, direct.entry, false },
+				{ decided[biteHit.entry], decided[fire.entry], decided[rival.entry] })
+		end)
+
+		it("gives a direct line to the Hit of the player's cast only on the cast's target", function()
+			local mob, other = {}, {}
+			local bolt = cast(4, SHADOW_BOLT)
+			bolt.targetLife = mob
+			local rival, direct, real = hitOn(5, other, SHADOW), line(5, "direct"), hitOn(5, mob, SHADOW)
+			local decided = pair({ bolt, rival, direct, real })
+			assert.are.same({ false, direct.entry }, { decided[rival.entry], decided[real.entry] })
+		end)
+
+		it("leaves a direct line to a Hit of another school when the Hits of the cast's school are fewer than the lines", function()
+			local mob = {}
+			local bolt = cast(4, SHADOW_BOLT)
+			bolt.targetLife = mob
+			local holy, first, second, shadow = hitOn(5, mob, 2), line(5, "direct"), line(5, "direct"), hitOn(5, mob, SHADOW)
+			local decided = pair({ bolt, holy, first, second, shadow })
+			assert.are.same({ first.entry, second.entry }, { decided[holy.entry], decided[shadow.entry] })
 		end)
 	end)
 
