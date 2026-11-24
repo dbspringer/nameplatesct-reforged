@@ -53,6 +53,7 @@ function Flow.New(options)
 			end
 		end,
 		schoolOf = identity.SchoolOf,
+		class = options.class,
 	})
 	-- A cast goes in after Pairing has decided the frames before it.
 	local adapter = ns.Adapter.New(function(record)
