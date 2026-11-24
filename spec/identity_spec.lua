@@ -405,6 +405,26 @@ describe("Spell Identity", function()
 			assert.are.equal(LASH_OF_PAIN, hit(identity, 1.32, SHADOW))
 		end)
 
+		-- warlock-zf: 39 Brand Procs came 0.008 to 0.040 s after the line of a
+		-- Lash of Pain Hit. A Shadow Bolt's line came in such a line's frame
+		-- (hit 8342).
+		it("gives Demonic Brand to a Shadow Hit just after the line of the pet's spell Hit, but not in its frame", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1.29, LASH_OF_PAIN, "pet")
+			local lash = hit(identity, 1.3, SHADOW)
+			cast(identity, 1.3, SHADOW_BOLT)
+			local bolt = hit(identity, 1.3, SHADOW)
+			assert.are.same({ LASH_OF_PAIN, SHADOW_BOLT, DEMONIC_BRAND }, { lash, bolt, hit(identity, 1.32, SHADOW) })
+		end)
+
+		it("gives no Demonic Brand to a Shadow Hit on another plate after the pet's spell Hit", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1.29, LASH_OF_PAIN, "pet")
+			hit(identity, 1.3, SHADOW)
+			local other = identity.Of({ time = 1.32, unit = "nameplate2", school = SHADOW }, { lineKind = "direct", time = 1.32 })
+			assert.is_nil(other)
+		end)
+
 		-- warlock-zf hit 7893: a Brand Proc while Shadow Bolt flew and the
 		-- pet's Lash of Pain had not landed yet.
 		it("puts Demonic Brand in the stack when an unused cast of the pet fits too", function()

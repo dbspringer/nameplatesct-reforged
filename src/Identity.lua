@@ -360,36 +360,59 @@ local function newPoisonTracker()
 	return tracker
 end
 
--- Follows the pet's landed swing lines, which are all that tie a Brand Proc
--- to the player, as a proc has no cast. A Brand Proc is Shadow, so a
--- Warlock's Shadow Hit just after such a line is one, unless a cast fits it
--- that could be the pet's: the pet's Lash of Pain also comes just after its
--- swing line at times (ADR 0004).
+-- Follows the lines of the pet's landed swings and spell Hits, which are all
+-- that tie a Brand Proc to the player, as a proc has no cast. A Brand Proc is
+-- Shadow, so a Warlock's Shadow Hit just after such a line is one, unless a
+-- cast fits it that could be the pet's: the pet's Lash of Pain also comes just
+-- after its swing line at times (ADR 0004).
 local function newBrandTracker()
-	-- The times of the pet's latest landed swing lines.
-	local landed = {}
+	-- The latest lines of the pet's landed swings, and of its spell Hits, each
+	-- with its time and, for a spell Hit, its plate.
+	local swings, spells = {}, {}
+
+	local function add(list, time, plate)
+		while list[1] and time - list[1].time > BRAND_PROC_WINDOW + DECIDE_LATE do
+			table.remove(list, 1)
+		end
+		list[#list + 1] = { time = time, plate = plate }
+	end
 
 	local tracker = {}
 
 	-- A swing that missed sets off no Brand Proc (none in warlock-zf).
 	function tracker.Line(record)
 		if record.lineKind == "swing" and record.pet then
-			while landed[1] and record.time - landed[1] > BRAND_PROC_WINDOW + DECIDE_LATE do
-				table.remove(landed, 1)
-			end
-			landed[#landed + 1] = record.time
+			add(swings, record.time)
+		end
+	end
+
+	-- The line of a Hit that is surely the pet's spell's, and not a miss, and
+	-- the Hit's plate.
+	function tracker.PetSpell(line, plate)
+		if line.time then
+			add(spells, line.time, plate)
 		end
 	end
 
 	-- Demonic Brand if this direct Hit's Log Line came just after a landed
-	-- pet swing line, or nil.
-	function tracker.ProcSpell(line)
+	-- pet swing line, or after the line of the pet's spell Hit on its plate,
+	-- or nil. A Brand Proc hits the mob whose Brand the pet's Hit used. A line
+	-- in the spell Hit's own frame does not count: in warlock-zf, 39 Brand
+	-- Procs came 0.008 to 0.040 s after a Lash of Pain line, and the one Shadow
+	-- line of the player's in that window came in its frame (hit 8342).
+	function tracker.ProcSpell(line, plate)
 		if not line.time then
 			return nil
 		end
-		for _, time in ipairs(landed) do
-			local since = line.time - time
+		for _, swing in ipairs(swings) do
+			local since = line.time - swing.time
 			if since >= 0 and since <= BRAND_PROC_WINDOW then
+				return DEMONIC_BRAND
+			end
+		end
+		for _, spell in ipairs(spells) do
+			local since = line.time - spell.time
+			if spell.plate == plate and since > 0 and since <= BRAND_PROC_WINDOW then
 				return DEMONIC_BRAND
 			end
 		end
@@ -683,7 +706,7 @@ function Identity.New(saved, class)
 			rhythms[plate][spellID] = { { source = hit.time } }
 		end
 		local known = schoolOf(spellID)
-		return known and (not school or known == school) and spellID or nil
+		return known and (not school or known == school) and spellID or nil, nil, found.unit == "pet"
 	end
 
 	-- Whether a cast of the spell on this unit after since, and before this
@@ -1127,6 +1150,16 @@ function Identity.New(saved, class)
 		end
 	end
 
+	-- ofDirect, which also tells the Brand tracker of a Hit that is surely the
+	-- pet's spell's, as it can set off a Brand Proc; a miss sets off none.
+	local function petNoted(hit, line, group, school, miss, plate)
+		local spellID, possible, byPet = ofDirect(hit, group, school, miss, plate)
+		if byPet and spellID and not miss and brands then
+			brands.PetSpell(line, plate)
+		end
+		return spellID, possible
+	end
+
 	-- A shot is a ranged attack's Hit, and only a ranged attack can make one, so
 	-- a known spell's cast is in one group only. A miss reports school 1 whatever
 	-- the spell, so it teaches nothing and uses the school of its spell's hits.
@@ -1146,7 +1179,7 @@ function Identity.New(saved, class)
 			return nil
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
-			local brand = brands.ProcSpell(line)
+			local brand = brands.ProcSpell(line, plate)
 			local fittingCasts, petFits
 			if brand then
 				fittingCasts, petFits = castsFitting(hit, group, school)
@@ -1168,7 +1201,7 @@ function Identity.New(saved, class)
 			elseif brand then
 				-- The pet's cast or the Brand Proc made it, so a stack of the
 				-- casts alone could miss its spell.
-				local spellID, possible = ofDirect(hit, group, school, miss, plate)
+				local spellID, possible = petNoted(hit, line, group, school, miss, plate)
 				if possible then
 					possible[#possible + 1] = brand
 					possible = possibleOf(possible)
@@ -1176,7 +1209,7 @@ function Identity.New(saved, class)
 				return spellID, possible
 			end
 		end
-		return ofDirect(hit, group, school, miss, plate)
+		return petNoted(hit, line, group, school, miss, plate)
 	end
 
 	-- Of for each { hit, line } of decisions that came together, as a list of
