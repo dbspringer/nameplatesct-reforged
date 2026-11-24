@@ -290,19 +290,23 @@ function Pairing.New(options)
 	-- The player's and the pet's recent casts that can make a direct Hit, each
 	-- with its school, when its Hits can come until, the plate life of the
 	-- player's target for it, when its Hits must be there, and whether it makes
-	-- many Hits (see directHitsOf). For a Warlock, the pet's landed swing line
-	-- is a hint of a Brand Proc, which has no cast of its own: a hint has no
-	-- target, so it is weaker than a cast.
+	-- many Hits (see directHitsOf). For a Warlock, the pet's landed swing line,
+	-- and the line of the pet's spell Hit, is a hint of a Brand Proc, which has
+	-- no cast of its own: a hint is weaker than a cast. A spell Hit's hint is
+	-- only on its plate life, and only after its line's frame (see Identity's
+	-- newBrandTracker).
 	local directCasts = {}
 
-	local function addDirectCast(time, school, lasts, life, many, hint)
+	-- Adds the cast (time, school, and the optional life, many, hint, pet, and
+	-- after) for lasts seconds.
+	local function addDirectCast(cast, lasts)
 		for i = #directCasts, 1, -1 do
-			if directCasts[i].ends < time then
+			if directCasts[i].ends < cast.time then
 				table.remove(directCasts, i)
 			end
 		end
-		directCasts[#directCasts + 1] = { time = time, school = school, ends = time + lasts, life = life, many = many,
-			hint = hint }
+		cast.ends = cast.time + lasts
+		directCasts[#directCasts + 1] = cast
 	end
 
 	-- The index of the cast that can best have made the Hit, when the Hit is an
@@ -315,7 +319,8 @@ function Pairing.New(options)
 		end
 		local hintAt
 		for i, cast in ipairs(directCasts) do
-			if cast.school == hit.school and hit.time >= cast.time and hit.time <= cast.ends
+			if cast.school == hit.school and (hit.time > cast.time or hit.time == cast.time and not cast.after)
+				and hit.time <= cast.ends
 				and (not cast.life or cast.life == hit.life) and not (single and cast.many) then
 				if not cast.hint then
 					return i, 2
@@ -335,15 +340,18 @@ function Pairing.New(options)
 	-- swing learns its delay from it (see learnSwingDelays). A Hit that took a
 	-- direct line uses up the cast or hint of one Hit that can best have made
 	-- it (see castOf), so a later Hit of a group mate's with that school cannot
-	-- take the direct line of another spell of the player's.
+	-- take the direct line of another spell of the player's. For a Warlock, a
+	-- Hit that used up the pet's cast, when no other cast fits it, is surely
+	-- the pet's, so it adds a hint of a Brand Proc.
 	local function onDecision(hit, line, how)
 		if line and not ns.LineKind.IsMelee(line.lineKind) then
 			hit.tookOtherLine = true
 		end
 		if line and line.lineKind == "direct" then
 			local used = castOf(hit, true)
-			if used then
-				table.remove(directCasts, used)
+			if used and table.remove(directCasts, used).pet and options.class == "WARLOCK" and castRank(hit) < 2 then
+				addDirectCast({ time = line.time, school = SCHOOL_SHADOW, life = hit.life, hint = true, after = true },
+					BRAND_PROC_WINDOW)
 			end
 		end
 		options.onDecision(hit, line, how)
@@ -782,7 +790,8 @@ function Pairing.New(options)
 			local school, lasts, anyUnit = directHitsOf(record)
 			if school then
 				local life = record.unit == "player" and not anyUnit and (record.startTargetLife or record.targetLife) or nil
-				addDirectCast(record.time, school, lasts, life, anyUnit)
+				addDirectCast({ time = record.time, school = school, life = life, many = anyUnit, pet = record.unit == "pet" },
+					lasts)
 			end
 			local spell = spellTakingEffect(record)
 			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
@@ -803,7 +812,7 @@ function Pairing.New(options)
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
 			if record.lineKind == "swing" and record.pet and options.class == "WARLOCK" then
-				addDirectCast(record.time, SCHOOL_SHADOW, BRAND_PROC_WINDOW, nil, false, true)
+				addDirectCast({ time = record.time, school = SCHOOL_SHADOW, hint = true }, BRAND_PROC_WINDOW)
 			end
 		elseif record.kind == "hide" then
 			while hides[1] and record.time - hides[1] > HIDE_KEEP do

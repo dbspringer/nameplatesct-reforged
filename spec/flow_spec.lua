@@ -647,8 +647,9 @@ describe("Flow", function()
 	-- row unsure only for its secret amount has a sure spell. Before Brand
 	-- Procs had a rule, 6 of them took the icon of a Shadow Bolt or Death Coil
 	-- still in flight, whose own Hit then had none; and before the pet's casts
-	-- could win, Lash of Pain showed no icon. Now 244 Brand Procs show Demonic
-	-- Brand, 61 Lash of Pain Hits show theirs, and no icon is wrong.
+	-- could win, Lash of Pain showed no icon; and before a Brand Proc after a
+	-- Lash of Pain Hit had a rule, 35 more showed none. Now 279 Brand Procs show
+	-- Demonic Brand, 61 Lash of Pain Hits show theirs, and no icon is wrong.
 	it("shows Demonic Brand on Brand Procs and Lash of Pain on its Hits, and leaves Shadow Bolt its own", function()
 		local DEMONIC_BRAND, LASH_OF_PAIN = 1293697, 11778
 		local trace, labels = Trace.LoadChecked("warlock-zf")
@@ -669,7 +670,7 @@ describe("Flow", function()
 			end
 		end
 		assert.are.same({}, wrong)
-		assert.is_true(brands >= 242, ("%d Brand Procs shown with Demonic Brand's icon"):format(brands))
+		assert.is_true(brands >= 277, ("%d Brand Procs shown with Demonic Brand's icon"):format(brands))
 		assert.is_true(lashes >= 58, ("%d Lash of Pain Hits shown with its icon"):format(lashes))
 	end)
 
@@ -680,9 +681,9 @@ describe("Flow", function()
 	-- their secret amount, wrong and missing were 47 and 127 in warlock-rfk,
 	-- and 70 and 98 in warlock-zf. A Brand Proc has no cast, so for a Warlock
 	-- the pet's landed swing line counts as one: before that, zf was at 66 and
-	-- 94.
+	-- 94. The pet's spell Hit counts too: before that, 60 and 87.
 	it("gives a direct line to the Hit with its cast's school in a group", function()
-		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 60, 87 } }
+		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 60, 85 } }
 		for name, floor in pairs(floors) do
 			local trace, labels = Trace.LoadChecked(name)
 			local shown = {}

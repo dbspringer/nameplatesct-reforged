@@ -496,7 +496,7 @@ describe("Pairing", function()
 			return onLife
 		end
 
-		local SHADOW_BOLT, BITE = 686, 17257
+		local SHADOW_BOLT, BITE, LASH_OF_PAIN = 686, 17257, 7814
 
 		-- Mimiche28's Hunter Trace (CurseForge, 2026-11-23): a group mate's
 		-- Drain Life tick came first in the frame of the pet's Bite.
@@ -538,6 +538,50 @@ describe("Pairing", function()
 		it("gives no Shadow Hit the direct line after the pet's swing line of another class", function()
 			local decided, direct = brandFrame("HUNTER")
 			assert.are.same({ direct, false }, decided)
+		end)
+
+		-- The pet's cast of Lash of Pain, which can make a Brand Proc on its
+		-- Hit's mob.
+		local function lashCast(time)
+			local lash = cast(time, LASH_OF_PAIN)
+			lash.unit, lash.target = "pet", nil
+			return lash
+		end
+
+		it("gives a Warlock's direct line just after the pet's spell Hit to a Shadow Hit on its mob", function()
+			local mob, other = {}, {}
+			local lashLine, lashHit = line(5.1, "direct"), hitOn(5.1, mob, SHADOW)
+			local rival, direct, brand = hitOn(5.12, other, SHADOW), line(5.12, "direct"), hitOn(5.12, mob, SHADOW)
+			local decided = pair({ lashCast(5), lashLine, lashHit, rival, direct, brand }, nil, "WARLOCK")
+			assert.are.same({ lashLine.entry, false, direct.entry },
+				{ decided[lashHit.entry], decided[rival.entry], decided[brand.entry] })
+		end)
+
+		-- After a Hit that the player's cast fits too, a Brand Proc is not sure,
+		-- so a group mate's Shadow Hit gets no hint.
+		it("gives no Brand hint for the pet's spell Hit that the player's cast fits too", function()
+			local mob = {}
+			local bolt = cast(5.05, SHADOW_BOLT)
+			bolt.targetLife = mob
+			local lashLine, lashHit = line(5.1, "direct"), hitOn(5.1, mob, SHADOW)
+			local boltLine, boltHit = line(5.11, "direct"), hitOn(5.11, mob, SHADOW)
+			local fire, direct, rival = hitOn(5.13, mob, FIRE), line(5.13, "direct"), hitOn(5.13, mob, SHADOW)
+			local decided = pair({ lashCast(5), bolt, lashLine, lashHit, boltLine, boltHit, fire, direct, rival }, nil,
+				"WARLOCK")
+			assert.are.same({ direct.entry, false }, { decided[fire.entry], decided[rival.entry] })
+		end)
+
+		-- The lines can come before both Hits, and the Brand Proc's Hit then
+		-- uses up the hint.
+		it("times a Brand hint from the pet's spell Hit's line", function()
+			local mob = {}
+			local lashLine, brandLine = line(5, "direct"), line(5.02, "direct")
+			local lashHit, brandHit = hitOn(5.05, mob, SHADOW), hitOn(5.05, mob, SHADOW)
+			local fire, direct, rival = hitOn(5.08, mob, FIRE), line(5.08, "direct"), hitOn(5.08, mob, SHADOW)
+			local decided = pair({ lashCast(4.9), lashLine, brandLine, lashHit, brandHit, fire, direct, rival }, nil,
+				"WARLOCK")
+			assert.are.same({ lashLine.entry, brandLine.entry, direct.entry, false },
+				{ decided[lashHit.entry], decided[brandHit.entry], decided[fire.entry], decided[rival.entry] })
 		end)
 
 		it("gives a Shadow Bolt's line to its Hit before a Hit on another mob just after the pet's swing line", function()
