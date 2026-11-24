@@ -361,14 +361,25 @@ describe("Spell Identity", function()
 		end)
 
 		-- warlock-zf hits 8332 and 8342: the Brand Proc took the in-flight
-		-- Shadow Bolt, whose own Hit then had no cast left. A line names no
-		-- unit, so the pet's swing could also have been on another mob.
-		it("gives a stack of Demonic Brand and the player's cast that fits too, and leaves the cast", function()
+		-- Shadow Bolt, whose own Hit then had no cast left. A stack of the two
+		-- then cost 7 Brand Procs their icon, and no Shadow Hit of the player's
+		-- came in the window in any Warlock Trace.
+		it("gives Demonic Brand when the player's cast fits too, and leaves the cast", function()
 			local identity = Identity.New({}, "WARLOCK")
 			cast(identity, 1, DEATH_COIL)
 			swing(identity, 1.3)
 			local brand = { hit(identity, 1.32, SHADOW) }
-			assert.are.same({ { nil, { DEATH_COIL, DEMONIC_BRAND } }, DEATH_COIL }, { brand, hit(identity, 1.6, SHADOW) })
+			assert.are.same({ { DEMONIC_BRAND }, DEATH_COIL }, { brand, hit(identity, 1.6, SHADOW) })
+		end)
+
+		-- A Fire Hit can come in the window too (warlock-zf hits 1272 and
+		-- 11085, warlock-rfk hit 1518), so with its school secret it can be
+		-- the cast's.
+		it("gives a stack of Demonic Brand and the player's cast when the school is secret", function()
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 1, IMMOLATE)
+			swing(identity, 1.3)
+			assert.are.same({ nil, { IMMOLATE, DEMONIC_BRAND } }, { hit(identity, 1.32, "<secret>") })
 		end)
 
 		it("leaves a Hit to its cast after the pet's swing missed, after 60 ms, after the player's swing, or for another class", function()

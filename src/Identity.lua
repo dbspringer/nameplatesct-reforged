@@ -1184,12 +1184,15 @@ function Identity.New(saved, class)
 			if brand then
 				fittingCasts, petFits = castsFitting(hit, group, school)
 			end
-			if brand and #fittingCasts == 0 then
+			-- A line names no unit, so the pet's swing can have been on
+			-- another mob, and a cast of the player's that fits could have
+			-- made the Hit. No Warlock Trace has a Shadow Hit of the player's
+			-- in the window, so for a Shadow Hit the Brand Proc wins (ADR
+			-- 0004). Fire Hits do come in it, so a Hit of secret school gets
+			-- Possible Spells. The casts stay for their own Hits.
+			if brand and (#fittingCasts == 0 or school == SCHOOL_SHADOW and not petFits) then
 				return brand
 			elseif brand and not petFits then
-				-- A line names no unit, so the pet's swing can have been on
-				-- another mob, and a cast of the player's that fits could have
-				-- made the Hit. The casts stay for their own Hits.
 				local spellIDs = { brand }
 				for _, cast in ipairs(fittingCasts) do
 					if cast.secret or not schoolOf(cast.spellID) then
