@@ -74,6 +74,8 @@ local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 -- How long after its longest duration a DoT still counts as active, for a
 -- cast that travels or a tick that drifts late.
 local DOT_SLACK = 1
+-- How far a tick can be from its interval, as in Spell Identity.
+local TICK_TOLERANCE = 0.1
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
@@ -297,8 +299,9 @@ function Pairing.New(options)
 	-- newBrandTracker).
 	local directCasts = {}
 
-	-- Adds the cast (time, school, and the optional life, many, hint, pet, and
-	-- after) for lasts seconds.
+	-- Adds the cast (time, school, and the optional life, many, hint, pet,
+	-- after, and for the player's area channel spellID, burnsSelf and interval)
+	-- for lasts seconds.
 	local function addDirectCast(cast, lasts)
 		for i = #directCasts, 1, -1 do
 			if directCasts[i].ends < cast.time then
@@ -369,6 +372,41 @@ function Pairing.New(options)
 	-- When the player's and the pet's DoTs of each school end, from their
 	-- casts. A cast does not say which Nameplate it was on.
 	local dotEnds = {}
+
+	-- The school of the player's channel that burns the player too, such as
+	-- Hellfire, when one of its ticks is due at this time, or nil: on its
+	-- interval after the cast, or in its stop's frame (a Stop Tick). Of 147
+	-- Hellfire burns in the Traces, 141 came within 0.05 s of the interval and
+	-- 6 in a stop's frame. A mob's Hit on the player off the ticks then cannot
+	-- take a DoT's tick line.
+	local function burnAt(time)
+		for _, cast in ipairs(directCasts) do
+			if cast.burnsSelf and time > cast.time and time <= cast.ends then
+				local steps = math.floor((time - cast.time) / cast.interval + 0.5)
+				if steps >= 1 and math.abs(time - cast.time - steps * cast.interval) <= TICK_TOLERANCE
+					or cast.stopped and time == cast.ends then
+					return cast.school
+				end
+			end
+		end
+	end
+
+	-- A channel's Hits end with it, though its last tick can come in the stop's
+	-- frame (a Stop Tick). The stop ends the oldest of the spell's channels that
+	-- still runs, so a recast whose cast comes before the old channel's stop
+	-- keeps its own, as in Spell Identity.
+	local function stopChannel(record)
+		local oldest
+		for _, cast in ipairs(directCasts) do
+			if cast.spellID == record.spellID and not cast.stopped and record.time <= cast.ends
+				and not (oldest and oldest.time <= cast.time) then
+				oldest = cast
+			end
+		end
+		if oldest then
+			oldest.stopped, oldest.ends = true, math.min(oldest.ends, record.time)
+		end
+	end
 
 	-- The schools that the spell of a tick or shot line can have at this
 	-- time, as a set, or nil when none is known: for a tick line, those of the
@@ -596,9 +634,12 @@ function Pairing.New(options)
 		if isShotLine(line) then
 			return false
 		end
+		-- A direct line that the Hit leaves to a Hit with a fitting cast is not
+		-- one it could take (warlock-zf hit 37310).
 		for _, other in ipairs(lines) do
 			if ns.LineKind.Group(other.lineKind) ~= "tick" and not isShotLine(other)
-				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other) then
+				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other)
+				and not leavesDirectLine(hit, other, lines, later, first) then
 				return true
 			end
 		end
@@ -750,6 +791,27 @@ function Pairing.New(options)
 		advance(time)
 		local empty = nextSwing and nextSwing.time == time and emptyReportIn(hits, lines, nextSwing)
 		learnSwingDelays(time, hits, lines, empty)
+		-- Each tick of a channel that burns the player comes with a tick line
+		-- for the burn in the frame of its Hits on the mobs (warlock-sm-armory,
+		-- warlock-zf: Hellfire), so the burn takes its line before the enemy
+		-- Hits can. Only one, as a mob's Hit on the player can share the school.
+		local burned
+		local burnSchool = burnAt(time)
+		if burnSchool then
+			for _, hit in ipairs(hits) do
+				if hit.unit == "player" and hit.action == "WOUND" and not issecretvalue(hit.school)
+					and hit.school == burnSchool then
+					local found = takeSuited(hit, lines, function(_, line)
+						return ns.LineKind.Group(line.lineKind) == "tick"
+					end)
+					if found then
+						burned = hit
+						onDecision(hit, claim(found), "frame")
+						break
+					end
+				end
+			end
+		end
 		for i, hit in ipairs(hits) do
 			if hit == empty then
 				onDecision(hit, nil)
@@ -758,7 +820,7 @@ function Pairing.New(options)
 			end
 		end
 		for _, hit in ipairs(hits) do
-			if OWN_UNITS[hit.unit] then
+			if OWN_UNITS[hit.unit] and hit ~= burned then
 				decide(hit, lines)
 			end
 		end
@@ -790,8 +852,12 @@ function Pairing.New(options)
 			local school, lasts, anyUnit = directHitsOf(record)
 			if school then
 				local life = record.unit == "player" and not anyUnit and (record.startTargetLife or record.targetLife) or nil
-				addDirectCast({ time = record.time, school = school, life = life, many = anyUnit, pet = record.unit == "pet" },
-					lasts)
+				local channel = anyUnit and record.unit == "player"
+				addDirectCast({ time = record.time, school = school, life = life, many = anyUnit, pet = record.unit == "pet",
+					spellID = channel and record.spellID or nil, burnsSelf = channel and dot.burnsSelf or nil,
+					interval = channel and dot.interval or nil }, lasts)
+			elseif record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
+				stopChannel(record)
 			end
 			local spell = spellTakingEffect(record)
 			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then

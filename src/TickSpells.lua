@@ -4,9 +4,10 @@ local _, ns = ...
 -- time between ticks, and the longest time any rank ticks for with its
 -- talents, in seconds; the school of its ticks, which is also the school of
 -- its direct hit (a spell in this table needs no Spell Facts); whether its
--- cast also hits; whether it travels to its target first; and whether it is
--- an area spell, whose ticks come as direct Log Lines. Spell Identity reads
--- ticks only from this table (ADR 0004).
+-- cast also hits; whether it travels to its target first; whether it is
+-- an area spell, whose ticks come as direct Log Lines; and whether each tick
+-- also burns the caster, with a tick Log Line in the same frame. Spell
+-- Identity reads ticks only from this table (ADR 0004).
 --
 -- From Forever's spell data (wago.tools DB2, build 1.60.1.70888: SpellEffect
 -- periodic damage and leech auras and school damage effects, SpellMisc school
@@ -14,20 +15,22 @@ local _, ns = ...
 -- or pet skill line or a talent (TraitDefinition), also where no trainer or
 -- talent is known to teach it; the Classic spells' values agree with the
 -- Classic Era data. Left out: ticks with no cast of their own (Ignite, Deep
--- Wounds, Deadly Poison), traps, totems (the totem is the source), Hellfire
--- and Arcane Missiles (their damage hits rather than ticks), Wyvern Sting,
--- Curse of Doom (Bane of Doom on Forever; one tick at 60 s), and the area
--- spells that are not channels (Consecration, Flamestrike's DoT). Corruption,
+-- Wounds, Deadly Poison), traps, totems (the totem is the source), Arcane
+-- Missiles (its damage hits rather than ticks), Wyvern Sting, Curse of Doom
+-- (Bane of Doom on Forever; one tick at 60 s), and the area spells that are
+-- not channels (Consecration, Flamestrike's DoT). Corruption,
 -- Bane of Agony, Immolate, Drain Life and Drain Soul are checked against the
 -- Warlock Traces.
 --
 -- On Forever the area spells tick from an area trigger, not Classic's area
 -- aura, at the same interval, and each tick is a direct hit of another spell
--- ID: Rain of Fire's in the Rain of Fire Trace, the others untested. Only the
--- channelled ones are here (Blizzard, Hurricane, Rain of Fire, Volley): the
--- player can neither swing nor cast while channelling, and the channel's stop
--- ends the ticks, so a proc with no cast, such as a seal's, seldom lands on
--- the tick grid. During Consecration such procs would take its icon.
+-- ID: Rain of Fire's in the Rain of Fire Trace, Hellfire's (Hellfire Effect)
+-- in warlock-sm-armory and warlock-zf, the others untested. Only the
+-- channelled ones are here (Blizzard, Hellfire, Hurricane, Rain of Fire,
+-- Volley): the player can neither swing nor cast while channelling, and the
+-- channel's stop ends the ticks, so a proc with no cast, such as a seal's,
+-- seldom lands on the tick grid. During Consecration such procs would take
+-- its icon.
 --
 -- Ticks come only from the player's casts. The pets' spells are here so that
 -- a pet's missed application gets its spell, as in DirectSpells.lua.
@@ -46,6 +49,7 @@ local function ticks(interval, school, duration, kind, ids)
 		hits = kind.hits == true,
 		travels = kind.travels == true,
 		area = kind.area == true,
+		burnsSelf = kind.burnsSelf == true,
 		-- Sets the order of Possible Spells (see Identity).
 		firstRank = ids[1],
 	}
@@ -103,6 +107,10 @@ do
 	ticks(2, SHADOW, 24, {}, { 980, 1014, 6217, 11711, 11712, 11713 }) -- Curse of Agony; Bane of Agony on Forever
 	ticks(3, SHADOW, 15, {}, { 1120, 8288, 8289, 11675 }) -- Drain Soul
 	ticks(2, FIRE, 8, { area = true }, { 5740, 6219, 11677, 11678 }) -- Rain of Fire
+	-- Hellfire: ranks 1 and 2 are in the Traces, rank 3 (11684) and the 15 s
+	-- channel are Classic's (the longest channel in the Traces stopped at
+	-- 13.6 s). Each tick burns the caster for Fire damage.
+	ticks(1, FIRE, 15, { area = true, burnsSelf = true }, { 1949, 11683, 11684 }) -- Hellfire
 	ticks(3, SHADOW, 30, {}, { 18265, 18879, 18880, 18881 }) -- Siphon Life
 	ticks(1, SHADOW, 6, {}, { 1316697 }) -- Wrack, Forever only (a channel)
 

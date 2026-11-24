@@ -1045,13 +1045,13 @@ return {
 	{ hit = 2968, line = 2969, spell = 11711, unsure = "secret amount" }, -- 662.175 nameplate7 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.025 s
 	{ hit = 2970, line = 2972, spell = 1243028, unsure = "secret amount" }, -- 662.186 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 2973, line = 2974, spell = 11683, unsure = "secret amount" }, -- 662.276 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 2976, line = 2975, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 2976, line = 2975, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
 	{ hit = 2979, line = false, unsure = "secret amount" }, -- 662.276 player MISS <secret> <- creature: Hex SPELL_MISSED -0.027 s
-	{ hit = 2981, line = 2980, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 2983, line = 2982, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 2985, line = 2984, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 2987, line = 2986, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 2989, line = 2988, spell = 11681, unsure = "secret amount" }, -- 662.276 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 2981, line = 2980, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 2983, line = 2982, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 2985, line = 2984, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 2987, line = 2986, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 2989, line = 2988, spell = 11683, unsure = "secret amount" }, -- 662.276 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 2991, line = 2990, spell = 25228, unsure = "on time, of 2 file events" }, -- 662.276 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 2994, line = 2993, spell = 25228, unsure = "secret amount" }, -- 662.290 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.026 s
 	{ hit = 2997, line = 2996, spell = 10300, unsure = "secret amount" }, -- 662.300 nameplate7 WOUND <secret> <- you: Retribution Aura DAMAGE_SHIELD -0.026 s
@@ -1072,12 +1072,12 @@ return {
 	{ hit = 3034, line = 3033, spell = 10300, unsure = "secret amount" }, -- 663.152 nameplate3 WOUND <secret> <- pet: Retribution Aura DAMAGE_SHIELD -0.025 s
 	{ hit = 3037, line = false, unsure = "secret amount" }, -- 663.243 nameplate2 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.025 s
 	{ hit = 3038, line = 3039, spell = 11683, unsure = "secret amount" }, -- 663.269 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.025 s
-	{ hit = 3041, line = 3040, spell = 11681, unsure = "secret amount" }, -- 663.269 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 3043, line = 3042, spell = 11681, unsure = "secret amount" }, -- 663.269 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 3045, line = 3044, spell = 11681, unsure = "secret amount" }, -- 663.269 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 3047, line = 3046, spell = 11681, unsure = "secret amount" }, -- 663.269 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 3051, line = 3050, spell = 11681, unsure = "2 file events fit" }, -- 663.269 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 3053, line = 3052, spell = 11681, unsure = "secret amount" }, -- 663.269 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 3041, line = 3040, spell = 11683, unsure = "secret amount" }, -- 663.269 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 3043, line = 3042, spell = 11683, unsure = "secret amount" }, -- 663.269 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 3045, line = 3044, spell = 11683, unsure = "secret amount" }, -- 663.269 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 3047, line = 3046, spell = 11683, unsure = "secret amount" }, -- 663.269 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 3051, line = 3050, spell = 11683, unsure = "2 file events fit" }, -- 663.269 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 3053, line = 3052, spell = 11683, unsure = "secret amount" }, -- 663.269 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 3055, line = 3054, spell = 25228, unsure = "on time, of 2 file events" }, -- 663.269 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 3057, line = 3059, spell = 1243028, unsure = "6 file events fit" }, -- 663.299 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 3060, line = 3062, spell = 1243028, unsure = "5 file events fit" }, -- 663.299 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1783,13 +1783,13 @@ return {
 	{ hit = 5107, line = 5110, spell = false, unsure = "secret amount" }, -- 799.932 nameplate18 IMMUNE <secret> <- pet: swing SWING_MISSED -0.036 s
 	{ hit = 5111, line = false, unsure = "secret amount" }, -- 800.167 nameplate18 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.025 s
 	{ hit = 5114, line = 5115, spell = 11683, unsure = "secret amount" }, -- 800.211 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5117, line = 5116, spell = 11681, unsure = "secret amount" }, -- 800.211 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 5119, line = 5118, spell = 11681, unsure = "secret amount" }, -- 800.211 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5121, line = 5120, spell = 11681, unsure = "5 file events fit" }, -- 800.211 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5123, line = 5122, spell = 11681, unsure = "secret amount" }, -- 800.211 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5125, line = 5124, spell = 11681, unsure = "3 file events fit" }, -- 800.211 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5127, line = 5126, spell = 11681, unsure = "secret amount" }, -- 800.211 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5129, line = 5128, spell = 11681, unsure = "secret amount" }, -- 800.211 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5117, line = 5116, spell = 11683, unsure = "secret amount" }, -- 800.211 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 5119, line = 5118, spell = 11683, unsure = "secret amount" }, -- 800.211 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5121, line = 5120, spell = 11683, unsure = "5 file events fit" }, -- 800.211 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5123, line = 5122, spell = 11683, unsure = "secret amount" }, -- 800.211 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5125, line = 5124, spell = 11683, unsure = "3 file events fit" }, -- 800.211 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5127, line = 5126, spell = 11683, unsure = "secret amount" }, -- 800.211 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5129, line = 5128, spell = 11683, unsure = "secret amount" }, -- 800.211 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 5133, line = 5132, spell = 25228, unsure = "secret amount" }, -- 800.211 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 5134, line = 5135, spell = 1243028, unsure = "7 file events fit" }, -- 800.238 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 5136, line = 5137, spell = 1243028, unsure = "6 file events fit" }, -- 800.238 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1810,13 +1810,13 @@ return {
 	{ hit = 5172, line = false, unsure = "secret amount" }, -- 801.091 nameplate6 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.025 s
 	{ hit = 5175, line = false, unsure = "on time, of 2 file events" }, -- 801.135 nameplate18 IMMUNE <secret> <- other: swing SWING_MISSED -0.065 s
 	{ hit = 5178, line = 5179, spell = 11683, unsure = "secret amount" }, -- 801.199 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5181, line = 5180, spell = 11681, unsure = "secret amount" }, -- 801.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5185, line = 5184, spell = 11681, unsure = "secret amount" }, -- 801.199 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5187, line = 5186, spell = 11681, unsure = "5 file events fit" }, -- 801.199 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5189, line = 5188, spell = 11681, unsure = "4 file events fit" }, -- 801.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5191, line = 5190, spell = 11681, unsure = "secret amount" }, -- 801.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 5193, line = 5192, spell = 11681, unsure = "secret amount" }, -- 801.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 5195, line = 5194, spell = 11681, unsure = "secret amount" }, -- 801.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 5181, line = 5180, spell = 11683, unsure = "secret amount" }, -- 801.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5185, line = 5184, spell = 11683, unsure = "secret amount" }, -- 801.199 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5187, line = 5186, spell = 11683, unsure = "5 file events fit" }, -- 801.199 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5189, line = 5188, spell = 11683, unsure = "4 file events fit" }, -- 801.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5191, line = 5190, spell = 11683, unsure = "secret amount" }, -- 801.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5193, line = 5192, spell = 11683, unsure = "secret amount" }, -- 801.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5195, line = 5194, spell = 11683, unsure = "secret amount" }, -- 801.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 5197, line = 5196, spell = 25228, unsure = "secret amount" }, -- 801.199 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 5199, line = 5200, spell = 1243028, unsure = "7 file events fit" }, -- 801.222 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 5201, line = 5202, spell = 1243028, unsure = "6 file events fit" }, -- 801.222 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1842,14 +1842,14 @@ return {
 	{ hit = 5239, line = false, unsure = "secret amount" }, -- 801.760 nameplate18 WOUND <secret> <- other: Arcane Explosion SPELL_DAMAGE -0.026 s
 	{ hit = 5242, line = 5243, spell = 11711, unsure = "secret amount" }, -- 801.774 nameplate7 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.026 s
 	{ hit = 5245, line = 5246, spell = 1243028, unsure = "secret amount" }, -- 801.796 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
-	{ hit = 5256, line = 5255, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate13 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.025 s
+	{ hit = 5256, line = 5255, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate13 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.025 s
 	{ hit = 5257, line = 5258, spell = 11683, unsure = "secret amount" }, -- 802.196 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5260, line = 5259, spell = 11681, unsure = "6 file events fit" }, -- 802.196 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 5262, line = 5261, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5264, line = 5263, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5266, line = 5265, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5270, line = 5269, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5272, line = 5271, spell = 11681, unsure = "secret amount" }, -- 802.196 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5260, line = 5259, spell = 11683, unsure = "6 file events fit" }, -- 802.196 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 5262, line = 5261, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5264, line = 5263, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5266, line = 5265, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5270, line = 5269, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5272, line = 5271, spell = 11683, unsure = "secret amount" }, -- 802.196 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 5274, line = 5273, spell = 25228, unsure = "secret amount" }, -- 802.196 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 5275, line = 5276, spell = 1243028, unsure = "6 file events fit" }, -- 802.228 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 5277, line = 5278, spell = 1243028, unsure = "5 file events fit" }, -- 802.228 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1877,13 +1877,13 @@ return {
 	{ hit = 5324, line = false, unsure = "secret amount" }, -- 802.769 nameplate18 IMMUNE <secret> <- other: swing SWING_MISSED +0.428 s
 	{ hit = 5330, line = false, unsure = "secret amount" }, -- 803.091 nameplate5 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.025 s
 	{ hit = 5331, line = 5332, spell = 11683, unsure = "secret amount" }, -- 803.199 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5334, line = 5333, spell = 11681, unsure = "secret amount" }, -- 803.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5336, line = 5335, spell = 11681, unsure = "secret amount" }, -- 803.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5340, line = 5339, spell = 11681, unsure = "secret amount" }, -- 803.199 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5342, line = 5341, spell = 11681, unsure = "3 file events fit" }, -- 803.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5344, line = 5343, spell = 11681, unsure = "2 file events fit" }, -- 803.199 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 5346, line = 5345, spell = 11681, unsure = "secret amount" }, -- 803.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 5348, line = 5347, spell = 11681, unsure = "secret amount" }, -- 803.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 5334, line = 5333, spell = 11683, unsure = "secret amount" }, -- 803.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5336, line = 5335, spell = 11683, unsure = "secret amount" }, -- 803.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5340, line = 5339, spell = 11683, unsure = "secret amount" }, -- 803.199 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5342, line = 5341, spell = 11683, unsure = "3 file events fit" }, -- 803.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5344, line = 5343, spell = 11683, unsure = "2 file events fit" }, -- 803.199 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5346, line = 5345, spell = 11683, unsure = "secret amount" }, -- 803.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5348, line = 5347, spell = 11683, unsure = "secret amount" }, -- 803.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 5350, line = 5349, spell = 25228, unsure = "secret amount" }, -- 803.199 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 5353, line = 5354, spell = 1243028, unsure = "7 file events fit" }, -- 803.233 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 5355, line = 5356, spell = 1243028, unsure = "6 file events fit" }, -- 803.233 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
@@ -1906,13 +1906,13 @@ return {
 	{ hit = 5387, line = 5388, spell = 11711, unsure = "secret amount" }, -- 803.775 nameplate7 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.025 s
 	{ hit = 5391, line = false, unsure = "3 file events fit" }, -- 803.841 nameplate18 IMMUNE <secret> <- other: swing SWING_MISSED +0.056 s
 	{ hit = 5400, line = 5401, spell = 11683, unsure = "secret amount" }, -- 804.210 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.025 s
-	{ hit = 5403, line = 5402, spell = 11681, unsure = "secret amount" }, -- 804.210 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 5405, line = 5404, spell = 11681, unsure = "4 file events fit" }, -- 804.210 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5407, line = 5406, spell = 11681, unsure = "secret amount" }, -- 804.210 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5410, line = 5409, spell = 11681, unsure = "2 file events fit" }, -- 804.210 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 5413, line = 5412, spell = 11681, unsure = "secret amount" }, -- 804.210 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 5415, line = 5414, spell = 11681, unsure = "secret amount" }, -- 804.210 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 5419, line = 5418, spell = 11681, unsure = "secret amount" }, -- 804.210 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 5403, line = 5402, spell = 11683, unsure = "secret amount" }, -- 804.210 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 5405, line = 5404, spell = 11683, unsure = "4 file events fit" }, -- 804.210 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5407, line = 5406, spell = 11683, unsure = "secret amount" }, -- 804.210 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5410, line = 5409, spell = 11683, unsure = "2 file events fit" }, -- 804.210 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5413, line = 5412, spell = 11683, unsure = "secret amount" }, -- 804.210 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 5415, line = 5414, spell = 11683, unsure = "secret amount" }, -- 804.210 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 5419, line = 5418, spell = 11683, unsure = "secret amount" }, -- 804.210 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 5421, line = 5420, spell = 25228, unsure = "secret amount" }, -- 804.210 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 5422, line = 5423, spell = 1243028, unsure = "2 file events fit" }, -- 804.225 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 5424, line = 5425, spell = 1243028, unsure = "secret amount" }, -- 804.225 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -1929,11 +1929,11 @@ return {
 	{ hit = 5456, line = false, unsure = "3 file events fit" }, -- 805.099 nameplate6 WOUND <secret> <- other: Shank SPELL_DAMAGE -0.026 s
 	{ hit = 5458, line = false, unsure = "secret amount" }, -- 805.168 nameplate18 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.026 s
 	{ hit = 5463, line = 5464, spell = 11683, unsure = "secret amount" }, -- 805.199 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5466, line = 5465, spell = 11681, unsure = "5 file events fit" }, -- 805.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
-	{ hit = 5468, line = 5467, spell = 11681, unsure = "secret amount" }, -- 805.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5472, line = 5471, spell = 11681, unsure = "secret amount" }, -- 805.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5474, line = 5473, spell = 11681, unsure = "secret amount" }, -- 805.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5476, line = 5475, spell = 11681, unsure = "secret amount" }, -- 805.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5466, line = 5465, spell = 11683, unsure = "5 file events fit" }, -- 805.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.026 s
+	{ hit = 5468, line = 5467, spell = 11683, unsure = "secret amount" }, -- 805.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5472, line = 5471, spell = 11683, unsure = "secret amount" }, -- 805.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5474, line = 5473, spell = 11683, unsure = "secret amount" }, -- 805.199 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5476, line = 5475, spell = 11683, unsure = "secret amount" }, -- 805.199 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 5478, line = 5477, spell = 25228, unsure = "secret amount" }, -- 805.199 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 5479, line = 5480, spell = 1243028, unsure = "2 file events fit" }, -- 805.227 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.025 s
 	{ hit = 5481, line = 5482, spell = 1243028, unsure = "secret amount" }, -- 805.227 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1951,9 +1951,9 @@ return {
 	{ hit = 5506, line = 5455, spell = 11671, unsure = "secret amount" }, -- 806.004 nameplate18 IMMUNE <secret> <- you: Corruption SPELL_PERIODIC_MISSED +0.905 s
 	{ hit = 5511, line = false, unsure = "no file event fits" }, -- 806.085 nameplate18 WOUND <secret> <- no file event 
 	{ hit = 5514, line = 5515, spell = 11683, unsure = "secret amount" }, -- 806.199 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 5518, line = 5517, spell = 11681, unsure = "3 file events fit" }, -- 806.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5520, line = 5519, spell = 11681, unsure = "secret amount" }, -- 806.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 5524, line = 5523, spell = 11681, unsure = "secret amount" }, -- 806.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 5518, line = 5517, spell = 11683, unsure = "3 file events fit" }, -- 806.199 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5520, line = 5519, spell = 11683, unsure = "secret amount" }, -- 806.199 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 5524, line = 5523, spell = 11683, unsure = "secret amount" }, -- 806.199 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 5526, line = 5525, spell = 25228, unsure = "secret amount" }, -- 806.199 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 5527, line = 5528, spell = 1243028, unsure = "2 file events fit" }, -- 806.225 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 5529, line = 5530, spell = 1243028, unsure = "secret amount" }, -- 806.225 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
@@ -1962,8 +1962,8 @@ return {
 	{ hit = 5538, line = false, unsure = "secret amount" }, -- 806.591 nameplate13 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.025 s
 	{ hit = 5539, line = false, unsure = "secret amount" }, -- 806.591 nameplate18 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.025 s
 	{ hit = 5542, line = 5543, spell = 11683, unsure = "secret amount" }, -- 806.687 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.025 s
-	{ hit = 5547, line = 5546, spell = 11681, unsure = "secret amount" }, -- 806.687 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 5550, line = 5549, spell = 11681, unsure = "secret amount" }, -- 806.687 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 5547, line = 5546, spell = 11683, unsure = "secret amount" }, -- 806.687 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 5550, line = 5549, spell = 11683, unsure = "secret amount" }, -- 806.687 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
 	{ hit = 5554, line = 5553, spell = 25228, unsure = "secret amount" }, -- 806.687 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 5555, line = false, unsure = "on time, of 3 file events" }, -- 806.706 nameplate18 IMMUNE <secret> <- other: swing SWING_MISSED +0.204 s
 	{ hit = 5559, line = 5560, spell = 1243028, unsure = "2 file events fit" }, -- 806.719 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -2985,13 +2985,13 @@ return {
 	{ hit = 8879, line = false, unsure = "secret amount" }, -- 1056.476 nameplate11 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.027 s
 	{ hit = 8880, line = false, unsure = "secret amount" }, -- 1056.599 nameplate14 WOUND <secret> <- other: swing SWING_DAMAGE +0.405 s
 	{ hit = 8881, line = 8882, spell = 11683, unsure = "secret amount" }, -- 1056.615 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 8884, line = 8883, spell = 11681, unsure = "7 file events fit" }, -- 1056.615 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 8886, line = 8885, spell = 11681, unsure = "6 file events fit" }, -- 1056.615 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 8888, line = 8887, spell = 11681, unsure = "secret amount" }, -- 1056.615 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 8890, line = 8889, spell = 11681, unsure = "secret amount" }, -- 1056.615 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 8892, line = 8891, spell = 11681, unsure = "secret amount" }, -- 1056.615 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 8896, line = 8895, spell = 11681, unsure = "secret amount" }, -- 1056.615 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 8898, line = 8897, spell = 11681, unsure = "secret amount" }, -- 1056.615 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 8884, line = 8883, spell = 11683, unsure = "7 file events fit" }, -- 1056.615 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 8886, line = 8885, spell = 11683, unsure = "6 file events fit" }, -- 1056.615 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 8888, line = 8887, spell = 11683, unsure = "secret amount" }, -- 1056.615 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 8890, line = 8889, spell = 11683, unsure = "secret amount" }, -- 1056.615 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 8892, line = 8891, spell = 11683, unsure = "secret amount" }, -- 1056.615 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 8896, line = 8895, spell = 11683, unsure = "secret amount" }, -- 1056.615 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 8898, line = 8897, spell = 11683, unsure = "secret amount" }, -- 1056.615 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 8900, line = 8899, spell = 25228, unsure = "secret amount" }, -- 1056.615 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 8901, line = 8902, spell = 1243028, unsure = "4 file events fit" }, -- 1056.646 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 8903, line = 8904, spell = 1243028, unsure = "3 file events fit" }, -- 1056.646 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3021,13 +3021,13 @@ return {
 	{ hit = 8947, line = false, unsure = "on time, of 2 file events" }, -- 1057.540 nameplate7 WOUND <secret> <- other: Holy Strike SPELL_DAMAGE -0.027 s
 	{ hit = 8948, line = false, unsure = "secret amount" }, -- 1057.557 nameplate7 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.026 s
 	{ hit = 8949, line = 8950, spell = 11683, unsure = "secret amount" }, -- 1057.609 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 8952, line = 8951, spell = 11681, unsure = "secret amount" }, -- 1057.609 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 8954, line = 8953, spell = 11681, unsure = "5 file events fit" }, -- 1057.609 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 8956, line = 8955, spell = 11681, unsure = "4 file events fit" }, -- 1057.609 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 8958, line = 8957, spell = 11681, unsure = "3 file events fit" }, -- 1057.609 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 8960, line = 8959, spell = 11681, unsure = "secret amount" }, -- 1057.609 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 8965, line = 8964, spell = 11681, unsure = "secret amount" }, -- 1057.609 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 8967, line = 8966, spell = 11681, unsure = "secret amount" }, -- 1057.609 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 8952, line = 8951, spell = 11683, unsure = "secret amount" }, -- 1057.609 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 8954, line = 8953, spell = 11683, unsure = "5 file events fit" }, -- 1057.609 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 8956, line = 8955, spell = 11683, unsure = "4 file events fit" }, -- 1057.609 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 8958, line = 8957, spell = 11683, unsure = "3 file events fit" }, -- 1057.609 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 8960, line = 8959, spell = 11683, unsure = "secret amount" }, -- 1057.609 nameplate13 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 8965, line = 8964, spell = 11683, unsure = "secret amount" }, -- 1057.609 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 8967, line = 8966, spell = 11683, unsure = "secret amount" }, -- 1057.609 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 8969, line = 8968, spell = 25228, unsure = "secret amount" }, -- 1057.609 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 8970, line = 8971, spell = 1243028, unsure = "2 file events fit" }, -- 1057.640 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 8972, line = 8973, spell = 1243028, unsure = "secret amount" }, -- 1057.640 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3043,11 +3043,11 @@ return {
 	{ hit = 9002, line = false, unsure = "secret amount" }, -- 1058.262 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.026 s
 	{ hit = 9003, line = false, unsure = "secret amount" }, -- 1058.343 nameplate10 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.027 s
 	{ hit = 9008, line = 9009, spell = 11683, unsure = "secret amount" }, -- 1058.618 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 9011, line = 9010, spell = 11681, unsure = "secret amount" }, -- 1058.618 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9013, line = 9012, spell = 11681, unsure = "secret amount" }, -- 1058.618 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9015, line = 9014, spell = 11681, unsure = "secret amount" }, -- 1058.618 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9017, line = 9016, spell = 11681, unsure = "2 file events fit" }, -- 1058.618 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 9019, line = 9018, spell = 11681, unsure = "secret amount" }, -- 1058.618 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 9011, line = 9010, spell = 11683, unsure = "secret amount" }, -- 1058.618 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9013, line = 9012, spell = 11683, unsure = "secret amount" }, -- 1058.618 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9015, line = 9014, spell = 11683, unsure = "secret amount" }, -- 1058.618 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9017, line = 9016, spell = 11683, unsure = "2 file events fit" }, -- 1058.618 nameplate17 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 9019, line = 9018, spell = 11683, unsure = "secret amount" }, -- 1058.618 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 9021, line = 9020, spell = 25228, unsure = "secret amount" }, -- 1058.618 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 9022, line = 9023, spell = 1243028, unsure = "2 file events fit" }, -- 1058.650 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 9024, line = 9025, spell = 1243028, unsure = "secret amount" }, -- 1058.650 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3061,11 +3061,11 @@ return {
 	{ hit = 9045, line = false, unsure = "2 file events fit" }, -- 1059.496 nameplate11 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.026 s
 	{ hit = 9046, line = false, unsure = "secret amount" }, -- 1059.496 nameplate15 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.026 s
 	{ hit = 9049, line = 9050, spell = 11683, unsure = "secret amount" }, -- 1059.624 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 9052, line = 9051, spell = 11681, unsure = "2 file events fit" }, -- 1059.624 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9054, line = 9053, spell = 11681, unsure = "secret amount" }, -- 1059.624 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9056, line = 9055, spell = 11681, unsure = "secret amount" }, -- 1059.624 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9058, line = 9057, spell = 11681, unsure = "2 file events fit" }, -- 1059.624 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 9060, line = 9059, spell = 11681, unsure = "secret amount" }, -- 1059.624 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 9052, line = 9051, spell = 11683, unsure = "2 file events fit" }, -- 1059.624 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9054, line = 9053, spell = 11683, unsure = "secret amount" }, -- 1059.624 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9056, line = 9055, spell = 11683, unsure = "secret amount" }, -- 1059.624 nameplate18 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9058, line = 9057, spell = 11683, unsure = "2 file events fit" }, -- 1059.624 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 9060, line = 9059, spell = 11683, unsure = "secret amount" }, -- 1059.624 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 9062, line = 9061, spell = 25228, unsure = "secret amount" }, -- 1059.624 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 9063, line = 9064, spell = 1243028, unsure = "2 file events fit" }, -- 1059.647 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 9065, line = 9066, spell = 1243028, unsure = "secret amount" }, -- 1059.647 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -3087,10 +3087,10 @@ return {
 	{ hit = 9085, line = false, unsure = "secret amount" }, -- 1060.343 nameplate18 WOUND <secret> <- other: Sinister Strike SPELL_DAMAGE -0.027 s
 	{ hit = 9086, line = false, unsure = "on time, of 2 file events" }, -- 1060.377 nameplate18 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE -0.027 s
 	{ hit = 9092, line = 9093, spell = 11683, unsure = "secret amount" }, -- 1060.615 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 9095, line = 9094, spell = 11681, unsure = "secret amount" }, -- 1060.615 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9098, line = 9097, spell = 11681, unsure = "3 file events fit" }, -- 1060.615 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 9100, line = 9099, spell = 11681, unsure = "secret amount" }, -- 1060.615 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 9103, line = 9102, spell = 11681, unsure = "secret amount" }, -- 1060.615 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 9095, line = 9094, spell = 11683, unsure = "secret amount" }, -- 1060.615 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9098, line = 9097, spell = 11683, unsure = "3 file events fit" }, -- 1060.615 nameplate11 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 9100, line = 9099, spell = 11683, unsure = "secret amount" }, -- 1060.615 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 9103, line = 9102, spell = 11683, unsure = "secret amount" }, -- 1060.615 nameplate15 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 9105, line = 9104, spell = 25228, unsure = "secret amount" }, -- 1060.615 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 9106, line = false, unsure = "secret amount" }, -- 1060.641 nameplate10 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.028 s
 	{ hit = 9107, line = 9108, spell = 1243028, unsure = "2 file events fit" }, -- 1060.657 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3100,8 +3100,8 @@ return {
 	{ hit = 9118, line = false, unsure = "secret amount" }, -- 1061.143 nameplate10 WOUND <secret> <- other: swing SWING_DAMAGE +0.509 s
 	{ hit = 9120, line = false, unsure = "2 file events fit" }, -- 1061.510 nameplate23 WOUND <secret> <- other: Sinister Strike SPELL_DAMAGE -0.026 s
 	{ hit = 9121, line = 9122, spell = 11683, unsure = "secret amount" }, -- 1061.601 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 9124, line = 9123, spell = 11681, unsure = "secret amount" }, -- 1061.601 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9126, line = 9125, spell = 11681, unsure = "secret amount" }, -- 1061.601 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9124, line = 9123, spell = 11683, unsure = "secret amount" }, -- 1061.601 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9126, line = 9125, spell = 11683, unsure = "secret amount" }, -- 1061.601 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
 	{ hit = 9128, line = 9127, spell = 25228, unsure = "secret amount" }, -- 1061.601 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.028 s
 	{ hit = 9129, line = 9130, spell = 1243028, unsure = "2 file events fit" }, -- 1061.638 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 9131, line = 9132, spell = 1243028, unsure = "secret amount" }, -- 1061.638 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3113,8 +3113,8 @@ return {
 	{ hit = 9141, line = 9140, spell = 10300, unsure = "secret amount" }, -- 1062.340 nameplate23 WOUND <secret> <- you: Retribution Aura DAMAGE_SHIELD -0.027 s
 	{ hit = 9143, line = false, unsure = "secret amount" }, -- 1062.347 nameplate10 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.027 s
 	{ hit = 9144, line = 9146, spell = 11683, unsure = "secret amount" }, -- 1062.609 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 9148, line = 9147, spell = 11681, unsure = "secret amount" }, -- 1062.609 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9151, line = 9150, spell = 11681, unsure = "secret amount" }, -- 1062.609 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 9148, line = 9147, spell = 11683, unsure = "secret amount" }, -- 1062.609 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9151, line = 9150, spell = 11683, unsure = "secret amount" }, -- 1062.609 nameplate23 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 9155, line = 9154, spell = 25228, unsure = "secret amount" }, -- 1062.609 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 9157, line = 9158, spell = 1243028, unsure = "2 file events fit" }, -- 1062.640 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
 	{ hit = 9159, line = 9160, spell = 1243028, unsure = "secret amount" }, -- 1062.640 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3274,10 +3274,10 @@ return {
 	{ hit = 9615, line = false, unsure = "secret amount" }, -- 1121.551 nameplate4 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.026 s
 	{ hit = 9616, line = false, unsure = "secret amount" }, -- 1121.565 nameplate4 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.027 s
 	{ hit = 9617, line = 9618, spell = 11683, unsure = "secret amount" }, -- 1121.593 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 9620, line = 9619, spell = 11681, unsure = "secret amount" }, -- 1121.593 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9622, line = 9621, spell = 11681, unsure = "secret amount" }, -- 1121.593 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9626, line = 9625, spell = 11681, unsure = "secret amount" }, -- 1121.593 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9628, line = 9627, spell = 11681, unsure = "secret amount" }, -- 1121.593 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9620, line = 9619, spell = 11683, unsure = "secret amount" }, -- 1121.593 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9622, line = 9621, spell = 11683, unsure = "secret amount" }, -- 1121.593 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9626, line = 9625, spell = 11683, unsure = "secret amount" }, -- 1121.593 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9628, line = 9627, spell = 11683, unsure = "secret amount" }, -- 1121.593 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 9630, line = 9629, spell = 25228, unsure = "secret amount" }, -- 1121.593 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 9631, line = 9632, spell = 1243028, unsure = "2 file events fit" }, -- 1121.626 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
 	{ hit = 9633, line = 9634, spell = 1243028, unsure = "secret amount" }, -- 1121.626 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3293,9 +3293,9 @@ return {
 	{ hit = 9660, line = false, unsure = "secret amount" }, -- 1122.365 nameplate20 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.027 s
 	{ hit = 9661, line = 9635, spell = false, unsure = "on time, of 2 file events" }, -- 1122.565 nameplate4 WOUND <secret> <- pet: swing SWING_DAMAGE +0.814 s
 	{ hit = 9662, line = 9663, spell = 11683, unsure = "secret amount" }, -- 1122.599 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.026 s
-	{ hit = 9665, line = 9664, spell = 11681, unsure = "secret amount" }, -- 1122.599 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9667, line = 9666, spell = 11681, unsure = "secret amount" }, -- 1122.599 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9671, line = 9670, spell = 11681, unsure = "secret amount" }, -- 1122.599 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 9665, line = 9664, spell = 11683, unsure = "secret amount" }, -- 1122.599 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9667, line = 9666, spell = 11683, unsure = "secret amount" }, -- 1122.599 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9671, line = 9670, spell = 11683, unsure = "secret amount" }, -- 1122.599 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 9673, line = 9672, spell = 25228, unsure = "secret amount" }, -- 1122.599 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 9674, line = false, unsure = "late by 1.06 s" }, -- 1122.611 nameplate4 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE +1.060 s
 	{ hit = 9675, line = false, unsure = "secret amount" }, -- 1122.618 nameplate8 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.026 s
@@ -3311,10 +3311,10 @@ return {
 	{ hit = 9695, line = false, unsure = "secret amount" }, -- 1123.341 nameplate9 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.026 s
 	{ hit = 9696, line = false, unsure = "secret amount" }, -- 1123.341 nameplate8 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.026 s
 	{ hit = 9699, line = false, unsure = "secret amount" }, -- 1123.341 nameplate20 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.026 s
-	{ hit = 9702, line = 9701, spell = 11681, unsure = "secret amount" }, -- 1123.599 nameplate9 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.026 s
+	{ hit = 9702, line = 9701, spell = 11683, unsure = "secret amount" }, -- 1123.599 nameplate9 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.026 s
 	{ hit = 9703, line = 9704, spell = 11683, unsure = "secret amount" }, -- 1123.599 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 9706, line = 9705, spell = 11681, unsure = "secret amount" }, -- 1123.599 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9710, line = 9709, spell = 11681, unsure = "secret amount" }, -- 1123.599 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9706, line = 9705, spell = 11683, unsure = "secret amount" }, -- 1123.599 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9710, line = 9709, spell = 11683, unsure = "secret amount" }, -- 1123.599 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 9712, line = 9711, spell = 25228, unsure = "secret amount" }, -- 1123.599 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.028 s
 	{ hit = 9713, line = 9714, spell = 1243028, unsure = "2 file events fit" }, -- 1123.632 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
 	{ hit = 9715, line = 9716, spell = 1243028, unsure = "secret amount" }, -- 1123.632 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3330,9 +3330,9 @@ return {
 	{ hit = 9735, line = false, unsure = "secret amount" }, -- 1124.324 nameplate20 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.026 s
 	{ hit = 9736, line = false, unsure = "secret amount" }, -- 1124.324 nameplate9 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.026 s
 	{ hit = 9738, line = 9739, spell = 11683, unsure = "secret amount" }, -- 1124.609 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 9741, line = 9740, spell = 11681, unsure = "secret amount" }, -- 1124.609 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
-	{ hit = 9745, line = 9744, spell = 11681, unsure = "secret amount" }, -- 1124.609 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 9747, line = 9746, spell = 11681, unsure = "secret amount" }, -- 1124.609 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9741, line = 9740, spell = 11683, unsure = "secret amount" }, -- 1124.609 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.027 s
+	{ hit = 9745, line = 9744, spell = 11683, unsure = "secret amount" }, -- 1124.609 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9747, line = 9746, spell = 11683, unsure = "secret amount" }, -- 1124.609 nameplate20 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 9749, line = 9748, spell = 25228, unsure = "secret amount" }, -- 1124.609 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 9750, line = 9751, spell = 1243028, unsure = "3 file events fit" }, -- 1124.637 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
 	{ hit = 9752, line = 9753, spell = 1243028, unsure = "2 file events fit" }, -- 1124.637 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
@@ -3344,7 +3344,7 @@ return {
 	{ hit = 9767, line = false, unsure = "secret amount" }, -- 1125.305 nameplate8 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.027 s
 	{ hit = 9772, line = false, unsure = "secret amount" }, -- 1125.474 nameplate8 DODGE <secret> <- other: swing SWING_MISSED +0.474 s
 	{ hit = 9775, line = 9777, spell = 11683, unsure = "secret amount" }, -- 1125.607 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 9779, line = 9778, spell = 11681, unsure = "secret amount" }, -- 1125.607 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 9779, line = 9778, spell = 11683, unsure = "secret amount" }, -- 1125.607 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 9783, line = 9782, spell = 25228, unsure = "secret amount" }, -- 1125.607 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.028 s
 	{ hit = 9785, line = 9786, spell = 1243028, unsure = "secret amount" }, -- 1125.639 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.026 s
 	{ hit = 9787, line = false, unsure = "secret amount" }, -- 1125.907 nameplate8 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.026 s
@@ -5649,9 +5649,9 @@ return {
 	{ hit = 16343, line = 16346, spell = 11671, unsure = "secret amount" }, -- 1552.698 nameplate6 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.028 s
 	{ hit = 16347, line = 16348, spell = 11671, unsure = "secret amount" }, -- 1552.698 nameplate3 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.029 s
 	{ hit = 16349, line = 16350, spell = 11683, unsure = "secret amount" }, -- 1552.848 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 16352, line = 16351, spell = 11681, unsure = "secret amount" }, -- 1552.848 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 16356, line = 16355, spell = 11681, unsure = "secret amount" }, -- 1552.848 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 16358, line = 16357, spell = 11681, unsure = "secret amount" }, -- 1552.848 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 16352, line = 16351, spell = 11683, unsure = "secret amount" }, -- 1552.848 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16356, line = 16355, spell = 11683, unsure = "secret amount" }, -- 1552.848 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16358, line = 16357, spell = 11683, unsure = "secret amount" }, -- 1552.848 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 16360, line = 16359, spell = 25228, unsure = "secret amount" }, -- 1552.848 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 16361, line = 16362, spell = 1243028, unsure = "3 file events fit" }, -- 1552.882 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.027 s
 	{ hit = 16363, line = 16364, spell = 1243028, unsure = "2 file events fit" }, -- 1552.882 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
@@ -5674,9 +5674,9 @@ return {
 	{ hit = 16399, line = false, unsure = "2 file events fit" }, -- 1553.790 nameplate3 HEAL <secret> <- creature: Blood Leech SPELL_HEAL -0.028 s
 	{ hit = 16400, line = false, unsure = "secret amount" }, -- 1553.790 nameplate3 HEAL <secret> <- creature: Blood Leech SPELL_HEAL -0.028 s
 	{ hit = 16401, line = 16402, spell = 11683, unsure = "secret amount" }, -- 1553.840 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 16404, line = 16403, spell = 11681, unsure = "secret amount" }, -- 1553.840 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 16406, line = 16405, spell = 11681, unsure = "secret amount" }, -- 1553.840 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 16410, line = 16409, spell = 11681, unsure = "secret amount" }, -- 1553.840 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16404, line = 16403, spell = 11683, unsure = "secret amount" }, -- 1553.840 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 16406, line = 16405, spell = 11683, unsure = "secret amount" }, -- 1553.840 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16410, line = 16409, spell = 11683, unsure = "secret amount" }, -- 1553.840 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 16412, line = 16411, spell = 25228, unsure = "secret amount" }, -- 1553.840 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 16413, line = 16414, spell = 1243028, unsure = "3 file events fit" }, -- 1553.882 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 16415, line = 16416, spell = 1243028, unsure = "2 file events fit" }, -- 1553.882 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
@@ -5698,9 +5698,9 @@ return {
 	{ hit = 16448, line = false, unsure = "secret amount" }, -- 1554.632 nameplate3 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE -0.027 s
 	{ hit = 16449, line = false, unsure = "secret amount" }, -- 1554.648 nameplate3 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.028 s
 	{ hit = 16450, line = 16451, spell = 11683, unsure = "secret amount" }, -- 1554.857 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 16453, line = 16452, spell = 11681, unsure = "secret amount" }, -- 1554.857 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 16455, line = 16454, spell = 11681, unsure = "secret amount" }, -- 1554.857 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 16457, line = 16456, spell = 11681, unsure = "secret amount" }, -- 1554.857 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16453, line = 16452, spell = 11683, unsure = "secret amount" }, -- 1554.857 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 16455, line = 16454, spell = 11683, unsure = "secret amount" }, -- 1554.857 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16457, line = 16456, spell = 11683, unsure = "secret amount" }, -- 1554.857 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 16461, line = 16460, spell = 25228, unsure = "secret amount" }, -- 1554.857 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 16462, line = false, unsure = "2 file events fit" }, -- 1554.873 nameplate9 WOUND <secret> <- other: swing SWING_DAMAGE +0.389 s
 	{ hit = 16463, line = 16464, spell = 1243028, unsure = "3 file events fit" }, -- 1554.890 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
@@ -5719,10 +5719,10 @@ return {
 	{ hit = 16492, line = 16493, spell = 11671, unsure = "secret amount" }, -- 1555.693 nameplate3 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.028 s
 	{ hit = 16494, line = false, unsure = "2 file events fit" }, -- 1555.765 nameplate6 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.028 s
 	{ hit = 16497, line = false, unsure = "secret amount" }, -- 1555.765 nameplate6 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.028 s
-	{ hit = 16502, line = 16501, spell = 11681, unsure = "secret amount" }, -- 1555.858 nameplate9 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.028 s
+	{ hit = 16502, line = 16501, spell = 11683, unsure = "secret amount" }, -- 1555.858 nameplate9 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.028 s
 	{ hit = 16503, line = 16504, spell = 11683, unsure = "secret amount" }, -- 1555.858 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 16506, line = 16505, spell = 11681, unsure = "secret amount" }, -- 1555.858 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 16510, line = 16509, spell = 11681, unsure = "secret amount" }, -- 1555.858 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16506, line = 16505, spell = 11683, unsure = "secret amount" }, -- 1555.858 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 16510, line = 16509, spell = 11683, unsure = "secret amount" }, -- 1555.858 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 16512, line = 16511, spell = 25228, unsure = "secret amount" }, -- 1555.858 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 16513, line = 16514, spell = 1243028, unsure = "2 file events fit" }, -- 1555.890 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 16515, line = 16516, spell = 1243028, unsure = "secret amount" }, -- 1555.890 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
@@ -5737,8 +5737,8 @@ return {
 	{ hit = 16536, line = false, unsure = "secret amount" }, -- 1556.398 nameplate6 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.028 s
 	{ hit = 16539, line = false, unsure = "secret amount" }, -- 1556.398 nameplate3 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.028 s
 	{ hit = 16543, line = 16544, spell = 11683, unsure = "secret amount" }, -- 1556.857 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.027 s
-	{ hit = 16546, line = 16545, spell = 11681, unsure = "secret amount" }, -- 1556.857 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
-	{ hit = 16550, line = 16549, spell = 11681, unsure = "secret amount" }, -- 1556.857 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 16546, line = 16545, spell = 11683, unsure = "secret amount" }, -- 1556.857 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
+	{ hit = 16550, line = 16549, spell = 11683, unsure = "secret amount" }, -- 1556.857 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.028 s
 	{ hit = 16552, line = 16551, spell = 25228, unsure = "secret amount" }, -- 1556.857 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 16553, line = 16554, spell = 1243028, unsure = "2 file events fit" }, -- 1556.890 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 16555, line = 16556, spell = 1243028, unsure = "secret amount" }, -- 1556.890 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
@@ -6719,9 +6719,9 @@ return {
 	{ hit = 19336, line = false, unsure = "no file event fits" }, -- 1733.798 nameplate1 WOUND <secret> <- no file event 
 	{ hit = 19337, line = 19338, spell = 11683, unsure = "secret amount" }, -- 1733.848 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
 	{ hit = 19339, line = 19342, spell = 11671, unsure = "secret amount" }, -- 1733.848 nameplate2 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 19344, line = 19343, spell = 11681, unsure = "secret amount" }, -- 1733.848 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 19346, line = 19345, spell = 11681, unsure = "secret amount" }, -- 1733.848 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 19348, line = 19347, spell = 11681, unsure = "secret amount" }, -- 1733.848 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 19344, line = 19343, spell = 11683, unsure = "secret amount" }, -- 1733.848 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 19346, line = 19345, spell = 11683, unsure = "secret amount" }, -- 1733.848 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 19348, line = 19347, spell = 11683, unsure = "secret amount" }, -- 1733.848 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 19352, line = 19351, spell = 25228, unsure = "secret amount" }, -- 1733.848 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 19353, line = 19354, spell = 1243028, unsure = "3 file events fit" }, -- 1733.860 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 19355, line = 19356, spell = 1243028, unsure = "2 file events fit" }, -- 1733.868 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -6736,9 +6736,9 @@ return {
 	{ hit = 19376, line = false, unsure = "no file event fits" }, -- 1734.600 nameplate3 WOUND <secret> <- no file event 
 	{ hit = 19377, line = false, unsure = "on time, of 3 file events" }, -- 1734.659 nameplate3 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE -0.028 s
 	{ hit = 19381, line = 19382, spell = 11683, unsure = "secret amount" }, -- 1734.840 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 19384, line = 19383, spell = 11681, unsure = "secret amount" }, -- 1734.840 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 19387, line = 19386, spell = 11681, unsure = "secret amount" }, -- 1734.840 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 19389, line = 19388, spell = 11681, unsure = "secret amount" }, -- 1734.840 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 19384, line = 19383, spell = 11683, unsure = "secret amount" }, -- 1734.840 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 19387, line = 19386, spell = 11683, unsure = "secret amount" }, -- 1734.840 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 19389, line = 19388, spell = 11683, unsure = "secret amount" }, -- 1734.840 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 19393, line = 19392, spell = 25228, unsure = "secret amount" }, -- 1734.840 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 19394, line = 19395, spell = 1243028, unsure = "3 file events fit" }, -- 1734.872 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 19396, line = 19397, spell = 1243028, unsure = "2 file events fit" }, -- 1734.872 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -6754,8 +6754,8 @@ return {
 	{ hit = 19416, line = false, unsure = "2 file events fit" }, -- 1735.706 nameplate1 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.029 s
 	{ hit = 19417, line = false, unsure = "secret amount" }, -- 1735.706 nameplate1 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 19419, line = 19420, spell = 11683, unsure = "secret amount" }, -- 1735.837 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 19422, line = 19421, spell = 11681, unsure = "secret amount" }, -- 1735.837 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 19424, line = 19423, spell = 11681, unsure = "secret amount" }, -- 1735.837 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 19422, line = 19421, spell = 11683, unsure = "secret amount" }, -- 1735.837 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 19424, line = 19423, spell = 11683, unsure = "secret amount" }, -- 1735.837 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 19428, line = 19427, spell = 25228, unsure = "secret amount" }, -- 1735.837 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 19429, line = 19430, spell = 1243028, unsure = "2 file events fit" }, -- 1735.873 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 19431, line = 19432, spell = 1243028, unsure = "secret amount" }, -- 1735.873 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -6776,8 +6776,8 @@ return {
 	{ hit = 19481, line = 19480, spell = 25228, unsure = "secret amount" }, -- 1736.713 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.028 s
 	{ hit = 19482, line = false, unsure = "secret amount" }, -- 1736.713 nameplate2 HEAL <secret> <- creature: Blood Leech SPELL_HEAL -0.029 s
 	{ hit = 19483, line = 19484, spell = 11683, unsure = "secret amount" }, -- 1736.831 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 19486, line = 19485, spell = 11681, unsure = "secret amount" }, -- 1736.831 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 19488, line = 19487, spell = 11681, unsure = "secret amount" }, -- 1736.831 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 19486, line = 19485, spell = 11683, unsure = "secret amount" }, -- 1736.831 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 19488, line = 19487, spell = 11683, unsure = "secret amount" }, -- 1736.831 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 19492, line = 19491, spell = 25228, unsure = "secret amount" }, -- 1736.831 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 19493, line = 19494, spell = 11671, unsure = "secret amount" }, -- 1736.845 nameplate2 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.028 s
 	{ hit = 19495, line = 19496, spell = 1243028, unsure = "3 file events fit" }, -- 1736.857 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -6796,8 +6796,8 @@ return {
 	{ hit = 19518, line = false, unsure = "secret amount" }, -- 1737.673 nameplate2 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.028 s
 	{ hit = 19519, line = false, unsure = "secret amount" }, -- 1737.688 nameplate2 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE -0.028 s
 	{ hit = 19520, line = 19521, spell = 11683, unsure = "secret amount" }, -- 1737.840 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 19523, line = 19522, spell = 11681, unsure = "secret amount" }, -- 1737.840 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 19525, line = 19524, spell = 11681, unsure = "secret amount" }, -- 1737.840 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 19523, line = 19522, spell = 11683, unsure = "secret amount" }, -- 1737.840 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 19525, line = 19524, spell = 11683, unsure = "secret amount" }, -- 1737.840 nameplate1 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
 	{ hit = 19529, line = 19528, spell = 25228, unsure = "secret amount" }, -- 1737.840 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
 	{ hit = 19530, line = 19531, spell = 1243028, unsure = "2 file events fit" }, -- 1737.883 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 19532, line = 19533, spell = 1243028, unsure = "secret amount" }, -- 1737.883 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7394,14 +7394,14 @@ return {
 	{ hit = 21201, line = 21200, spell = 10300, unsure = "secret amount" }, -- 1851.173 nameplate9 WOUND <secret> <- you: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 21206, line = false, unsure = "secret amount" }, -- 1851.248 nameplate5 WOUND <secret> <- creature: Immolate SPELL_DAMAGE -0.029 s
 	{ hit = 21207, line = 21209, spell = 11683, unsure = "secret amount" }, -- 1851.327 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 21211, line = 21210, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 21215, line = 21214, spell = 11681, unsure = "5 file events fit" }, -- 1851.327 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 21217, line = 21216, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 21219, line = 21218, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 21221, line = 21220, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 21223, line = 21222, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 21225, line = 21224, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 21227, line = 21226, spell = 11681, unsure = "secret amount" }, -- 1851.327 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 21211, line = 21210, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 21215, line = 21214, spell = 11683, unsure = "5 file events fit" }, -- 1851.327 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21217, line = 21216, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21219, line = 21218, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21221, line = 21220, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 21223, line = 21222, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 21225, line = 21224, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 21227, line = 21226, spell = 11683, unsure = "secret amount" }, -- 1851.327 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 21229, line = 21228, spell = 25228, unsure = "secret amount" }, -- 1851.327 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 21230, line = 21231, spell = 1243028, unsure = "5 file events fit" }, -- 1851.351 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 21232, line = 21233, spell = 1243028, unsure = "4 file events fit" }, -- 1851.351 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7440,12 +7440,12 @@ return {
 	{ hit = 21283, line = false, unsure = "secret amount" }, -- 1852.040 player WOUND <secret> <- creature: swing SWING_DAMAGE +0.864 s
 	{ hit = 21288, line = false, unsure = "secret amount" }, -- 1852.283 nameplate9 WOUND <secret> <- other: Sinister Strike SPELL_DAMAGE -0.029 s
 	{ hit = 21292, line = 21293, spell = 11683, unsure = "secret amount" }, -- 1852.331 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 21295, line = 21296, spell = 11681, unsure = "5 file events fit" }, -- 1852.331 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21295, line = 21296, spell = 11683, unsure = "5 file events fit" }, -- 1852.331 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
 	{ hit = 21297, line = false, unsure = "no file event fits" }, -- 1852.331 nameplate7 WOUND <secret> <- no file event 
-	{ hit = 21299, line = 21298, spell = 11681, unsure = "secret amount" }, -- 1852.331 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 21301, line = 21300, spell = 11681, unsure = "secret amount" }, -- 1852.331 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 21303, line = 21302, spell = 11681, unsure = "secret amount" }, -- 1852.331 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 21305, line = 21304, spell = 11681, unsure = "secret amount" }, -- 1852.331 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 21299, line = 21298, spell = 11683, unsure = "secret amount" }, -- 1852.331 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 21301, line = 21300, spell = 11683, unsure = "secret amount" }, -- 1852.331 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 21303, line = 21302, spell = 11683, unsure = "secret amount" }, -- 1852.331 nameplate12 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 21305, line = 21304, spell = 11683, unsure = "secret amount" }, -- 1852.331 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 21307, line = 21306, spell = 25228, unsure = "secret amount" }, -- 1852.331 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 21308, line = false, unsure = "on time, of 2 file events" }, -- 1852.331 nameplate6 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.033 s
 	{ hit = 21309, line = false, unsure = "4 file events fit" }, -- 1852.331 nameplate4 WOUND <secret> <- other: Thunder Clap SPELL_DAMAGE -0.034 s
@@ -7473,9 +7473,9 @@ return {
 	{ hit = 21340, line = false, unsure = "secret amount" }, -- 1852.867 nameplate8 WOUND <secret> <- creature: swing SWING_DAMAGE +0.365 s
 	{ hit = 21345, line = false, unsure = "secret amount" }, -- 1853.290 nameplate10 WOUND <secret> <- other: Shank SPELL_DAMAGE -0.029 s
 	{ hit = 21346, line = 21347, spell = 11683, unsure = "secret amount" }, -- 1853.323 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 21349, line = 21348, spell = 11681, unsure = "secret amount" }, -- 1853.323 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 21351, line = 21350, spell = 11681, unsure = "secret amount" }, -- 1853.323 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 21354, line = 21353, spell = 11681, unsure = "secret amount" }, -- 1853.323 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 21349, line = 21348, spell = 11683, unsure = "secret amount" }, -- 1853.323 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 21351, line = 21350, spell = 11683, unsure = "secret amount" }, -- 1853.323 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21354, line = 21353, spell = 11683, unsure = "secret amount" }, -- 1853.323 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 21356, line = 21355, spell = 25228, unsure = "secret amount" }, -- 1853.323 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 21357, line = 21358, spell = 1243028, unsure = "3 file events fit" }, -- 1853.356 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 21359, line = 21360, spell = 1243028, unsure = "2 file events fit" }, -- 1853.356 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7493,8 +7493,8 @@ return {
 	{ hit = 21388, line = false, unsure = "secret amount" }, -- 1853.981 nameplate10 MISS <secret> <- other: swing SWING_MISSED +0.596 s
 	{ hit = 21391, line = false, unsure = "secret amount" }, -- 1853.998 nameplate10 WOUND <secret> <- other: Judgement of Fury SPELL_DAMAGE -0.029 s
 	{ hit = 21394, line = 21396, spell = 11683, unsure = "secret amount" }, -- 1854.065 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 21399, line = 21398, spell = 11681, unsure = "secret amount" }, -- 1854.065 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 21401, line = 21400, spell = 11681, unsure = "secret amount" }, -- 1854.065 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 21399, line = 21398, spell = 11683, unsure = "secret amount" }, -- 1854.065 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 21401, line = 21400, spell = 11683, unsure = "secret amount" }, -- 1854.065 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 21405, line = 21404, spell = 25228, unsure = "secret amount" }, -- 1854.065 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 21407, line = 21408, spell = 1243028, unsure = "2 file events fit" }, -- 1854.097 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 21409, line = 21410, spell = 1243028, unsure = "secret amount" }, -- 1854.097 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7765,11 +7765,11 @@ return {
 	{ hit = 22102, line = false, unsure = "secret amount" }, -- 1898.915 nameplate9 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.029 s
 	{ hit = 22103, line = false, unsure = "2 file events fit" }, -- 1899.086 nameplate8 WOUND <secret> <- other: swing SWING_DAMAGE +0.250 s
 	{ hit = 22104, line = 22105, spell = 11683, unsure = "secret amount" }, -- 1899.250 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22107, line = 22106, spell = 11681, unsure = "5 file events fit" }, -- 1899.250 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22109, line = 22108, spell = 11681, unsure = "secret amount" }, -- 1899.250 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22111, line = 22110, spell = 11681, unsure = "secret amount" }, -- 1899.250 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22113, line = 22112, spell = 11681, unsure = "secret amount" }, -- 1899.250 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22115, line = 22114, spell = 11681, unsure = "secret amount" }, -- 1899.250 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22107, line = 22106, spell = 11683, unsure = "5 file events fit" }, -- 1899.250 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22109, line = 22108, spell = 11683, unsure = "secret amount" }, -- 1899.250 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22111, line = 22110, spell = 11683, unsure = "secret amount" }, -- 1899.250 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22113, line = 22112, spell = 11683, unsure = "secret amount" }, -- 1899.250 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22115, line = 22114, spell = 11683, unsure = "secret amount" }, -- 1899.250 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22119, line = 22118, spell = 25228, unsure = "secret amount" }, -- 1899.250 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 22120, line = 22121, spell = 1243028, unsure = "3 file events fit" }, -- 1899.275 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.028 s
 	{ hit = 22122, line = 22123, spell = 1243028, unsure = "2 file events fit" }, -- 1899.275 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7786,11 +7786,11 @@ return {
 	{ hit = 22141, line = false, unsure = "secret amount" }, -- 1899.925 nameplate6 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.029 s
 	{ hit = 22142, line = false, unsure = "on time, of 2 file events" }, -- 1900.145 nameplate9 WOUND <secret> <- creature: swing SWING_DAMAGE +0.366 s
 	{ hit = 22146, line = 22147, spell = 11683, unsure = "secret amount" }, -- 1900.234 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22149, line = 22148, spell = 11681, unsure = "secret amount" }, -- 1900.245 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22151, line = 22150, spell = 11681, unsure = "secret amount" }, -- 1900.245 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22155, line = 22154, spell = 11681, unsure = "secret amount" }, -- 1900.245 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22157, line = 22156, spell = 11681, unsure = "secret amount" }, -- 1900.245 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22159, line = 22158, spell = 11681, unsure = "secret amount" }, -- 1900.245 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22149, line = 22148, spell = 11683, unsure = "secret amount" }, -- 1900.245 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22151, line = 22150, spell = 11683, unsure = "secret amount" }, -- 1900.245 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22155, line = 22154, spell = 11683, unsure = "secret amount" }, -- 1900.245 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22157, line = 22156, spell = 11683, unsure = "secret amount" }, -- 1900.245 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22159, line = 22158, spell = 11683, unsure = "secret amount" }, -- 1900.245 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22161, line = 22160, spell = 25228, unsure = "secret amount" }, -- 1900.245 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 22162, line = false, unsure = "secret amount" }, -- 1900.256 nameplate9 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 22163, line = 22164, spell = 1243028, unsure = "3 file events fit" }, -- 1900.279 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7807,11 +7807,11 @@ return {
 	{ hit = 22184, line = false, unsure = "secret amount" }, -- 1900.998 nameplate8 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 22185, line = false, unsure = "on time, of 2 file events" }, -- 1901.061 nameplate9 WOUND <secret> <- creature: swing SWING_DAMAGE +0.976 s
 	{ hit = 22186, line = 22187, spell = 11683, unsure = "secret amount" }, -- 1901.250 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 22189, line = 22188, spell = 11681, unsure = "secret amount" }, -- 1901.250 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22191, line = 22190, spell = 11681, unsure = "secret amount" }, -- 1901.250 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22193, line = 22192, spell = 11681, unsure = "3 file events fit" }, -- 1901.250 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22195, line = 22194, spell = 11681, unsure = "secret amount" }, -- 1901.250 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22197, line = 22196, spell = 11681, unsure = "secret amount" }, -- 1901.250 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22189, line = 22188, spell = 11683, unsure = "secret amount" }, -- 1901.250 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22191, line = 22190, spell = 11683, unsure = "secret amount" }, -- 1901.250 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22193, line = 22192, spell = 11683, unsure = "3 file events fit" }, -- 1901.250 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22195, line = 22194, spell = 11683, unsure = "secret amount" }, -- 1901.250 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22197, line = 22196, spell = 11683, unsure = "secret amount" }, -- 1901.250 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22201, line = 22200, spell = 25228, unsure = "secret amount" }, -- 1901.250 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 22202, line = 22203, spell = 1243028, unsure = "3 file events fit" }, -- 1901.283 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22204, line = 22205, spell = 1243028, unsure = "2 file events fit" }, -- 1901.283 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -7834,11 +7834,11 @@ return {
 	{ hit = 22230, line = false, unsure = "secret amount" }, -- 1901.993 nameplate6 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 22231, line = false, unsure = "on time, of 2 file events" }, -- 1902.059 nameplate9 WOUND <secret> <- other: swing SWING_DAMAGE +0.037 s
 	{ hit = 22232, line = 22233, spell = 11683, unsure = "secret amount" }, -- 1902.253 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 22235, line = 22234, spell = 11681, unsure = "5 file events fit" }, -- 1902.253 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22237, line = 22236, spell = 11681, unsure = "secret amount" }, -- 1902.253 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22241, line = 22240, spell = 11681, unsure = "secret amount" }, -- 1902.253 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22243, line = 22242, spell = 11681, unsure = "secret amount" }, -- 1902.253 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22245, line = 22244, spell = 11681, unsure = "secret amount" }, -- 1902.253 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22235, line = 22234, spell = 11683, unsure = "5 file events fit" }, -- 1902.253 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22237, line = 22236, spell = 11683, unsure = "secret amount" }, -- 1902.253 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22241, line = 22240, spell = 11683, unsure = "secret amount" }, -- 1902.253 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22243, line = 22242, spell = 11683, unsure = "secret amount" }, -- 1902.253 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22245, line = 22244, spell = 11683, unsure = "secret amount" }, -- 1902.253 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22247, line = 22246, spell = 25228, unsure = "secret amount" }, -- 1902.253 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 22248, line = 22249, spell = 1243028, unsure = "3 file events fit" }, -- 1902.285 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22250, line = 22251, spell = 1243028, unsure = "2 file events fit" }, -- 1902.285 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -7859,12 +7859,12 @@ return {
 	{ hit = 22289, line = false, unsure = "secret amount" }, -- 1903.207 nameplate8 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 22290, line = false, unsure = "secret amount" }, -- 1903.218 nameplate5 WOUND <secret> <- other: Judgement of Fury SPELL_DAMAGE -0.029 s
 	{ hit = 22291, line = 22292, spell = 11683, unsure = "secret amount" }, -- 1903.240 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22294, line = 22293, spell = 11681, unsure = "secret amount" }, -- 1903.240 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22296, line = 22295, spell = 11681, unsure = "secret amount" }, -- 1903.240 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22298, line = 22297, spell = 11681, unsure = "secret amount" }, -- 1903.240 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22300, line = 22299, spell = 11681, unsure = "secret amount" }, -- 1903.240 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22304, line = 22303, spell = 11681, unsure = "2 file events fit" }, -- 1903.240 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22306, line = 22305, spell = 11681, unsure = "secret amount" }, -- 1903.240 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22294, line = 22293, spell = 11683, unsure = "secret amount" }, -- 1903.240 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22296, line = 22295, spell = 11683, unsure = "secret amount" }, -- 1903.240 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22298, line = 22297, spell = 11683, unsure = "secret amount" }, -- 1903.240 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22300, line = 22299, spell = 11683, unsure = "secret amount" }, -- 1903.240 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22304, line = 22303, spell = 11683, unsure = "2 file events fit" }, -- 1903.240 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22306, line = 22305, spell = 11683, unsure = "secret amount" }, -- 1903.240 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22308, line = 22307, spell = 25228, unsure = "secret amount" }, -- 1903.240 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 22309, line = 22310, spell = 1243028, unsure = "3 file events fit" }, -- 1903.283 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22311, line = 22312, spell = 1243028, unsure = "2 file events fit" }, -- 1903.283 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -7889,11 +7889,11 @@ return {
 	{ hit = 22338, line = false, unsure = "secret amount" }, -- 1903.972 nameplate7 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.029 s
 	{ hit = 22341, line = false, unsure = "secret amount" }, -- 1904.191 nameplate6 WOUND <secret> <- other: Holy Shield SPELL_DAMAGE -0.029 s
 	{ hit = 22342, line = 22343, spell = 11683, unsure = "secret amount" }, -- 1904.246 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22345, line = 22344, spell = 11681, unsure = "secret amount" }, -- 1904.246 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 22347, line = 22346, spell = 11681, unsure = "secret amount" }, -- 1904.246 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22351, line = 22350, spell = 11681, unsure = "secret amount" }, -- 1904.246 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22353, line = 22352, spell = 11681, unsure = "secret amount" }, -- 1904.246 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22355, line = 22354, spell = 11681, unsure = "secret amount" }, -- 1904.246 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22345, line = 22344, spell = 11683, unsure = "secret amount" }, -- 1904.246 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 22347, line = 22346, spell = 11683, unsure = "secret amount" }, -- 1904.246 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22351, line = 22350, spell = 11683, unsure = "secret amount" }, -- 1904.246 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22353, line = 22352, spell = 11683, unsure = "secret amount" }, -- 1904.246 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22355, line = 22354, spell = 11683, unsure = "secret amount" }, -- 1904.246 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22357, line = 22356, spell = 25228, unsure = "secret amount" }, -- 1904.246 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 22358, line = 22359, spell = 1243028, unsure = "3 file events fit" }, -- 1904.278 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22360, line = 22361, spell = 1243028, unsure = "2 file events fit" }, -- 1904.278 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -7917,17 +7917,17 @@ return {
 	{ hit = 22404, line = false, unsure = "no file event fits" }, -- 1905.056 nameplate7 WOUND <secret> <- no file event 
 	{ hit = 22407, line = false, unsure = "secret amount" }, -- 1905.140 nameplate6 PARRY <secret> <- creature: swing SWING_MISSED +0.398 s
 	{ hit = 22408, line = 22409, spell = 11683, unsure = "secret amount" }, -- 1905.241 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22411, line = 22410, spell = 11681, unsure = "secret amount" }, -- 1905.241 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22413, line = 22412, spell = 11681, unsure = "secret amount" }, -- 1905.241 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22415, line = 22414, spell = 11681, unsure = "secret amount" }, -- 1905.241 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22411, line = 22410, spell = 11683, unsure = "secret amount" }, -- 1905.241 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22413, line = 22412, spell = 11683, unsure = "secret amount" }, -- 1905.241 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22415, line = 22414, spell = 11683, unsure = "secret amount" }, -- 1905.241 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 22417, line = 22416, spell = 25228, unsure = "secret amount" }, -- 1905.241 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 22420, line = 22421, spell = 1243028, unsure = "3 file events fit" }, -- 1905.281 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22422, line = 22423, spell = 1243028, unsure = "2 file events fit" }, -- 1905.281 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
 	{ hit = 22424, line = 22425, spell = 1243028, unsure = "secret amount" }, -- 1905.281 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
 	{ hit = 22426, line = 22427, spell = 11683, unsure = "secret amount" }, -- 1905.738 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22431, line = 22430, spell = 11681, unsure = "secret amount" }, -- 1905.738 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22433, line = 22432, spell = 11681, unsure = "secret amount" }, -- 1905.738 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 22435, line = 22434, spell = 11681, unsure = "secret amount" }, -- 1905.738 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 22431, line = 22430, spell = 11683, unsure = "secret amount" }, -- 1905.738 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22433, line = 22432, spell = 11683, unsure = "secret amount" }, -- 1905.738 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22435, line = 22434, spell = 11683, unsure = "secret amount" }, -- 1905.738 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
 	{ hit = 22437, line = 22436, spell = 25228, unsure = "secret amount" }, -- 1905.738 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 22439, line = 22440, spell = 1243028, unsure = "3 file events fit" }, -- 1905.773 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 22441, line = 22442, spell = 1243028, unsure = "2 file events fit" }, -- 1905.773 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -8139,10 +8139,10 @@ return {
 	{ hit = 22991, line = false, unsure = "secret amount" }, -- 1933.684 nameplate4 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.029 s
 	{ hit = 22992, line = false, unsure = "secret amount" }, -- 1933.930 nameplate4 WOUND <secret> <- other: Shoot RANGE_DAMAGE +0.101 s
 	{ hit = 22993, line = 22994, spell = 11683, unsure = "secret amount" }, -- 1934.119 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 22996, line = 22995, spell = 11681, unsure = "secret amount" }, -- 1934.119 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 22998, line = 22997, spell = 11681, unsure = "secret amount" }, -- 1934.119 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23000, line = 22999, spell = 11681, unsure = "secret amount" }, -- 1934.119 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 23004, line = 23003, spell = 11681, unsure = "secret amount" }, -- 1934.119 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 22996, line = 22995, spell = 11683, unsure = "secret amount" }, -- 1934.119 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 22998, line = 22997, spell = 11683, unsure = "secret amount" }, -- 1934.119 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23000, line = 22999, spell = 11683, unsure = "secret amount" }, -- 1934.119 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23004, line = 23003, spell = 11683, unsure = "secret amount" }, -- 1934.119 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 23006, line = 23005, spell = 25228, unsure = "secret amount" }, -- 1934.119 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 23007, line = 23008, spell = 1243028, unsure = "3 file events fit" }, -- 1934.150 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 23009, line = 23010, spell = 1243028, unsure = "2 file events fit" }, -- 1934.150 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -8165,10 +8165,10 @@ return {
 	{ hit = 23047, line = false, unsure = "secret amount" }, -- 1935.012 nameplate5 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.029 s
 	{ hit = 23048, line = false, unsure = "2 file events fit" }, -- 1935.025 nameplate4 WOUND <secret> <- creature: swing SWING_DAMAGE +0.360 s
 	{ hit = 23049, line = 23050, spell = 11683, unsure = "secret amount" }, -- 1935.111 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 23052, line = 23051, spell = 11681, unsure = "secret amount" }, -- 1935.111 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23054, line = 23053, spell = 11681, unsure = "secret amount" }, -- 1935.111 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 23056, line = 23055, spell = 11681, unsure = "secret amount" }, -- 1935.111 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 23060, line = 23059, spell = 11681, unsure = "secret amount" }, -- 1935.111 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23052, line = 23051, spell = 11683, unsure = "secret amount" }, -- 1935.111 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23054, line = 23053, spell = 11683, unsure = "secret amount" }, -- 1935.111 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23056, line = 23055, spell = 11683, unsure = "secret amount" }, -- 1935.111 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23060, line = 23059, spell = 11683, unsure = "secret amount" }, -- 1935.111 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 23062, line = 23061, spell = 25228, unsure = "secret amount" }, -- 1935.111 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 23063, line = 23064, spell = 1243028, unsure = "4 file events fit" }, -- 1935.145 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 23065, line = 23066, spell = 1243028, unsure = "3 file events fit" }, -- 1935.145 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -8185,10 +8185,10 @@ return {
 	{ hit = 23088, line = false, unsure = "2 file events fit" }, -- 1936.011 nameplate6 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.029 s
 	{ hit = 23089, line = false, unsure = "secret amount" }, -- 1936.011 nameplate6 WOUND <secret> <- other: Judgement of Fury SPELL_DAMAGE -0.029 s
 	{ hit = 23090, line = 23091, spell = 11683, unsure = "secret amount" }, -- 1936.107 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.028 s
-	{ hit = 23093, line = 23092, spell = 11681, unsure = "secret amount" }, -- 1936.107 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 23095, line = 23094, spell = 11681, unsure = "secret amount" }, -- 1936.107 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23097, line = 23096, spell = 11681, unsure = "secret amount" }, -- 1936.107 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23099, line = 23098, spell = 11681, unsure = "secret amount" }, -- 1936.107 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23093, line = 23092, spell = 11683, unsure = "secret amount" }, -- 1936.107 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 23095, line = 23094, spell = 11683, unsure = "secret amount" }, -- 1936.107 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23097, line = 23096, spell = 11683, unsure = "secret amount" }, -- 1936.107 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23099, line = 23098, spell = 11683, unsure = "secret amount" }, -- 1936.107 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 23103, line = 23102, spell = 25228, unsure = "secret amount" }, -- 1936.107 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 23104, line = false, unsure = "secret amount" }, -- 1936.118 nameplate6 WOUND <secret> <- other: Seal of Fury SPELL_DAMAGE -0.029 s
 	{ hit = 23105, line = false, unsure = "secret amount" }, -- 1936.128 nameplate4 MISS <secret> <- creature: swing SWING_MISSED -0.062 s
@@ -8251,12 +8251,12 @@ return {
 	{ hit = 23207, line = false, unsure = "secret amount" }, -- 1939.731 nameplate8 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23208, line = false, unsure = "secret amount" }, -- 1939.731 nameplate4 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23209, line = 23210, spell = 11683, unsure = "secret amount" }, -- 1939.865 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 23212, line = 23211, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23215, line = 23214, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 23220, line = 23219, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
-	{ hit = 23222, line = 23221, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
-	{ hit = 23224, line = 23223, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.034 s
-	{ hit = 23226, line = 23225, spell = 11681, unsure = "secret amount" }, -- 1939.865 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.034 s
+	{ hit = 23212, line = 23211, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23215, line = 23214, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23220, line = 23219, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate4 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 23222, line = 23221, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 23224, line = 23223, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.034 s
+	{ hit = 23226, line = 23225, spell = 11683, unsure = "secret amount" }, -- 1939.865 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.034 s
 	{ hit = 23228, line = 23227, spell = 25228, unsure = "secret amount" }, -- 1939.865 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.035 s
 	{ hit = 23231, line = 23230, spell = 25228, unsure = "2 file events fit" }, -- 1939.879 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 23233, line = 23232, spell = 25228, unsure = "secret amount" }, -- 1939.879 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.034 s
@@ -8284,10 +8284,10 @@ return {
 	{ hit = 23265, line = false, unsure = "secret amount" }, -- 1940.714 nameplate9 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23266, line = false, unsure = "secret amount" }, -- 1940.714 nameplate8 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23271, line = 23272, spell = 11683, unsure = "secret amount" }, -- 1940.860 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 23274, line = 23273, spell = 11681, unsure = "secret amount" }, -- 1940.860 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
-	{ hit = 23276, line = 23275, spell = 11681, unsure = "secret amount" }, -- 1940.860 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23278, line = 23277, spell = 11681, unsure = "secret amount" }, -- 1940.860 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23280, line = 23279, spell = 11681, unsure = "secret amount" }, -- 1940.860 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23274, line = 23273, spell = 11683, unsure = "secret amount" }, -- 1940.860 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.029 s
+	{ hit = 23276, line = 23275, spell = 11683, unsure = "secret amount" }, -- 1940.860 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23278, line = 23277, spell = 11683, unsure = "secret amount" }, -- 1940.860 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23280, line = 23279, spell = 11683, unsure = "secret amount" }, -- 1940.860 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 23282, line = 23281, spell = 25228, unsure = "secret amount" }, -- 1940.860 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 23283, line = 23284, spell = 1243028, unsure = "2 file events fit" }, -- 1940.893 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 23285, line = 23286, spell = 1243028, unsure = "secret amount" }, -- 1940.893 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -8302,9 +8302,9 @@ return {
 	{ hit = 23299, line = false, unsure = "secret amount" }, -- 1941.681 nameplate6 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23300, line = false, unsure = "secret amount" }, -- 1941.681 nameplate9 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 23301, line = 23303, spell = 11683, unsure = "secret amount" }, -- 1941.866 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 23305, line = 23304, spell = 11681, unsure = "secret amount" }, -- 1941.866 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23307, line = 23306, spell = 11681, unsure = "secret amount" }, -- 1941.866 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 23309, line = 23308, spell = 11681, unsure = "secret amount" }, -- 1941.866 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 23305, line = 23304, spell = 11683, unsure = "secret amount" }, -- 1941.866 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23307, line = 23306, spell = 11683, unsure = "secret amount" }, -- 1941.866 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 23309, line = 23308, spell = 11683, unsure = "secret amount" }, -- 1941.866 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 23313, line = 23312, spell = 25228, unsure = "secret amount" }, -- 1941.866 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 23316, line = 23315, spell = 25228, unsure = "2 file events fit" }, -- 1941.884 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 23318, line = 23317, spell = 25228, unsure = "secret amount" }, -- 1941.884 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.030 s
@@ -8912,10 +8912,10 @@ return {
 	{ hit = 24926, line = false, unsure = "secret amount" }, -- 2047.054 nameplate8 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 24927, line = false, unsure = "secret amount" }, -- 2047.054 nameplate6 WOUND <secret> <- other: Blizzard SPELL_DAMAGE -0.029 s
 	{ hit = 24928, line = 24929, spell = 11683, unsure = "secret amount" }, -- 2047.054 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 24931, line = 24930, spell = 11681, unsure = "secret amount" }, -- 2047.054 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 24933, line = 24932, spell = 11681, unsure = "secret amount" }, -- 2047.054 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 24935, line = 24934, spell = 11681, unsure = "secret amount" }, -- 2047.054 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 24937, line = 24936, spell = 11681, unsure = "secret amount" }, -- 2047.054 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24931, line = 24930, spell = 11683, unsure = "secret amount" }, -- 2047.054 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 24933, line = 24932, spell = 11683, unsure = "secret amount" }, -- 2047.054 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24935, line = 24934, spell = 11683, unsure = "secret amount" }, -- 2047.054 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24937, line = 24936, spell = 11683, unsure = "secret amount" }, -- 2047.054 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 24939, line = 24938, spell = 25228, unsure = "secret amount" }, -- 2047.054 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 24940, line = false, unsure = "on time, of 2 file events" }, -- 2047.065 nameplate3 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.030 s
 	{ hit = 24941, line = 24942, spell = 1243028, unsure = "4 file events fit" }, -- 2047.098 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -8936,8 +8936,8 @@ return {
 	{ hit = 24963, line = false, unsure = "secret amount" }, -- 2047.956 nameplate5 WOUND <secret> <- other: Arcane Explosion SPELL_DAMAGE -0.030 s
 	{ hit = 24964, line = false, unsure = "2 file events fit" }, -- 2047.998 nameplate3 WOUND <secret> <- other: swing SWING_DAMAGE +0.538 s
 	{ hit = 24965, line = 24966, spell = 11683, unsure = "secret amount" }, -- 2048.056 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 24968, line = 24967, spell = 11681, unsure = "secret amount" }, -- 2048.056 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 24970, line = 24969, spell = 11681, unsure = "secret amount" }, -- 2048.056 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24968, line = 24967, spell = 11683, unsure = "secret amount" }, -- 2048.056 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24970, line = 24969, spell = 11683, unsure = "secret amount" }, -- 2048.056 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 24972, line = 24971, spell = 25228, unsure = "secret amount" }, -- 2048.056 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 24973, line = 24974, spell = 1243028, unsure = "2 file events fit" }, -- 2048.090 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 24975, line = 24976, spell = 1243028, unsure = "secret amount" }, -- 2048.090 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -8948,10 +8948,10 @@ return {
 	{ hit = 24985, line = false, unsure = "late by 1.39 s" }, -- 2048.790 nameplate3 WOUND <secret> <- other: swing SWING_DAMAGE +1.388 s
 	{ hit = 24987, line = 24986, spell = 10300, unsure = "secret amount" }, -- 2048.798 nameplate7 WOUND <secret> <- pet: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 24988, line = 24989, spell = 11683, unsure = "secret amount" }, -- 2049.062 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 24991, line = 24990, spell = 11681, unsure = "secret amount" }, -- 2049.062 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 24993, line = 24992, spell = 11681, unsure = "secret amount" }, -- 2049.062 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 24995, line = 24994, spell = 11681, unsure = "secret amount" }, -- 2049.062 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 24997, line = 24996, spell = 11681, unsure = "secret amount" }, -- 2049.062 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24991, line = 24990, spell = 11683, unsure = "secret amount" }, -- 2049.062 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 24993, line = 24992, spell = 11683, unsure = "secret amount" }, -- 2049.062 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 24995, line = 24994, spell = 11683, unsure = "secret amount" }, -- 2049.062 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 24997, line = 24996, spell = 11683, unsure = "secret amount" }, -- 2049.062 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 24999, line = 24998, spell = 25228, unsure = "secret amount" }, -- 2049.062 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 25000, line = 25001, spell = 1243028, unsure = "4 file events fit" }, -- 2049.098 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 25002, line = 25003, spell = 1243028, unsure = "3 file events fit" }, -- 2049.098 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -8973,10 +8973,10 @@ return {
 	{ hit = 25021, line = false, unsure = "3 file events fit" }, -- 2049.740 nameplate3 WOUND <secret> <- other: Sinister Strike SPELL_DAMAGE -0.029 s
 	{ hit = 25024, line = false, unsure = "secret amount" }, -- 2049.806 nameplate8 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 25029, line = 25030, spell = 11683, unsure = "secret amount" }, -- 2050.057 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 25032, line = 25031, spell = 11681, unsure = "secret amount" }, -- 2050.057 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 25034, line = 25033, spell = 11681, unsure = "secret amount" }, -- 2050.057 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 25036, line = 25035, spell = 11681, unsure = "secret amount" }, -- 2050.057 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25038, line = 25037, spell = 11681, unsure = "secret amount" }, -- 2050.057 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25032, line = 25031, spell = 11683, unsure = "secret amount" }, -- 2050.057 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 25034, line = 25033, spell = 11683, unsure = "secret amount" }, -- 2050.057 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 25036, line = 25035, spell = 11683, unsure = "secret amount" }, -- 2050.057 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25038, line = 25037, spell = 11683, unsure = "secret amount" }, -- 2050.057 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 25040, line = 25039, spell = 25228, unsure = "secret amount" }, -- 2050.057 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 25041, line = 25042, spell = 1243028, unsure = "4 file events fit" }, -- 2050.081 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 25043, line = 25044, spell = 1243028, unsure = "3 file events fit" }, -- 2050.081 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -9001,11 +9001,11 @@ return {
 	{ hit = 25071, line = false, unsure = "secret amount" }, -- 2050.956 nameplate5 WOUND <secret> <- other: Arcane Explosion SPELL_DAMAGE -0.030 s
 	{ hit = 25072, line = false, unsure = "on time, of 2 file events" }, -- 2050.956 nameplate6 WOUND <secret> <- other: swing SWING_DAMAGE +0.493 s
 	{ hit = 25075, line = false, unsure = "secret amount" }, -- 2051.022 nameplate6 WOUND <secret> <- other: swing SWING_DAMAGE +0.537 s
-	{ hit = 25077, line = 25076, spell = 11681, unsure = "secret amount" }, -- 2051.067 nameplate3 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.029 s
+	{ hit = 25077, line = 25076, spell = 11683, unsure = "secret amount" }, -- 2051.067 nameplate3 MISS <secret> <- you: Hellfire Effect SPELL_MISSED -0.029 s
 	{ hit = 25078, line = 25080, spell = 11683, unsure = "secret amount" }, -- 2051.067 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.030 s
-	{ hit = 25082, line = 25081, spell = 11681, unsure = "secret amount" }, -- 2051.067 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 25084, line = 25083, spell = 11681, unsure = "secret amount" }, -- 2051.067 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25086, line = 25085, spell = 11681, unsure = "secret amount" }, -- 2051.067 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25082, line = 25081, spell = 11683, unsure = "secret amount" }, -- 2051.067 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 25084, line = 25083, spell = 11683, unsure = "secret amount" }, -- 2051.067 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25086, line = 25085, spell = 11683, unsure = "secret amount" }, -- 2051.067 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 25090, line = 25089, spell = 25228, unsure = "secret amount" }, -- 2051.067 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 25091, line = 25092, spell = 1243028, unsure = "3 file events fit" }, -- 2051.096 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 25093, line = 25094, spell = 1243028, unsure = "2 file events fit" }, -- 2051.096 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -9021,9 +9021,9 @@ return {
 	{ hit = 25108, line = false, unsure = "secret amount" }, -- 2051.381 player WOUND <secret> <- creature: swing SWING_DAMAGE +0.559 s
 	{ hit = 25110, line = false, unsure = "secret amount" }, -- 2051.523 nameplate3 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.030 s
 	{ hit = 25114, line = 25116, spell = 11683, unsure = "secret amount" }, -- 2052.064 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.030 s
-	{ hit = 25118, line = 25117, spell = 11681, unsure = "secret amount" }, -- 2052.064 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25120, line = 25119, spell = 11681, unsure = "secret amount" }, -- 2052.064 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25125, line = 25124, spell = 11681, unsure = "secret amount" }, -- 2052.064 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 25118, line = 25117, spell = 11683, unsure = "secret amount" }, -- 2052.064 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25120, line = 25119, spell = 11683, unsure = "secret amount" }, -- 2052.064 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25125, line = 25124, spell = 11683, unsure = "secret amount" }, -- 2052.064 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
 	{ hit = 25127, line = 25126, spell = 25228, unsure = "secret amount" }, -- 2052.064 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.034 s
 	{ hit = 25128, line = 25129, spell = 1243028, unsure = "3 file events fit" }, -- 2052.085 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 25130, line = 25131, spell = 1243028, unsure = "2 file events fit" }, -- 2052.085 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -9037,8 +9037,8 @@ return {
 	{ hit = 25148, line = 25147, spell = 25228, unsure = "secret amount" }, -- 2052.806 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.029 s
 	{ hit = 25150, line = 25149, spell = 10300, unsure = "secret amount" }, -- 2052.806 nameplate7 WOUND <secret> <- you: Retribution Aura DAMAGE_SHIELD -0.030 s
 	{ hit = 25153, line = 25155, spell = 11683, unsure = "secret amount" }, -- 2053.056 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 25157, line = 25156, spell = 11681, unsure = "secret amount" }, -- 2053.056 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 25161, line = 25160, spell = 11681, unsure = "secret amount" }, -- 2053.056 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25157, line = 25156, spell = 11683, unsure = "secret amount" }, -- 2053.056 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 25161, line = 25160, spell = 11683, unsure = "secret amount" }, -- 2053.056 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 25163, line = 25162, spell = 25228, unsure = "secret amount" }, -- 2053.056 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.031 s
 	{ hit = 25164, line = 25165, spell = 1243028, unsure = "2 file events fit" }, -- 2053.098 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
 	{ hit = 25166, line = 25167, spell = 1243028, unsure = "secret amount" }, -- 2053.098 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -9048,8 +9048,8 @@ return {
 	{ hit = 25173, line = false, unsure = "secret amount" }, -- 2053.373 player WOUND <secret> <- creature: swing SWING_DAMAGE +0.563 s
 	{ hit = 25175, line = false, unsure = "secret amount" }, -- 2053.541 nameplate5 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.029 s
 	{ hit = 25176, line = 25178, spell = 11683, unsure = "secret amount" }, -- 2053.556 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 25181, line = 25180, spell = 11681, unsure = "secret amount" }, -- 2053.556 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25183, line = 25182, spell = 11681, unsure = "secret amount" }, -- 2053.556 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25181, line = 25180, spell = 11683, unsure = "secret amount" }, -- 2053.556 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25183, line = 25182, spell = 11683, unsure = "secret amount" }, -- 2053.556 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
 	{ hit = 25187, line = 25186, spell = 25228, unsure = "secret amount" }, -- 2053.556 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.032 s
 	{ hit = 25188, line = 25189, spell = 1243028, unsure = "2 file events fit" }, -- 2053.589 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
 	{ hit = 25190, line = 25191, spell = 1243028, unsure = "secret amount" }, -- 2053.589 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -9412,12 +9412,12 @@ return {
 	{ hit = 25955, line = false, unsure = "secret amount" }, -- 2096.011 pet WOUND <secret> <- creature: Mana Burn SPELL_DAMAGE -0.030 s
 	{ hit = 25956, line = false, unsure = "secret amount" }, -- 2096.128 nameplate9 WOUND <secret> <- other: swing SWING_DAMAGE +0.676 s
 	{ hit = 25957, line = 25958, spell = 11683, unsure = "secret amount" }, -- 2096.156 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.030 s
-	{ hit = 25960, line = 25959, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 25964, line = 25963, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 25966, line = 25965, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 25968, line = 25967, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 25970, line = 25969, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 25972, line = 25971, spell = 11681, unsure = "secret amount" }, -- 2096.156 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 25960, line = 25959, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 25964, line = 25963, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 25966, line = 25965, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate14 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 25968, line = 25967, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 25970, line = 25969, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 25972, line = 25971, spell = 11683, unsure = "secret amount" }, -- 2096.156 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
 	{ hit = 25974, line = 25973, spell = 25228, unsure = "secret amount" }, -- 2096.156 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 25975, line = 25976, spell = 1243028, unsure = "6 file events fit" }, -- 2096.189 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
 	{ hit = 25977, line = 25978, spell = 1243028, unsure = "5 file events fit" }, -- 2096.189 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.030 s
@@ -9431,13 +9431,13 @@ return {
 	{ hit = 25998, line = false, unsure = "secret amount" }, -- 2097.031 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.030 s
 	{ hit = 25999, line = false, unsure = "2 file events fit" }, -- 2097.148 nameplate9 WOUND <secret> <- other: Sinister Strike SPELL_DAMAGE -0.029 s
 	{ hit = 26000, line = 26001, spell = 11683, unsure = "secret amount" }, -- 2097.165 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.029 s
-	{ hit = 26003, line = 26002, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 26005, line = 26004, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
-	{ hit = 26007, line = 26006, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 26009, line = 26008, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
-	{ hit = 26011, line = 26010, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 26013, line = 26012, spell = 11681, unsure = "secret amount" }, -- 2097.165 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
-	{ hit = 26017, line = 26016, spell = 11681, unsure = "on time, of 3 file events" }, -- 2097.165 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
+	{ hit = 26003, line = 26002, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate2 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 26005, line = 26004, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.030 s
+	{ hit = 26007, line = 26006, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate3 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 26009, line = 26008, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate9 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.031 s
+	{ hit = 26011, line = 26010, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 26013, line = 26012, spell = 11683, unsure = "secret amount" }, -- 2097.165 nameplate10 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.032 s
+	{ hit = 26017, line = 26016, spell = 11683, unsure = "on time, of 3 file events" }, -- 2097.165 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.033 s
 	{ hit = 26019, line = 26018, spell = 25228, unsure = "secret amount" }, -- 2097.165 pet WOUND <secret> <- you: Soul Link DAMAGE_SPLIT -0.033 s
 	{ hit = 26020, line = false, unsure = "2 file events fit" }, -- 2097.179 nameplate9 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE -0.029 s
 	{ hit = 26021, line = 26022, spell = 1243028, unsure = "7 file events fit" }, -- 2097.188 pet HEAL <secret> <- you: Demonic Energies SPELL_HEAL -0.029 s
@@ -13105,10 +13105,10 @@ return {
 	{ hit = 36946, line = false, unsure = "secret amount" }, -- 3018.147 nameplate8 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 36955, line = false, unsure = "secret amount" }, -- 3018.430 nameplate6 WOUND <secret> <- other: Arcane Blast SPELL_DAMAGE -0.041 s
 	{ hit = 36961, line = 36962, spell = 11683, unsure = "secret amount" }, -- 3018.480 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 36964, line = 36963, spell = 11681, unsure = "secret amount" }, -- 3018.480 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 36968, line = 36967, spell = 11681, unsure = "secret amount" }, -- 3018.480 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 36970, line = 36969, spell = 11681, unsure = "secret amount" }, -- 3018.480 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
-	{ hit = 36972, line = 36971, spell = 11681, unsure = "secret amount" }, -- 3018.480 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 36964, line = 36963, spell = 11683, unsure = "secret amount" }, -- 3018.480 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 36968, line = 36967, spell = 11683, unsure = "secret amount" }, -- 3018.480 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 36970, line = 36969, spell = 11683, unsure = "secret amount" }, -- 3018.480 nameplate6 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 36972, line = 36971, spell = 11683, unsure = "secret amount" }, -- 3018.480 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 36973, line = 36974, spell = 11671, unsure = "secret amount" }, -- 3018.505 nameplate5 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.041 s
 	{ hit = 36975, line = 36978, spell = 11671, unsure = "secret amount" }, -- 3018.505 nameplate8 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.042 s
 	{ hit = 36979, line = 36980, spell = 11671, unsure = "secret amount" }, -- 3018.505 nameplate7 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.042 s
@@ -13125,9 +13125,9 @@ return {
 	{ hit = 37008, line = false, unsure = "secret amount" }, -- 3019.406 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
 	{ hit = 37011, line = false, unsure = "secret amount" }, -- 3019.422 nameplate6 WOUND <secret> <- other: Hammer of Wrath SPELL_DAMAGE -0.026 s
 	{ hit = 37012, line = 37013, spell = 11683, unsure = "secret amount" }, -- 3019.482 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37015, line = 37014, spell = 11681, unsure = "secret amount" }, -- 3019.482 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
-	{ hit = 37019, line = 37018, spell = 11681, unsure = "secret amount" }, -- 3019.482 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37021, line = 37020, spell = 11681, unsure = "secret amount" }, -- 3019.482 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37015, line = 37014, spell = 11683, unsure = "secret amount" }, -- 3019.482 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
+	{ hit = 37019, line = 37018, spell = 11683, unsure = "secret amount" }, -- 3019.482 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37021, line = 37020, spell = 11683, unsure = "secret amount" }, -- 3019.482 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
 	{ hit = 37022, line = false, unsure = "2 file events fit" }, -- 3019.539 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE +0.426 s
 	{ hit = 37026, line = false, unsure = "on time, of 2 file events" }, -- 3019.672 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE -0.016 s
 	{ hit = 37027, line = false, unsure = "2 file events fit" }, -- 3019.672 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
@@ -13141,9 +13141,9 @@ return {
 	{ hit = 37047, line = false, unsure = "secret amount" }, -- 3020.215 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 37048, line = false, unsure = "secret amount" }, -- 3020.215 nameplate5 WOUND <secret> <- other: Instant Poison IV SPELL_DAMAGE -0.041 s
 	{ hit = 37052, line = 37053, spell = 11683, unsure = "secret amount" }, -- 3020.480 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37055, line = 37054, spell = 11681, unsure = "secret amount" }, -- 3020.480 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37057, line = 37056, spell = 11681, unsure = "secret amount" }, -- 3020.480 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37059, line = 37058, spell = 11681, unsure = "secret amount" }, -- 3020.480 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37055, line = 37054, spell = 11683, unsure = "secret amount" }, -- 3020.480 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37057, line = 37056, spell = 11683, unsure = "secret amount" }, -- 3020.480 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37059, line = 37058, spell = 11683, unsure = "secret amount" }, -- 3020.480 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 37062, line = false, unsure = "on time, of 3 file events" }, -- 3020.954 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE +0.732 s
 	{ hit = 37064, line = false, unsure = "secret amount" }, -- 3020.984 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 37065, line = 37066, spell = 11711, unsure = "secret amount" }, -- 3020.993 nameplate7 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.041 s
@@ -13152,9 +13152,9 @@ return {
 	{ hit = 37073, line = false, unsure = "secret amount" }, -- 3021.294 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
 	{ hit = 37074, line = false, unsure = "secret amount" }, -- 3021.294 nameplate5 DODGE <secret> <- other: swing SWING_MISSED +0.073 s
 	{ hit = 37075, line = 37076, spell = 11683, unsure = "secret amount" }, -- 3021.486 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37078, line = 37077, spell = 11681, unsure = "secret amount" }, -- 3021.486 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
-	{ hit = 37080, line = 37079, spell = 11681, unsure = "secret amount" }, -- 3021.486 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37082, line = 37081, spell = 11681, unsure = "secret amount" }, -- 3021.486 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37078, line = 37077, spell = 11683, unsure = "secret amount" }, -- 3021.486 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
+	{ hit = 37080, line = 37079, spell = 11683, unsure = "secret amount" }, -- 3021.486 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37082, line = 37081, spell = 11683, unsure = "secret amount" }, -- 3021.486 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 37085, line = 37086, spell = 11671, unsure = "secret amount" }, -- 3021.497 nameplate5 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.041 s
 	{ hit = 37087, line = 37090, spell = 11671, unsure = "secret amount" }, -- 3021.497 nameplate8 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.042 s
 	{ hit = 37091, line = 37092, spell = 11671, unsure = "secret amount" }, -- 3021.497 nameplate7 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.042 s
@@ -13167,9 +13167,9 @@ return {
 	{ hit = 37110, line = 37111, spell = 11711, unsure = "secret amount" }, -- 3022.005 nameplate5 WOUND <secret> <- you: Bane of Agony SPELL_PERIODIC_DAMAGE -0.041 s
 	{ hit = 37112, line = false, unsure = "secret amount" }, -- 3022.447 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 37113, line = 37114, spell = 11683, unsure = "secret amount" }, -- 3022.481 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37116, line = 37115, spell = 11681, unsure = "secret amount" }, -- 3022.481 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37118, line = 37117, spell = 11681, unsure = "secret amount" }, -- 3022.481 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
-	{ hit = 37120, line = 37119, spell = 11681, unsure = "secret amount" }, -- 3022.481 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37116, line = 37115, spell = 11683, unsure = "secret amount" }, -- 3022.481 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37118, line = 37117, spell = 11683, unsure = "secret amount" }, -- 3022.481 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37120, line = 37119, spell = 11683, unsure = "secret amount" }, -- 3022.481 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 37126, line = false, unsure = "2 file events fit" }, -- 3022.697 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE -0.050 s
 	{ hit = 37127, line = false, unsure = "late by 1.37 s" }, -- 3022.706 nameplate5 MISS <secret> <- other: swing SWING_MISSED +1.371 s
 	{ hit = 37128, line = false, unsure = "secret amount" }, -- 3022.730 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
@@ -13185,9 +13185,9 @@ return {
 	{ hit = 37153, line = false, unsure = "on time, of 2 file events" }, -- 3023.214 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE +0.768 s
 	{ hit = 37154, line = false, unsure = "secret amount" }, -- 3023.239 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 37155, line = 37156, spell = 11683, unsure = "secret amount" }, -- 3023.497 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37158, line = 37157, spell = 11681, unsure = "secret amount" }, -- 3023.497 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37160, line = 37159, spell = 11681, unsure = "secret amount" }, -- 3023.497 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37164, line = 37163, spell = 11681, unsure = "secret amount" }, -- 3023.497 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37158, line = 37157, spell = 11683, unsure = "secret amount" }, -- 3023.497 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37160, line = 37159, spell = 11683, unsure = "secret amount" }, -- 3023.497 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37164, line = 37163, spell = 11683, unsure = "secret amount" }, -- 3023.497 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 37165, line = false, unsure = "secret amount" }, -- 3023.565 nameplate7 WOUND <secret> <- other: Blade Flurry SPELL_DAMAGE -0.041 s
 	{ hit = 37166, line = false, unsure = "secret amount" }, -- 3023.565 nameplate5 WOUND <secret> <- other: Instant Poison IV SPELL_DAMAGE -0.041 s
 	{ hit = 37167, line = false, unsure = "secret amount" }, -- 3023.565 nameplate5 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
@@ -13204,9 +13204,9 @@ return {
 	{ hit = 37197, line = false, unsure = "secret amount" }, -- 3024.489 nameplate5 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE +0.018 s
 	{ hit = 37198, line = false, unsure = "secret amount" }, -- 3024.489 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE +0.918 s
 	{ hit = 37199, line = 37200, spell = 11683, unsure = "secret amount" }, -- 3024.498 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37202, line = 37201, spell = 11681, unsure = "secret amount" }, -- 3024.498 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37206, line = 37205, spell = 11681, unsure = "secret amount" }, -- 3024.498 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
-	{ hit = 37208, line = 37207, spell = 11681, unsure = "secret amount" }, -- 3024.498 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
+	{ hit = 37202, line = 37201, spell = 11683, unsure = "secret amount" }, -- 3024.498 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37206, line = 37205, spell = 11683, unsure = "secret amount" }, -- 3024.498 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37208, line = 37207, spell = 11683, unsure = "secret amount" }, -- 3024.498 nameplate5 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.043 s
 	{ hit = 37209, line = 37210, spell = 11671, unsure = "secret amount" }, -- 3024.498 nameplate5 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.043 s
 	{ hit = 37211, line = 37214, spell = 11671, unsure = "secret amount" }, -- 3024.498 nameplate8 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.044 s
 	{ hit = 37215, line = 37216, spell = 11671, unsure = "secret amount" }, -- 3024.498 nameplate7 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.044 s
@@ -13223,8 +13223,8 @@ return {
 	{ hit = 37243, line = false, unsure = "secret amount" }, -- 3025.047 nameplate5 WOUND <secret> <- other: swing SWING_DAMAGE +0.017 s
 	{ hit = 37244, line = false, unsure = "no file event fits" }, -- 3025.047 nameplate5 WOUND <secret> <- no file event 
 	{ hit = 37246, line = 37247, spell = 11683, unsure = "secret amount" }, -- 3025.489 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
-	{ hit = 37249, line = 37248, spell = 11681, unsure = "secret amount" }, -- 3025.489 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
-	{ hit = 37251, line = 37250, spell = 11681, unsure = "secret amount" }, -- 3025.489 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37249, line = 37248, spell = 11683, unsure = "secret amount" }, -- 3025.489 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
+	{ hit = 37251, line = 37250, spell = 11683, unsure = "secret amount" }, -- 3025.489 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
 	{ hit = 37254, line = false, unsure = "secret amount" }, -- 3025.864 nameplate8 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.040 s
 	{ hit = 37257, line = false, unsure = "secret amount" }, -- 3025.864 nameplate7 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.041 s
 	{ hit = 37258, line = false, unsure = "no file event fits" }, -- 3025.939 nameplate8 WOUND <secret> <- no file event 
@@ -13232,8 +13232,8 @@ return {
 	{ hit = 37265, line = false, unsure = "secret amount" }, -- 3026.047 nameplate7 DODGE <secret> <- other: swing SWING_MISSED +0.551 s
 	{ hit = 37266, line = false, unsure = "secret amount" }, -- 3026.464 nameplate8 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
 	{ hit = 37269, line = 37270, spell = 11683, unsure = "secret amount" }, -- 3026.489 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.040 s
-	{ hit = 37272, line = 37271, spell = 11681, unsure = "secret amount" }, -- 3026.489 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
-	{ hit = 37276, line = 37275, spell = 11681, unsure = "secret amount" }, -- 3026.489 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37272, line = 37271, spell = 11683, unsure = "secret amount" }, -- 3026.489 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
+	{ hit = 37276, line = 37275, spell = 11683, unsure = "secret amount" }, -- 3026.489 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
 	{ hit = 37277, line = false, unsure = "secret amount" }, -- 3026.505 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
 	{ hit = 37278, line = false, unsure = "2 file events fit" }, -- 3026.631 nameplate8 WOUND <secret> <- other: swing SWING_DAMAGE +0.010 s
 	{ hit = 37284, line = false, unsure = "secret amount" }, -- 3026.864 nameplate8 WOUND <secret> <- other: Consecration SPELL_DAMAGE -0.040 s
@@ -13242,8 +13242,8 @@ return {
 	{ hit = 37291, line = false, unsure = "secret amount" }, -- 3027.206 nameplate8 WOUND <secret> <- other: Windfury Totem SPELL_DAMAGE +0.534 s
 	{ hit = 37297, line = 37298, spell = 11683, unsure = "secret amount" }, -- 3027.480 player WOUND <secret> <- you: Hellfire SPELL_PERIODIC_DAMAGE -0.041 s
 	{ hit = 37299, line = false, unsure = "secret amount" }, -- 3027.505 nameplate7 WOUND <secret> <- other: Retribution Aura DAMAGE_SHIELD -0.041 s
-	{ hit = 37301, line = 37300, spell = 11681, unsure = "secret amount" }, -- 3027.505 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
-	{ hit = 37303, line = 37302, spell = 11681, unsure = "secret amount" }, -- 3027.505 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
+	{ hit = 37301, line = 37300, spell = 11683, unsure = "secret amount" }, -- 3027.505 nameplate7 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.041 s
+	{ hit = 37303, line = 37302, spell = 11683, unsure = "secret amount" }, -- 3027.505 nameplate8 WOUND <secret> <- you: Hellfire Effect SPELL_DAMAGE -0.042 s
 	{ hit = 37306, line = 37309, spell = 11671, unsure = "secret amount" }, -- 3027.505 nameplate8 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.042 s
 	{ hit = 37310, line = 37311, spell = 11671, unsure = "secret amount" }, -- 3027.505 nameplate7 WOUND <secret> <- you: Corruption SPELL_PERIODIC_DAMAGE -0.043 s
 	{ hit = 37312, line = false, unsure = "secret amount" }, -- 3027.605 nameplate7 PARRY <secret> <- other: swing SWING_MISSED +0.495 s

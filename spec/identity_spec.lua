@@ -776,6 +776,15 @@ describe("Spell Identity", function()
 			assert.is_nil(of(identity, 4, "direct", FIRE))
 		end)
 
+		-- warlock-zf and warlock-sm-armory: 11 Hellfire Hits in five stop frames.
+		it("gives a channelled area spell's tick in its stop's frame its spell, though it is off the grid", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			assert.are.equal(RAIN_OF_FIRE, of(identity, 2, "direct", FIRE))
+			cast(identity, 3.2, RAIN_OF_FIRE, "player", "CHANNEL_STOP")
+			assert.are.same({ RAIN_OF_FIRE, nil }, { of(identity, 3.2, "direct", FIRE), of(identity, 3.4, "direct", FIRE) })
+		end)
+
 		it("gives a recast its own ticks when its cast comes before the old channel's stop", function()
 			local identity = Identity.New({})
 			cast(identity, 0, RAIN_OF_FIRE)

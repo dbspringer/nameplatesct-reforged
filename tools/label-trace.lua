@@ -26,9 +26,13 @@ local LATEST = 0.1
 -- The cast of each damage spell ID that differs from its cast's, so that a
 -- Label names the cast that made the Hit, as Spell Identity does. On Forever
 -- an area spell's damage comes with a spell ID other than its cast's. Only
--- Rain of Fire's ranks are here (from the DB2; 1282380 is in a Trace); add a
+-- Rain of Fire's ranks (from the DB2; 1282380 is in a Trace) and Hellfire
+-- Effect's (5857 and 11681 are in Traces; 11682 is Classic's) are here; add a
 -- spell when a Trace has its damage.
-local CAST_OF = { [1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678 }
+local CAST_OF = {
+	[1282380] = 5740, [1282383] = 6219, [1282384] = 11677, [1282385] = 11678,
+	[5857] = 1949, [11681] = 11683, [11682] = 11684,
+}
 -- A delay past this is longer than any seen in the Warlock Traces.
 local LATE = 1.0
 -- A spell's file event comes within this of its Hit, except a shot's or a
