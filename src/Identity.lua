@@ -59,8 +59,8 @@ local AGREEING_HITS = 2
 local MISS_WINDOW = 0.1
 -- How soon after the swing that landed it a Seal Proc comes (see Pairing).
 local SEAL_PROC_WINDOW = ns.Pairing.SEAL_PROC_WINDOW
--- A Seal's aura lasted its full 30.0 s in the Paladin Trace.
-local SEAL_DURATION = 30
+-- How long a Seal's aura lasts (see Pairing).
+local SEAL_DURATION = ns.Pairing.SEAL_DURATION
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
 local SCHOOL_HOLY = 2
@@ -71,9 +71,11 @@ local SEAL_CHANGE_AGE = 2
 -- rank shows one icon and name: Instant Poison's direct hit and Deadly
 -- Poison's tick (Forever's spell data, build 1.60.1.70888).
 local INSTANT_POISON, DEADLY_POISON = 8680, 2818
--- How soon after the melee hit that landed it Instant Poison comes (see
--- Pairing).
-local POISON_PROC_WINDOW = ns.Pairing.POISON_PROC_WINDOW
+-- Instant Poison comes just after the melee hit that landed it: 339 of 341 of
+-- a party Rogue's in warlock-rfk came 1 to 100 ms after one of their swings
+-- or strikes in the Combat Log File, on the same target. The same window as a
+-- Seal Proc's.
+local POISON_PROC_WINDOW = 0.15
 local SCHOOL_PHYSICAL, SCHOOL_NATURE = 1, 8
 -- A Brand Proc's spell: the damage spell of a Warlock's Demonic Brand
 -- (Forever), which the pet's Hits set off.
