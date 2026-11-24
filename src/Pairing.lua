@@ -33,6 +33,19 @@ Pairing.DIRECT_WINDOW = DIRECT_WINDOW
 -- Identity uses it too.
 local BRAND_PROC_WINDOW = 0.06
 Pairing.BRAND_PROC_WINDOW = BRAND_PROC_WINDOW
+-- A Seal Proc comes just after the swing that landed it: 302 of 307 of
+-- Righteousness and all 7 of Command in the Traces, of all players, came within
+-- this of their swing's event, and 1 of 2 of Fury (no swing in the file for the
+-- other). A live Paladin's 49 came up to 0.117 s after their swing line. Spell
+-- Identity uses it too.
+local SEAL_PROC_WINDOW = 0.15
+Pairing.SEAL_PROC_WINDOW = SEAL_PROC_WINDOW
+-- Instant Poison comes just after the melee hit that landed it: 339 of 341 of
+-- a party Rogue's in warlock-rfk came 1 to 100 ms after one of their swings
+-- or strikes in the Combat Log File, on the same target. The same window as a
+-- Seal Proc's. Spell Identity uses it too.
+local POISON_PROC_WINDOW = 0.15
+Pairing.POISON_PROC_WINDOW = POISON_PROC_WINDOW
 local MELEE_FROM, MELEE_TO = 0.25, ns.LineKind.LONGEST_SWING_DELAY
 -- The Swing Delays of the player and of the pet, learned in the session from
 -- their clean swings: a melee line with one Hit in its window and no other
@@ -59,7 +72,22 @@ local HIDE_KEEP = 5
 local HOLD = 0.15
 -- How much later than its time a held Hit can be decided, at the next Tick.
 Pairing.LATEST_DECISION = HOLD + SHOT_WINDOW
-local SCHOOL_PHYSICAL, SCHOOL_SHADOW = 1, 32
+local SCHOOL_PHYSICAL, SCHOOL_HOLY, SCHOOL_NATURE, SCHOOL_SHADOW = 1, 2, 8, 32
+-- The Proc of each class that has one on a direct line, which has no cast of
+-- its own, so a landed Hit that can set it off is a hint of it: the Proc's
+-- school, how soon after that Hit's line the Proc's line comes, and what sets
+-- it off. swing is the player's landed swing line and petSwing the pet's;
+-- strike is the Hit of the player's Physical cast and petSpell the Hit that is
+-- surely the pet's spell's, each of which hints only on its own mob. The class
+-- alone turns a hint on: nothing checks the Active Seal, the poison on a
+-- weapon, or the pet's Demonic Brand. No Trace has a Paladin or a Rogue player
+-- in a group, so their hints are untested there. A Weapon Proc's Hit comes too
+-- late for such a window, and a Deadly Poison tick has a tick line.
+local PROC_HINTS = {
+	WARLOCK = { school = SCHOOL_SHADOW, window = BRAND_PROC_WINDOW, petSwing = true, petSpell = true },
+	PALADIN = { school = SCHOOL_HOLY, window = SEAL_PROC_WINDOW, swing = true },
+	ROGUE = { school = SCHOOL_NATURE, window = POISON_PROC_WINDOW, swing = true, strike = true },
+}
 -- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
 -- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
 -- after the swing or Stormstrike that made them, and their Hits 0.143 to 1.41 s
@@ -292,12 +320,12 @@ function Pairing.New(options)
 	-- The player's and the pet's recent casts that can make a direct Hit, each
 	-- with its school, when its Hits can come until, the plate life of the
 	-- player's target for it, when its Hits must be there, and whether it makes
-	-- many Hits (see directHitsOf). For a Warlock, the pet's landed swing line,
-	-- and the line of the pet's spell Hit, is a hint of a Brand Proc, which has
-	-- no cast of its own: a hint is weaker than a cast. A spell Hit's hint is
-	-- only on its plate life, and only after its line's frame (see Identity's
-	-- newBrandTracker).
+	-- many Hits (see directHitsOf). A landed Hit that can set off the class's
+	-- Proc adds a hint of it (see PROC_HINTS): a hint is weaker than a cast. The
+	-- hint of a strike or of the pet's spell Hit is only on its plate life, and
+	-- the pet's only after its line's frame (see Identity's newBrandTracker).
 	local directCasts = {}
+	local procHint = PROC_HINTS[options.class]
 
 	-- Adds the cast (time, school, and the optional life, many, hint, pet,
 	-- after, and for the player's area channel spellID, burnsSelf and interval)
@@ -343,18 +371,22 @@ function Pairing.New(options)
 	-- swing learns its delay from it (see learnSwingDelays). A Hit that took a
 	-- direct line uses up the cast or hint of one Hit that can best have made
 	-- it (see castOf), so a later Hit of a group mate's with that school cannot
-	-- take the direct line of another spell of the player's. For a Warlock, a
-	-- Hit that used up the pet's cast, when no other cast fits it, is surely
-	-- the pet's, so it adds a hint of a Brand Proc.
+	-- take the direct line of another spell of the player's. A Hit that used
+	-- up the pet's cast, when no other cast fits it, is surely the pet's, and
+	-- one that used up the player's Physical cast is a strike: each can add a
+	-- hint of a Proc.
 	local function onDecision(hit, line, how)
 		if line and not ns.LineKind.IsMelee(line.lineKind) then
 			hit.tookOtherLine = true
 		end
 		if line and line.lineKind == "direct" then
 			local used = castOf(hit, true)
-			if used and table.remove(directCasts, used).pet and options.class == "WARLOCK" and castRank(hit) < 2 then
-				addDirectCast({ time = line.time, school = SCHOOL_SHADOW, life = hit.life, hint = true, after = true },
-					BRAND_PROC_WINDOW)
+			local cast = used and table.remove(directCasts, used)
+			local petSpell = cast and cast.pet and castRank(hit) < 2
+			local strike = cast and not cast.pet and not cast.hint and cast.school == SCHOOL_PHYSICAL
+			if procHint and (petSpell and procHint.petSpell or strike and procHint.strike) then
+				addDirectCast({ time = line.time, school = procHint.school, life = hit.life, hint = true, after = petSpell },
+					procHint.window)
 			end
 		end
 		options.onDecision(hit, line, how)
@@ -877,8 +909,9 @@ function Pairing.New(options)
 		elseif record.kind == "line" then
 			frameTime = record.time
 			frameLines[#frameLines + 1] = record
-			if record.lineKind == "swing" and record.pet and options.class == "WARLOCK" then
-				addDirectCast({ time = record.time, school = SCHOOL_SHADOW, hint = true }, BRAND_PROC_WINDOW)
+			if record.lineKind == "swing" and procHint and (record.pet and procHint.petSwing
+				or not record.pet and procHint.swing) then
+				addDirectCast({ time = record.time, school = procHint.school, hint = true }, procHint.window)
 			end
 		elseif record.kind == "hide" then
 			while hides[1] and record.time - hides[1] > HIDE_KEEP do

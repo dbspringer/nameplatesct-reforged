@@ -62,6 +62,10 @@ _Avoid_: My hit, own damage, player damage
 The time by which a melee Log Line comes before its Hit. It depends on the unit that attacks, and one unit can have more than one. Each stays nearly constant.
 _Avoid_: Melee lag, offset, cluster, learned window
 
+**Proc**:
+Your Hit with no cast of its own, set off when another Hit of the player's or the pet's lands. A Seal Proc, a Poison Proc, a Brand Proc, and a Weapon Proc are Procs.
+_Avoid_: Castless hit, on-hit effect, trigger
+
 **Weapon Proc**:
 An extra attack from a weapon enchant, such as Windfury Weapon. Its Log Line looks like a direct spell's, but its Hit comes about as late as a swing's, and its Plate Text looks like a swing.
 _Avoid_: Extra swing, Windfury hit

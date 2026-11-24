@@ -590,6 +590,43 @@ describe("Pairing", function()
 			assert.are.same({ direct, false }, decided)
 		end)
 
+		-- No Trace has a Paladin or a Rogue player in a group, so these frames
+		-- are built after the Brand Proc's: a group mate's Fire Hit comes
+		-- first in the frame of a Seal Proc or an Instant Poison, whose line
+		-- comes just after the player's landed swing line.
+		local function swingProcFrame(class, procSchool)
+			local swing = line(5, "swing")
+			local rival, direct, proc = hit(5.03, "nameplate2", FIRE), line(5.03, "direct"), hit(5.03, "nameplate1", procSchool)
+			local decided = pair({ swing, rival, direct, proc }, nil, class)
+			return { decided[rival.entry], decided[proc.entry] }, direct.entry
+		end
+
+		it("gives a Paladin's direct line just after their landed swing line to a Holy Hit", function()
+			local decided, direct = swingProcFrame("PALADIN", 2)
+			assert.are.same({ false, direct }, decided)
+		end)
+
+		it("gives a Rogue's direct line just after their landed swing line to a Nature Hit", function()
+			local decided, direct = swingProcFrame("ROGUE", 8)
+			assert.are.same({ false, direct }, decided)
+		end)
+
+		it("gives no Holy Hit the direct line after the swing line of another class", function()
+			local decided, direct = swingProcFrame("ROGUE", 2)
+			assert.are.same({ direct, false }, decided)
+		end)
+
+		it("gives a Rogue's direct line just after their strike's Hit to a Nature Hit on its mob", function()
+			local SINISTER_STRIKE, mob, other = 1752, {}, {}
+			local strike = cast(5, SINISTER_STRIKE)
+			strike.targetLife = mob
+			local strikeLine, strikeHit = line(5, "direct"), hitOn(5, mob, 1)
+			local rival, direct, poison = hitOn(5.05, other, FIRE), line(5.05, "direct"), hitOn(5.05, mob, 8)
+			local decided = pair({ strike, strikeLine, strikeHit, rival, direct, poison }, nil, "ROGUE")
+			assert.are.same({ strikeLine.entry, false, direct.entry },
+				{ decided[strikeHit.entry], decided[rival.entry], decided[poison.entry] })
+		end)
+
 		-- The pet's cast of Lash of Pain, which can make a Brand Proc on its
 		-- Hit's mob.
 		local function lashCast(time)
