@@ -57,13 +57,10 @@ local AGREEING_HITS = 2
 -- a spell that does not travel: the Warlock Traces show these misses at the
 -- cast's own time.
 local MISS_WINDOW = 0.1
--- A Seal Proc comes just after the swing that landed it: 302 of 307 of
--- Righteousness and all 7 of Command in the Traces, of all players, came within
--- this of their swing's event, and 1 of 2 of Fury (no swing in the file for the
--- other). A live Paladin's 49 came up to 0.117 s after their swing line.
-local SEAL_PROC_WINDOW = 0.15
--- A Seal's aura lasted its full 30.0 s in the Paladin Trace.
-local SEAL_DURATION = 30
+-- How soon after the swing that landed it a Seal Proc comes (see Pairing).
+local SEAL_PROC_WINDOW = ns.Pairing.SEAL_PROC_WINDOW
+-- How long a Seal's aura lasts (see Pairing).
+local SEAL_DURATION = ns.Pairing.SEAL_DURATION
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
 local SCHOOL_HOLY = 2

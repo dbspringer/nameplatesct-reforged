@@ -590,6 +590,42 @@ describe("Pairing", function()
 			assert.are.same({ direct, false }, decided)
 		end)
 
+		-- No Trace has a Paladin player in a group, so this frame is built after
+		-- the Brand Proc's: a group mate's Fire Hit comes first in the frame of
+		-- a Seal Proc, whose line comes just after the player's landed swing
+		-- line. casts are the player's casts before it.
+		local SEAL_OF_RIGHTEOUSNESS, SEAL_OF_LIGHT = 21084, 20165
+		local function sealProcFrame(class, casts)
+			local swing = line(5, "swing")
+			local rival, direct, proc = hit(5.03, "nameplate2", FIRE), line(5.03, "direct"), hit(5.03, "nameplate1", 2)
+			local records = casts
+			for _, record in ipairs({ swing, rival, direct, proc }) do
+				records[#records + 1] = record
+			end
+			local decided = pair(records, nil, class)
+			return { decided[rival.entry], decided[proc.entry] }, direct.entry
+		end
+
+		it("gives a Paladin's direct line just after their landed swing line to a Holy Hit, with a Seal that procs", function()
+			local decided, direct = sealProcFrame("PALADIN", { cast(1, SEAL_OF_RIGHTEOUSNESS) })
+			assert.are.same({ false, direct }, decided)
+		end)
+
+		-- With no Seal Proc to come, the Hit could be a group mate's Holy Hit,
+		-- and the first Hit could be a Proc of the player's with no cast.
+		it("gives no Holy Hit the direct line after a Paladin's swing line with no Seal that procs", function()
+			for _, casts in ipairs({ {}, { cast(1, SEAL_OF_RIGHTEOUSNESS), cast(2, SEAL_OF_LIGHT) },
+				{ cast(-30, SEAL_OF_RIGHTEOUSNESS) } }) do
+				local decided, direct = sealProcFrame("PALADIN", casts)
+				assert.are.same({ direct, false }, decided)
+			end
+		end)
+
+		it("gives no Holy Hit the direct line after the swing line of another class", function()
+			local decided, direct = sealProcFrame("ROGUE", { cast(1, SEAL_OF_RIGHTEOUSNESS) })
+			assert.are.same({ direct, false }, decided)
+		end)
+
 		-- The pet's cast of Lash of Pain, which can make a Brand Proc on its
 		-- Hit's mob.
 		local function lashCast(time)
