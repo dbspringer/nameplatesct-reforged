@@ -650,7 +650,7 @@ describe("Flow", function()
 	-- could win, Lash of Pain showed no icon; and before a Brand Proc after a
 	-- Lash of Pain Hit had a rule, 35 more showed none; and while a Brand Proc
 	-- that a cast of the player's fit too got a stack, 6 more showed none. Now
-	-- 285 Brand Procs show Demonic Brand, 61 Lash of Pain Hits show theirs, and
+	-- 286 Brand Procs show Demonic Brand, 61 Lash of Pain Hits show theirs, and
 	-- no icon is wrong.
 	it("shows Demonic Brand on Brand Procs and Lash of Pain on its Hits, and leaves Shadow Bolt its own", function()
 		local DEMONIC_BRAND, LASH_OF_PAIN = 1293697, 11778
