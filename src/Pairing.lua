@@ -668,7 +668,8 @@ function Pairing.New(options)
 		end
 		for i = first, #later do
 			local other = later[i]
-			if other.entry > line.entry and not OWN_UNITS[other.unit] and suits(other, line) then
+			if other.entry > line.entry and not OWN_UNITS[other.unit] and not isZeroWound(other)
+				and not isOthersHeal(other) and suits(other, line) then
 				return true
 			end
 		end
@@ -685,11 +686,12 @@ function Pairing.New(options)
 		if isShotLine(line) then
 			return false
 		end
-		-- A direct line that the Hit leaves to a Hit with a fitting cast is not
-		-- one it could take (warlock-zf hit 37310).
+		-- A direct line that the Hit leaves to a Hit with a fitting cast, or to
+		-- a Hit after the line, is not one it could take (warlock-zf hit 37310).
 		for _, other in ipairs(lines) do
 			if ns.LineKind.Group(other.lineKind) ~= "tick" and not isShotLine(other)
 				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other)
+				and not leavesLineToHitAfter(hit, other, later, first)
 				and not leavesDirectLine(hit, other, lines, later, first) then
 				return true
 			end

@@ -658,6 +658,23 @@ describe("Pairing", function()
 			end)
 		end
 
+		it("keeps a direct line on the Hit before it when the only Hit after it is a zero WOUND", function()
+			local mob = {}
+			local first, direct, zero = hitOn(5, mob, SHADOW), line(5, "direct"), hitOn(5, mob, SHADOW)
+			zero.amount = 0
+			local decided = pair({ first, direct, zero })
+			assert.are.equal(direct.entry, decided[first.entry])
+		end)
+
+		it("gives a tick line to the Hit of its school when a later Hit takes the frame's direct line", function()
+			local mob = {}
+			local rival, direct, tickLine = hitOn(5, mob, 1), line(5, "direct"), line(5, "tick")
+			local fire, shadow = hitOn(5, mob, FIRE), hitOn(5, mob, SHADOW)
+			local decided = pair({ cast(0, CORRUPTION), rival, direct, tickLine, fire, shadow })
+			assert.are.same({ false, direct.entry, tickLine.entry },
+				{ decided[rival.entry], decided[fire.entry], decided[shadow.entry] })
+		end)
+
 		it("leaves a direct line to a Hit of another school when the Hits of the cast's school are fewer than the lines", function()
 			local mob = {}
 			local bolt = cast(4, SHADOW_BOLT)
