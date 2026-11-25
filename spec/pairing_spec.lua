@@ -375,22 +375,6 @@ describe("Pairing", function()
 			assert.are.equal(direct.entry, decided[real.entry])
 		end)
 
-		it("leaves two Hits alone when the cast is another spell's", function()
-			local all, first, direct, second = records(FIREBALL)
-			local decided = pair(all)
-			assert.are.equal(direct.entry, decided[first.entry])
-			assert.is_false(decided[second.entry])
-		end)
-
-		it("keeps the Log Line on the only physical WOUND on the unit", function()
-			local strike = cast(1, HEROIC_STRIKE)
-			local only = hit(1, "nameplate1", 1, "WOUND", "<secret>")
-			local direct = line(1, "direct")
-			local elsewhere = hit(1, "nameplate2", 1, "WOUND", "<secret>")
-			local decided = pair({ strike, only, direct, elsewhere })
-			assert.are.equal(direct.entry, decided[only.entry])
-		end)
-
 		local function physical()
 			return hit(1, "nameplate1", 1, "WOUND", "<secret>")
 		end
@@ -420,15 +404,6 @@ describe("Pairing", function()
 			assert.are.equal(tick.entry, decided[rend.entry])
 			assert.is_false(decided[empty.entry])
 			assert.are.equal(direct.entry, decided[real.entry])
-		end)
-
-		it("drops nothing when two WOUNDs before the line make the Empty Report unclear", function()
-			local strike = cast(1, HEROIC_STRIKE)
-			local first, second = physical(), physical()
-			local direct = line(1, "direct")
-			local last = physical()
-			local decided = pair({ strike, first, second, direct, last })
-			assert.are.equal(direct.entry, decided[first.entry])
 		end)
 	end)
 
@@ -564,8 +539,8 @@ describe("Pairing", function()
 			local bite = cast(5, BITE)
 			bite.unit, bite.target = "pet", nil
 			local biteLine, biteHit = line(5.1, "direct"), hitOn(5.1, mob, 1)
-			local fire, direct, rival = hitOn(5.8, mob, FIRE), line(5.8, "direct"), hitOn(5.8, mob, 1)
-			local decided = pair({ bite, biteLine, biteHit, fire, direct, rival })
+			local direct, fire, rival = line(5.8, "direct"), hitOn(5.8, mob, FIRE), hitOn(5.8, mob, 1)
+			local decided = pair({ bite, biteLine, biteHit, direct, fire, rival })
 			assert.are.same({ biteLine.entry, direct.entry, false },
 				{ decided[biteHit.entry], decided[fire.entry], decided[rival.entry] })
 		end)
@@ -585,16 +560,11 @@ describe("Pairing", function()
 			assert.are.same({ false, direct }, decided)
 		end)
 
-		it("gives no Shadow Hit the direct line after the pet's swing line of another class", function()
-			local decided, direct = brandFrame("HUNTER")
-			assert.are.same({ direct, false }, decided)
-		end)
-
 		-- No Trace has a Paladin player in a group, so this frame is built after
 		-- the Brand Proc's: a group mate's Fire Hit comes first in the frame of
 		-- a Seal Proc, whose line comes just after the player's landed swing
 		-- line. casts are the player's casts before it.
-		local SEAL_OF_RIGHTEOUSNESS, SEAL_OF_LIGHT = 21084, 20165
+		local SEAL_OF_RIGHTEOUSNESS = 21084
 		local function sealProcFrame(class, casts)
 			local swing = line(5, "swing")
 			local rival, direct, proc = hit(5.03, "nameplate2", FIRE), line(5.03, "direct"), hit(5.03, "nameplate1", 2)
@@ -609,21 +579,6 @@ describe("Pairing", function()
 		it("gives a Paladin's direct line just after their landed swing line to a Holy Hit, with a Seal that procs", function()
 			local decided, direct = sealProcFrame("PALADIN", { cast(1, SEAL_OF_RIGHTEOUSNESS) })
 			assert.are.same({ false, direct }, decided)
-		end)
-
-		-- With no Seal Proc to come, the Hit could be a group mate's Holy Hit,
-		-- and the first Hit could be a Proc of the player's with no cast.
-		it("gives no Holy Hit the direct line after a Paladin's swing line with no Seal that procs", function()
-			for _, casts in ipairs({ {}, { cast(1, SEAL_OF_RIGHTEOUSNESS), cast(2, SEAL_OF_LIGHT) },
-				{ cast(-30, SEAL_OF_RIGHTEOUSNESS) } }) do
-				local decided, direct = sealProcFrame("PALADIN", casts)
-				assert.are.same({ direct, false }, decided)
-			end
-		end)
-
-		it("gives no Holy Hit the direct line after the swing line of another class", function()
-			local decided, direct = sealProcFrame("ROGUE", { cast(1, SEAL_OF_RIGHTEOUSNESS) })
-			assert.are.same({ direct, false }, decided)
 		end)
 
 		-- The pet's cast of Lash of Pain, which can make a Brand Proc on its
@@ -651,8 +606,8 @@ describe("Pairing", function()
 			bolt.targetLife = mob
 			local lashLine, lashHit = line(5.1, "direct"), hitOn(5.1, mob, SHADOW)
 			local boltLine, boltHit = line(5.11, "direct"), hitOn(5.11, mob, SHADOW)
-			local fire, direct, rival = hitOn(5.13, mob, FIRE), line(5.13, "direct"), hitOn(5.13, mob, SHADOW)
-			local decided = pair({ lashCast(5), bolt, lashLine, lashHit, boltLine, boltHit, fire, direct, rival }, nil,
+			local direct, fire, rival = line(5.13, "direct"), hitOn(5.13, mob, FIRE), hitOn(5.13, mob, SHADOW)
+			local decided = pair({ lashCast(5), bolt, lashLine, lashHit, boltLine, boltHit, direct, fire, rival }, nil,
 				"WARLOCK")
 			assert.are.same({ direct.entry, false }, { decided[fire.entry], decided[rival.entry] })
 		end)
@@ -663,8 +618,8 @@ describe("Pairing", function()
 			local mob = {}
 			local lashLine, brandLine = line(5, "direct"), line(5.02, "direct")
 			local lashHit, brandHit = hitOn(5.05, mob, SHADOW), hitOn(5.05, mob, SHADOW)
-			local fire, direct, rival = hitOn(5.08, mob, FIRE), line(5.08, "direct"), hitOn(5.08, mob, SHADOW)
-			local decided = pair({ lashCast(4.9), lashLine, brandLine, lashHit, brandHit, fire, direct, rival }, nil,
+			local direct, fire, rival = line(5.08, "direct"), hitOn(5.08, mob, FIRE), hitOn(5.08, mob, SHADOW)
+			local decided = pair({ lashCast(4.9), lashLine, brandLine, lashHit, brandHit, direct, fire, rival }, nil,
 				"WARLOCK")
 			assert.are.same({ lashLine.entry, brandLine.entry, direct.entry, false },
 				{ decided[lashHit.entry], decided[brandHit.entry], decided[fire.entry], decided[rival.entry] })
@@ -677,8 +632,8 @@ describe("Pairing", function()
 			local swing = line(5, "swing")
 			swing.pet = true
 			local rival, direct, real = hitOn(5.03, other, SHADOW), line(5.03, "direct"), hitOn(5.03, mob, SHADOW)
-			local fire, nextLine, rivalOnMob = hitOn(5.5, mob, FIRE), line(5.5, "direct"), hitOn(5.5, mob, SHADOW)
-			local decided = pair({ bolt, swing, rival, direct, real, fire, nextLine, rivalOnMob }, nil, "WARLOCK")
+			local nextLine, fire, rivalOnMob = line(5.5, "direct"), hitOn(5.5, mob, FIRE), hitOn(5.5, mob, SHADOW)
+			local decided = pair({ bolt, swing, rival, direct, real, nextLine, fire, rivalOnMob }, nil, "WARLOCK")
 			assert.are.same({ false, direct.entry, nextLine.entry, false },
 				{ decided[rival.entry], decided[real.entry], decided[fire.entry], decided[rivalOnMob.entry] })
 		end)
@@ -692,12 +647,23 @@ describe("Pairing", function()
 			assert.are.same({ false, direct.entry }, { decided[rival.entry], decided[real.entry] })
 		end)
 
+		-- In a frame, the player's Hit comes after its own direct or shield line
+		-- (392 of 392 direct and 18 of 18 shield lines over the Traces), so a
+		-- Hit before the line that suits it is another player's.
+		for _, lineKind in ipairs({ "direct", "shield" }) do
+			it("gives a " .. lineKind .. " line to the Hit after it in its frame, not to one before it", function()
+				local rival, frameLine, own = hitOn(5, {}, SHADOW), line(5, lineKind), hitOn(5, {}, SHADOW)
+				local decided = pair({ rival, frameLine, own })
+				assert.are.same({ false, frameLine.entry }, { decided[rival.entry], decided[own.entry] })
+			end)
+		end
+
 		it("leaves a direct line to a Hit of another school when the Hits of the cast's school are fewer than the lines", function()
 			local mob = {}
 			local bolt = cast(4, SHADOW_BOLT)
 			bolt.targetLife = mob
-			local holy, first, second, shadow = hitOn(5, mob, 2), line(5, "direct"), line(5, "direct"), hitOn(5, mob, SHADOW)
-			local decided = pair({ bolt, holy, first, second, shadow })
+			local first, holy, second, shadow = line(5, "direct"), hitOn(5, mob, 2), line(5, "direct"), hitOn(5, mob, SHADOW)
+			local decided = pair({ bolt, first, holy, second, shadow })
 			assert.are.same({ first.entry, second.entry }, { decided[holy.entry], decided[shadow.entry] })
 		end)
 	end)

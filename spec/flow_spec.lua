@@ -709,6 +709,32 @@ describe("Flow", function()
 		end
 	end)
 
+	-- warlock-maraudon is a Maraudon run in a party (2026-11-25), a Warlock with
+	-- an Imp's Fire Shield and a party Paladin's Retribution Aura. Twice a mob
+	-- hit the player and another mob of the same kind hit a group mate with the
+	-- same shields, for the same amounts. Entry order in each frame: plate 11's
+	-- Fire and Holy Hits, the player's Fire Shield line, plate 13's Fire Hit,
+	-- the Retribution Aura line, plate 13's Holy Hit. The Combat Log File puts
+	-- both of the player's shield lines on one creature, which other Hits show
+	-- is plate 13's mob. The Labels are unsure there, so this lists the Hits.
+	it("gives a group's shield lines to the Hits after them, on the mob that hit the player", function()
+		local trace = assert(Trace.Load("spec/traces/warlock-maraudon.lua"))
+		local shown = {}
+		for _, result in ipairs(run(trace.entries, trace.header.class)) do
+			shown[result.hit.entry] = true
+		end
+		local function shownOf(entries)
+			local list = {}
+			for i, entry in ipairs(entries) do
+				list[i] = shown[entry] == true
+			end
+			return list
+		end
+		-- Plate 11's Fire and Holy Hits, then plate 13's, in each frame.
+		assert.are.same({ false, false, true, true }, shownOf({ 32524, 32525, 32528, 32530 }))
+		assert.are.same({ false, false, true, true }, shownOf({ 32634, 32635, 32638, 32640 }))
+	end)
+
 	-- Hellfire is a channel whose ticks hit the mobs near you as direct hits of
 	-- another spell ID, and also burn you, with a tick line in their frame.
 	-- Before it was an area spell, its Hits showed no icon; and before the

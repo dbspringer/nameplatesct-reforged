@@ -1,5 +1,9 @@
 # Changelog
 
+## 15
+
+- In groups, more of your numbers show, like your damage shield's hits (Fire Shield, Retribution Aura) and Demonic Brand. Before, another player's hit at the same moment could show in their place.
+
 ## 14
 
 - In groups, your spells and your pet's (like a Hunter pet's Bite) show their numbers more often. Before, another player's hit of a different school at the same moment could show in place of yours.

@@ -656,8 +656,27 @@ function Pairing.New(options)
 		return waiting >= left
 	end
 
+	-- In a frame, the player's Hit comes after its own direct or shield line:
+	-- 392 of 392 direct and 18 of 18 shield lines over the Traces, where the
+	-- Combat Log File told the Hit. So a Hit before such a line leaves it to a
+	-- later Hit of the frame that suits it (warlock-zf Retribution Aura and
+	-- Brand Procs, warlock-maraudon hits 32528 and 32530). Not for shot
+	-- lines: there the same rule made 13 of 16 changed Hits worse.
+	local function leavesLineToHitAfter(hit, line, later, first)
+		if (line.lineKind ~= "direct" and line.lineKind ~= "shield") or hit.entry > line.entry then
+			return false
+		end
+		for i = first, #later do
+			local other = later[i]
+			if other.entry > line.entry and not OWN_UNITS[other.unit] and suits(other, line) then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function takesFromFrame(hit, line, lines, later, first)
-		if leavesDirectLine(hit, line, lines, later, first) then
+		if leavesLineToHitAfter(hit, line, later, first) or leavesDirectLine(hit, line, lines, later, first) then
 			return false
 		end
 		if not schoolIs(hit, line, false) then
