@@ -35,8 +35,37 @@ Trace.POSSIBLE_WRONG = {}
 -- The Log Filter's source flags for "my pet" (COMBATLOG_FILTER_MY_PET).
 Trace.FILTER_MY_PET = 0x3111
 
+-- A Trace holds each secret value as this placeholder (see src/Recorder.lua).
+Trace.SECRET = "<secret>"
+
+-- How long after a Hit its file event can come.
+Trace.LATEST = 0.1
+
 function Trace.HasFlag(flags, flag)
 	return math.floor(flags / flag) % 2 == 1
+end
+
+-- Whether a Combat Log File token is a GUID: an empty one, or one with a type.
+function Trace.IsGuid(token)
+	return token == "0000000000000000" or (token or ""):find("^%a+%-%d+%-") ~= nil
+end
+
+-- Who a Combat Log File unit is to the player: "you", "pet", "creature", or
+-- "other".
+function Trace.WhoIs(guid, flags)
+	if flags and Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_AFFILIATION_MINE) then
+		if Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PLAYER) then
+			return "you"
+		end
+		if Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PET)
+			or Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN) then
+			return "pet"
+		end
+	end
+	if guid and (guid:find("^Creature%-") or guid:find("^Vehicle%-")) then
+		return "creature"
+	end
+	return "other"
 end
 
 -- Returns NameplateSCTReforgedTraces from a Trace file, or nil and a message.

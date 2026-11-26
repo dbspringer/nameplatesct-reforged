@@ -155,13 +155,24 @@ local function sentEvents(filter)
 			end
 		end
 	end
+	-- Each "_" in a key ends a prefix that can be a sent event's name. This
+	-- runs for every Log Line (see LogFilter.Reading), so it looks up each
+	-- prefix rather than compare each key with each sent event.
+	local function hasSentPrefix(key)
+		local at = key:find("_", 1, true)
+		while at do
+			if sent[key:sub(1, at - 1)] then
+				return true
+			end
+			at = key:find("_", at + 1, true)
+		end
+		return false
+	end
 	local suffixed = {}
 	for _, keys in ipairs({ filter.colors.eventColoring, filter.colors.highlightedEvents }) do
 		for key in pairs(type(keys) == "table" and keys or {}) do
-			for event in pairs(sent) do
-				if type(key) == "string" and key:sub(1, #event + 1) == event .. "_" then
-					suffixed[key] = true
-				end
+			if type(key) == "string" and hasSentPrefix(key) then
+				suffixed[key] = true
 			end
 		end
 	end
@@ -171,15 +182,17 @@ local function sentEvents(filter)
 	return sent
 end
 
+-- A highlighted event's line colour: brighter, at most white.
+function LineKind.Highlighted(colour)
+	return { r = math.min(colour.r * HIGHLIGHT, 1), g = math.min(colour.g * HIGHLIGHT, 1),
+		b = math.min(colour.b * HIGHLIGHT, 1) }
+end
+
 -- The colour of a saved filter's event lines: its own, or Blizzard's grey;
 -- and brighter when the filter highlights it.
 local function shownColour(colors, highlighted, event)
 	local colour = savedColour(colors.eventColoring, event) or UNCOLOURED
-	if not highlighted[event] then
-		return colour
-	end
-	return { r = math.min(colour.r * HIGHLIGHT, 1), g = math.min(colour.g * HIGHLIGHT, 1),
-		b = math.min(colour.b * HIGHLIGHT, 1) }
+	return highlighted[event] and LineKind.Highlighted(colour) or colour
 end
 
 -- Whether the lines of an event of no Line Kind come within APART of a kind's
