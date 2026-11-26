@@ -141,7 +141,7 @@ A Label that a person checked against the Combat Log File.
 _Avoid_: Verified label, clean label
 
 **Sure Label**:
-A Label that no person checked, for a Hit that exactly one event in the Combat Log File fits. When the Hit has a Secret Amount, the amount is the one thing not proven. It tells the spell of the Hit. It can be wrong where two units take like Hits at one time, and for a swing, whose event comes one Swing Delay before its Hit.
+A Label that no person checked, for a Hit that the label script gave one event of the Combat Log File with no doubt, or with no doubt but that the Hit has a Secret Amount, which no event can prove. It tells the spell of the Hit. It can be wrong where two units take like Hits at one time, and for a swing, whose event comes one Swing Delay before its Hit.
 _Avoid_: Unchecked label, unsure label, secret-amount label
 
 **Combat Log File**:

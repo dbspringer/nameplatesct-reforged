@@ -72,8 +72,9 @@ end
 
 -- Whether a test can use this row of a Labels file: it is a Checked Label or
 -- a Sure Label. The label script marks a row unsure for its secret amount
--- only when nothing else about it is unsure, so exactly one file event fits.
--- Such a row tells the Hit's spell. For a swing it favours a rival, whose
+-- only when nothing else about it is unsure: one file event was left for the
+-- Hit, though it can be the one left after other Hits took theirs. Such a
+-- row tells the Hit's spell. For a swing it favours a rival, whose
 -- event is nearer the Hit than the swing's own, one Swing Delay before.
 function Trace.IsSure(row)
 	return row.unsure == nil or row.unsure == "secret amount"
