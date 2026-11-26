@@ -445,20 +445,23 @@ local SWEEPING_STRIKES, SWEEPING_STRIKES_DURATION = 12292, 10
 local function newDeepWoundsTracker()
 	-- By plate, the time of the latest Physical Hit with no cast.
 	local lastBleed = setmetatable({}, { __mode = "k" })
-	-- The time of the player's latest Sweeping Strikes cast.
+	-- The time of the player's latest cast that can be Sweeping Strikes: its
+	-- own, or one whose spell ID is secret.
 	local sweeping
 
 	local tracker = {}
 
-	function tracker.Cast(spellID, time)
-		if spellID == SWEEPING_STRIKES then
+	function tracker.Cast(spellID, time, secret)
+		if secret or spellID == SWEEPING_STRIKES then
 			sweeping = time
 		end
 	end
 
 	-- Deep Wounds for a Physical Hit with no cast on this plate, or nil.
-	-- direct says it came on a direct line, as Sweeping Strikes' Hits do.
-	function tracker.ProcSpell(hit, plate, direct)
+	-- direct says it came on a direct line, as Sweeping Strikes' Hits do, and
+	-- startedAt is when Identity started: a Sweeping Strikes cast before it,
+	-- as before a /reload, is unseen.
+	function tracker.ProcSpell(hit, plate, direct, startedAt)
 		-- A held Hit decided after a newer one on its plate keeps the rhythm
 		-- on the newer one, and gets none.
 		local last = lastBleed[plate]
@@ -466,7 +469,8 @@ local function newDeepWoundsTracker()
 			return nil
 		end
 		lastBleed[plate] = hit.time
-		if direct and sweeping and hit.time >= sweeping and hit.time - sweeping <= SWEEPING_STRIKES_DURATION then
+		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION
+			or sweeping and hit.time >= sweeping and hit.time - sweeping <= SWEEPING_STRIKES_DURATION) then
 			return nil
 		end
 		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
@@ -1236,8 +1240,8 @@ function Identity.New(saved, class)
 		local secret = issecretvalue(record.spellID)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
-			if deepWounds and not secret then
-				deepWounds.Cast(record.spellID, record.time)
+			if deepWounds then
+				deepWounds.Cast(not secret and record.spellID or nil, record.time, secret)
 			end
 		end
 		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
@@ -1323,7 +1327,7 @@ function Identity.New(saved, class)
 			if spellID or possible or not deepWounds or school ~= SCHOOL_PHYSICAL or physicalDotRuns(hit) then
 				return spellID, possible
 			end
-			return deepWounds.ProcSpell(hit, plate, false)
+			return deepWounds.ProcSpell(hit, plate, false, startedAt)
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
@@ -1334,7 +1338,7 @@ function Identity.New(saved, class)
 		if deepWounds and group == "direct" and not miss and school == SCHOOL_PHYSICAL then
 			local fittingCasts = castsFitting(hit, group, school)
 			if #fittingCasts == 0 then
-				return deepWounds.ProcSpell(hit, plate, true)
+				return deepWounds.ProcSpell(hit, plate, true, startedAt)
 			end
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
