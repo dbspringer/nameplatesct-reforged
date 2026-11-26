@@ -452,18 +452,21 @@ local function newDeepWoundsTracker()
 
 	local tracker = {}
 
-	function tracker.Cast(spellID, time, secret)
+	-- record is the cast record, with its time and entry.
+	function tracker.Cast(spellID, record, secret)
 		if secret or spellID == SWEEPING_STRIKES then
-			while sweepings[1] and time - sweepings[1] > SWEEPING_STRIKES_DURATION + DECIDE_LATE do
+			while sweepings[1] and record.time - sweepings[1].time > SWEEPING_STRIKES_DURATION + DECIDE_LATE do
 				table.remove(sweepings, 1)
 			end
-			sweepings[#sweepings + 1] = time
+			sweepings[#sweepings + 1] = { time = record.time, entry = record.entry }
 		end
 	end
 
-	local function sweepingAt(time)
+	-- A cast in the Hit's frame that came after it, as Flow can give a cast
+	-- before it decides an earlier Hit, does not count.
+	local function sweepingAt(hit)
 		for _, cast in ipairs(sweepings) do
-			if time >= cast and time - cast <= SWEEPING_STRIKES_DURATION then
+			if cameBefore(cast, hit) and hit.time - cast.time <= SWEEPING_STRIKES_DURATION then
 				return true
 			end
 		end
@@ -486,7 +489,7 @@ local function newDeepWoundsTracker()
 		if blocked then
 			return nil
 		end
-		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION or sweepingAt(hit.time)) then
+		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION or sweepingAt(hit)) then
 			return nil
 		end
 		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
@@ -839,6 +842,8 @@ function Identity.New(saved, class, startedAt)
 			found.units = (found.units or 0) + 1
 		end
 		found.hitUnits[plate] = (found.hitUnits[plate] or 0) + 1
+		found.lastHits = found.lastHits or {}
+		found.lastHits[plate] = hit.time
 		-- A cast whose spell ID is secret competes but never wins. The pet's
 		-- casts win as the player's do, since Your Hit is the pet's too.
 		if found.secret then
@@ -1277,10 +1282,11 @@ function Identity.New(saved, class, startedAt)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
 			if deepWounds then
-				deepWounds.Cast(not secret and record.spellID or nil, record.time, secret)
+				deepWounds.Cast(not secret and record.spellID or nil, record, secret)
 			end
 		end
-		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
+		local cast = { time = record.time, entry = record.entry, spellID = not secret and record.spellID or nil,
+			unit = record.unit,
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
 			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
@@ -1321,7 +1327,8 @@ function Identity.New(saved, class, startedAt)
 	end
 
 	-- Whether a used cast in its window could still have made this Hit on
-	-- this plate: a Hit on another unit took it. A castless Hit can take a
+	-- this plate: a Hit on another unit took it, or one on this unit in this
+	-- frame, which could be the castless one. A castless Hit can take a
 	-- strike's cast before the strike lands. A cast's plate is the player's
 	-- target as it started, which need not be the unit it hit, so it does
 	-- not count.
@@ -1330,7 +1337,7 @@ function Identity.New(saved, class, startedAt)
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local known = not cast.secret and schoolOf(cast.spellID)
-			if cast.used and not (cast.hitUnits and cast.hitUnits[plate]) and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
+			if cast.used and not (cast.hitUnits and cast.hitUnits[plate] and cast.lastHits[plate] ~= hit.time) and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
 				and not (known and known ~= school) then
 				return true
 			end
@@ -1350,9 +1357,8 @@ function Identity.New(saved, class, startedAt)
 		for _, cast in ipairs(dotCasts) do
 			local spell = cast.spellID and ns.TickSpells[cast.spellID]
 			local runs = spell and spell.duration or LONGEST_DOT
-			local since = hit.time - cast.time
-			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL) and not cast.missed
-				and since >= 0 and since <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
+			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL) and not cast.missed and cameBefore(cast, hit)
+				and hit.time - cast.time <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
 				return true
 			end
 		end
