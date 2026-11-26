@@ -1788,7 +1788,7 @@ describe("Spell Identity", function()
 				if not carryFacts then
 					facts = {}
 				end
-				local trace, labels = Trace.LoadChecked(name)
+				local trace, labels = Trace.LoadLabelled(name)
 				local spellOf = {}
 				for _, row in ipairs(labels) do
 					spellOf[row.hit] = row.spell

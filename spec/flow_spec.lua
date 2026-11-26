@@ -473,6 +473,22 @@ describe("Flow", function()
 		assert.is_true(entries[22])
 	end)
 
+	-- A live Druid among several mobs. Twice another unit's Hit on another
+	-- Nameplate came between a swing line and the swing's Hit: entry 69 at
+	-- 0.367 s after the line and the real Hit (70) at 0.617 s, then entry 168
+	-- at 0.333 s and the real Hit (169) at 0.450 s. Both rivals come off this
+	-- Druid's Swing Delays (0.45 s and 0.62 s). Without learned Swing Delays
+	-- each rival took the line.
+	it("gives a swing line to the Hit on the Druid's Swing Delay, not to a rival's Hit before it", function()
+		local trace = assert(Trace.Load("spec/traces/druid-weapon-swap.lua"))
+		local kindOf = {}
+		for _, result in ipairs((run(trace.entries))) do
+			kindOf[result.hit.entry] = result.lineKind
+		end
+		assert.are.same({ "none", "swing", "none", "swing" }, { kindOf[69] or "none", kindOf[70] or "none",
+			kindOf[168] or "none", kindOf[169] or "none" })
+	end)
+
 	-- Unit A's Nameplate hid, and its token and frame now show unit B. A's late
 	-- report comes in B's Heroic Strike frame. No Trace has this order. A's Hit
 	-- can still take the frame's line, so B's real Hit may show nothing, but B's
@@ -516,7 +532,7 @@ describe("Flow", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("shows exactly the Hits on an enemy Nameplate whose Label has a Log Line in " .. name, function()
-				local trace, labels = Trace.LoadChecked(name)
+				local trace, labels = Trace.LoadLabelled(name)
 				local unitOf = {}
 				for _, hit in ipairs((Label.Adapt(trace))) do
 					unitOf[hit.entry] = hit.unit
@@ -552,7 +568,7 @@ describe("Flow", function()
 		it("tells the player's swings from the pet's, as the Combat Log File does", function()
 			local seen, wrong = { you = 0, pet = 0 }, {}
 			for _, name in ipairs(Trace.NAMES) do
-				local trace, labels = Trace.LoadChecked(name)
+				local trace, labels = Trace.LoadLabelled(name)
 				local _, _, eventAt = Label.Make(trace, Trace.LoadLog(name))
 				local lineOf = {}
 				for _, row in ipairs(labels) do
@@ -620,13 +636,8 @@ describe("Flow", function()
 	-- such ticks showed another DoT's icon and 772 ticks showed an icon; now
 	-- none and 811.
 	it("keeps every DoT's icon on its own mob through a dungeon run", function()
-		local trace, labels = Trace.LoadChecked("warlock-sm-armory")
-		local spellOf = {}
-		for _, row in ipairs(labels) do
-			if row.unsure == "secret amount" then
-				spellOf[row.hit] = row.spell
-			end
-		end
+		local trace, labels = Trace.LoadLabelled("warlock-sm-armory")
+		local spellOf = Trace.SureSpells(labels)
 		local icons, wrong = 0, {}
 		for _, result in ipairs(run(trace.entries)) do
 			if result.lineKind == "tick" and result.spellID then
@@ -654,13 +665,8 @@ describe("Flow", function()
 	-- no icon is wrong.
 	it("shows Demonic Brand on Brand Procs and Lash of Pain on its Hits, and leaves Shadow Bolt its own", function()
 		local DEMONIC_BRAND, LASH_OF_PAIN = 1293697, 11778
-		local trace, labels = Trace.LoadChecked("warlock-zf")
-		local spellOf = {}
-		for _, row in ipairs(labels) do
-			if row.unsure == "secret amount" then
-				spellOf[row.hit] = row.spell
-			end
-		end
+		local trace, labels = Trace.LoadLabelled("warlock-zf")
+		local spellOf = Trace.SureSpells(labels)
 		local brands, lashes, wrong = 0, 0, {}
 		for _, result in ipairs(run(trace.entries, trace.header.class)) do
 			local spell = spellOf[result.hit.entry]
@@ -679,23 +685,30 @@ describe("Flow", function()
 	-- In a group, another player's Hit of another school can come first in the
 	-- frame of the player's or the pet's direct spell. Before a direct line went
 	-- first to a Hit with a recent cast's school, it took the line, and the
-	-- real Hit showed nothing. Over the rows that are sure or unsure only for
-	-- their secret amount, wrong and missing were 47 and 127 in warlock-rfk,
+	-- real Hit showed nothing. Over the Checked and Sure Labels, wrong and missing were 47 and 127 in warlock-rfk,
 	-- and 70 and 98 in warlock-zf. A Brand Proc has no cast, so for a Warlock
 	-- the pet's landed swing line counts as one: before that, zf was at 66 and
 	-- 94. The pet's spell Hit counts too: before that, 60 and 87. Hellfire's
-	-- Hits count as an area spell's: before that, zf was at 60 and 85.
+	-- Hits count as an area spell's: before that, zf was at 60 and 85. With the
+	-- line-order rule zf is at 49 and 72, and warlock-maraudon, a party run
+	-- with an Imp, at 31 and 62. warlock-open-world-2 is a busy open-world
+	-- fight on the beta, where GUIDs and amounts are public, so 846 of its
+	-- 1,090 Labels are not unsure, and those count here: 18 and 13. The replay
+	-- is the same on each run, so each floor is the count itself, and one
+	-- more wrong or missing Hit fails it.
 	it("gives a direct line to the Hit with its cast's school in a group", function()
-		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 55, 81 } }
+		local floors = { ["warlock-rfk"] = { 41, 123 }, ["warlock-zf"] = { 49, 72 }, ["warlock-maraudon"] = { 31, 62 },
+			["warlock-open-world-2"] = { 18, 13 } }
 		for name, floor in pairs(floors) do
-			local trace, labels = Trace.LoadChecked(name)
+			local trace, labels = Trace.LoadLabelled(name)
 			local shown = {}
 			for _, result in ipairs(run(trace.entries, trace.header.class)) do
 				shown[result.hit.entry] = true
 			end
-			local wrong, missing = 0, 0
+			local wrong, missing, sure = 0, 0, 0
 			for _, row in ipairs(labels) do
-				if row.unsure == nil or row.unsure == "secret amount" then
+				if Trace.IsSure(row) then
+					sure = sure + 1
 					local unit = tostring(trace.entries[row.hit][3])
 					if shown[row.hit] and not row.line then
 						wrong = wrong + 1
@@ -704,6 +717,7 @@ describe("Flow", function()
 					end
 				end
 			end
+			assert.is_true(sure > 0, name .. " has no Checked or Sure Label")
 			assert.is_true(wrong <= floor[1], ("%s: %d wrong"):format(name, wrong))
 			assert.is_true(missing <= floor[2], ("%s: %d missing"):format(name, missing))
 		end
@@ -746,12 +760,11 @@ describe("Flow", function()
 		local HELLFIRE = { [1949] = true, [11683] = true }
 		local icons, wrong = 0, {}
 		for _, name in ipairs({ "warlock-zf", "warlock-sm-armory" }) do
-			local trace, labels = Trace.LoadChecked(name)
+			local trace, labels = Trace.LoadLabelled(name)
 			local spellOf = {}
 			for _, row in ipairs(labels) do
 				local unit = tostring(trace.entries[row.hit][3])
-				if HELLFIRE[row.spell] and (row.unsure == nil or row.unsure == "secret amount")
-					and unit:match("^nameplate%d+$") then
+				if HELLFIRE[row.spell] and Trace.IsSure(row) and unit:match("^nameplate%d+$") then
 					spellOf[row.hit] = row.spell
 				end
 			end
@@ -777,13 +790,8 @@ describe("Flow", function()
 	-- its Nameplate showed again at 48.9 s.
 	it("shows Wrack's icon on Wrack's ticks, and no wrong icon", function()
 		local WRACK = 1316697
-		local trace, labels = Trace.LoadChecked("warlock-wrack")
-		local spellOf = {}
-		for _, row in ipairs(labels) do
-			if row.unsure == "secret amount" then
-				spellOf[row.hit] = row.spell
-			end
-		end
+		local trace, labels = Trace.LoadLabelled("warlock-wrack")
+		local spellOf = Trace.SureSpells(labels)
 		local wrack, wrong = 0, {}
 		for _, result in ipairs(run(trace.entries)) do
 			local spell = spellOf[result.hit.entry]

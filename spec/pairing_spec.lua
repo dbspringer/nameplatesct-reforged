@@ -980,7 +980,7 @@ describe("Pairing", function()
 	describe("on the Warlock Traces", function()
 		for _, name in ipairs(Trace.NAMES) do
 			it("gives every Hit in " .. name .. " the Log Line of its Label", function()
-				local trace, labels = Trace.LoadChecked(name)
+				local trace, labels = Trace.LoadLabelled(name)
 				local decided, lineOf = {}, {}
 				local pairing = Pairing.New({
 					onDecision = function(decidedHit, decidedLine)
