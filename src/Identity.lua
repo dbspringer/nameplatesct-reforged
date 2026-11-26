@@ -438,10 +438,10 @@ end
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- hitFrom, hitTo, hitUnits, missed, secret, lastTick, stopped, plate,
+	-- hitFrom, hitTo, hits, hitUnits, missed, secret, lastTick, stopped, plate,
 	-- hidden, unitKnown }. hitFrom and hitTo are the earliest and latest Hits
-	-- that took the cast, and hitUnits counts them by plate, for a multi-hit
-	-- spell. A cast whose spell ID is secret still competes, but never wins. lastTick is an area spell's last
+	-- that took the cast, hits counts them, and hitUnits counts them by plate,
+	-- for a multi-hit spell. A cast whose spell ID is secret still competes, but never wins. lastTick is an area spell's last
 	-- tick on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
 	-- keys of the units that were hidden at a cast with no plate, and
@@ -534,17 +534,21 @@ function Identity.New(saved, class)
 
 	-- Whether a cast can still explain this Hit: one that no Hit used up, or
 	-- a multi-hit spell's, while its Hits with this one span no more than its
-	-- spread, and it has Hits left on this unit. The span counts from the
-	-- earliest Hit, as a held Hit is decided late.
-	local function isOpen(cast, hit)
+	-- spread, and it has Hits left in all and on this unit. The span counts
+	-- from the earliest Hit, as a held Hit is decided late. A miss has no
+	-- school, so a castless proc's miss, such as a poison's, fits too: once
+	-- the cast has hit, a miss gets none.
+	local function isOpen(cast, hit, miss)
 		if not cast.used then
 			return true
 		end
 		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
-		if not (direct and direct.spread) or (cast.hitUnits[plateOf(hit)] or 0) >= (direct.perUnit or 1) then
+		local multi = direct and direct.multi
+		if miss or not multi or multi.most and cast.hits >= multi.most
+			or (cast.hitUnits[plateOf(hit)] or 0) >= multi.perUnit then
 			return false
 		end
-		return math.max(cast.hitTo, hit.time) - math.min(cast.hitFrom, hit.time) <= direct.spread
+		return math.max(cast.hitTo, hit.time) - math.min(cast.hitFrom, hit.time) <= multi.spread
 	end
 
 	-- The one cast that fits a direct hit or a shot by time and whose school
@@ -563,7 +567,7 @@ function Identity.New(saved, class)
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local window = direct and direct.window or groupWindow
-			if isOpen(cast, hit) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
+			if isOpen(cast, hit, miss) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
@@ -724,6 +728,7 @@ function Identity.New(saved, class)
 		found.used = true
 		found.hitFrom = math.min(found.hitFrom or hit.time, hit.time)
 		found.hitTo = math.max(found.hitTo or hit.time, hit.time)
+		found.hits = (found.hits or 0) + 1
 		found.hitUnits = found.hitUnits or {}
 		found.hitUnits[plate] = (found.hitUnits[plate] or 0) + 1
 		-- A cast whose spell ID is secret competes but never wins. The pet's
