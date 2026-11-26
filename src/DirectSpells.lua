@@ -48,6 +48,14 @@ local function shoots(school, ids)
 	addSpell({ school = school, shot = true }, ids)
 end
 
+-- Whether the spell is a Physical Shot's: a ranged attack that is not a
+-- wand's, whose Plate Text looks like the player's swing. The wand's Shoot
+-- learns its school, so it has none here.
+function ns.IsPhysicalShot(spellID)
+	local spell = spells[spellID]
+	return spell ~= nil and spell.shot == true and spell.school == PHYSICAL
+end
+
 -- How long after its cast a Judgement's Hit can come. A live Paladin's 11 Hits and
 -- misses came up to 0.166 s after it, and other players' 34 within 0.1 s. Its
 -- damage is another spell, so only this nearness ties it to the cast.

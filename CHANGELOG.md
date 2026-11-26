@@ -1,5 +1,9 @@
 # Changelog
 
+## 16
+
+- Your Auto Shot, bow, gun, crossbow, and Throw hits now look like your melee swings, in white with the Auto Attacks animations. "Display Auto Attacks" off now hides their icon too.
+
 ## 15
 
 - In groups, more of your numbers show, like your damage shield's hits (Fire Shield, Retribution Aura) and Demonic Brand. Before, another player's hit at the same moment could show in their place.
