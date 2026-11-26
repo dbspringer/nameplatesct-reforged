@@ -51,11 +51,32 @@ function Trace.Load(path)
 	return env.NameplateSCTReforgedTraces
 end
 
--- The checked Trace of this name in spec/traces/, and its Labels.
-function Trace.LoadChecked(name)
+-- The Trace of this name in spec/traces/, and its Labels.
+function Trace.LoadLabelled(name)
 	local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
 	local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
 	return trace, labels
+end
+
+-- Whether a test can use this row of a Labels file: it is a Checked Label or
+-- a Sure Label. The label script marks a row unsure for its secret amount
+-- only when nothing else about it is unsure, so exactly one file event fits.
+-- Such a row tells the Hit's spell. For a swing it favours a rival, whose
+-- event is nearer the Hit than the swing's own, one Swing Delay before.
+function Trace.IsSure(row)
+	return row.unsure == nil or row.unsure == "secret amount"
+end
+
+-- The spell of each Hit that has a Checked or Sure Label, by Hit entry: a
+-- spell ID, false for a melee swing, or nil for a Hit with no Log Line.
+function Trace.SureSpells(labels)
+	local spellOf = {}
+	for _, row in ipairs(labels) do
+		if Trace.IsSure(row) then
+			spellOf[row.hit] = row.spell
+		end
+	end
+	return spellOf
 end
 
 -- The lines of the Combat Log File of the checked Trace of this name.

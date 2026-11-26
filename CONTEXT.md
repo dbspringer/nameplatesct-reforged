@@ -133,8 +133,16 @@ A recording of the raw game events from a real fight (Hits, Log Lines, casts, sw
 _Avoid_: Log, replay, recording
 
 **Label**:
-The known Pairing of one Hit in a Trace: its Log Line, or no Log Line, and for Your Hit the spell that made it. It comes from the Combat Log File, and a person checks each Label before tests use it.
+The known Pairing of one Hit in a Trace: its Log Line, or no Log Line, and for Your Hit the spell that made it. It comes from the Combat Log File. Tests use only a Checked Label or a Sure Label.
 _Avoid_: Expected result, ground truth, annotation
+
+**Checked Label**:
+A Label that a person checked against the Combat Log File.
+_Avoid_: Verified label, clean label
+
+**Sure Label**:
+A Label that no person checked, for a Hit that exactly one event in the Combat Log File fits. When the Hit has a Secret Amount, the amount is the one thing not proven. It tells the spell of the Hit. It can be wrong where two units take like Hits at one time, and for a swing, whose event comes one Swing Delay before its Hit.
+_Avoid_: Unchecked label, unsure label, secret-amount label
 
 **Combat Log File**:
 The file the game writes while `/combatlog` is on, with every combat event of the fight, its amount, and the real GUIDs. Addons cannot read it; the label script does, after the fight.
