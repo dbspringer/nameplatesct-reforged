@@ -529,6 +529,28 @@ describe("Spell Identity", function()
 			assert.are.equal(DEEP_WOUNDS, bleed(missed, 104.5, "tick"))
 		end)
 
+		it("gives a strike whose cast a castless Hit took first no Deep Wounds", function()
+			local MORTAL_STRIKE = 12294
+			local identity = warrior()
+			bleed(identity, 100, "direct")
+			cast(identity, 102.99, MORTAL_STRIKE)
+			of(identity, 103, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(identity, 103.03, "direct"))
+			-- A strike that its own unit's Hit took leaves the rhythm alone.
+			local other = warrior()
+			bleed(other, 100, "direct")
+			cast(other, 102.5, MORTAL_STRIKE)
+			of(other, 102.6, "direct", PHYSICAL)
+			assert.are.equal(DEEP_WOUNDS, bleed(other, 103, "direct"))
+		end)
+
+		it("keeps the rhythm through ticks that its guards leave without an icon", function()
+			local identity = Identity.New({}, "WARRIOR", 0)
+			local start = ns.LONGEST_DOT + 0.1
+			bleed(identity, start - 3, "tick")
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, start + 0.05, "tick"))
+		end)
+
 		it("gives no Deep Wounds to a Physical tick while Rend can run, as it can be Rend's off its rhythm", function()
 			local identity = warrior()
 			cast(identity, 100, REND)

@@ -473,8 +473,9 @@ local function newDeepWoundsTracker()
 	-- Deep Wounds for a Physical Hit with no cast on this plate, or nil.
 	-- direct says it came on a direct line, as Sweeping Strikes' Hits do, and
 	-- startedAt is when Identity started: a Sweeping Strikes cast before it,
-	-- as before a /reload, is unseen.
-	function tracker.ProcSpell(hit, plate, direct, startedAt)
+	-- as before a /reload, is unseen. blocked says another source could have
+	-- made it: it keeps the rhythm going, but gets none.
+	function tracker.ProcSpell(hit, plate, direct, startedAt, blocked)
 		-- A held Hit decided after a newer one on its plate keeps the rhythm
 		-- on the newer one, and gets none.
 		local last = lastBleed[plate]
@@ -482,6 +483,9 @@ local function newDeepWoundsTracker()
 			return nil
 		end
 		lastBleed[plate] = hit.time
+		if blocked then
+			return nil
+		end
 		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION or sweepingAt(hit.time)) then
 			return nil
 		end
@@ -1299,6 +1303,24 @@ function Identity.New(saved, class, startedAt)
 		end
 	end
 
+	-- Whether a used cast in its window could still have made this Hit on
+	-- this plate: a Hit on another unit took it, and its target was this unit
+	-- or is not known. A castless Hit can take a strike's cast before the
+	-- strike lands.
+	local function takenCastCould(hit, group, school, plate)
+		for _, cast in ipairs(casts) do
+			local age = hit.time - cast.time
+			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+			local known = not cast.secret and schoolOf(cast.spellID)
+			if cast.used and not (cast.hitUnits and cast.hitUnits[plate]) and (cast.plate == nil or cast.plate == plate)
+				and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
+				and not (known and known ~= school) then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- Whether a Physical tick with no Tick Rhythm can still be a DoT's that
 	-- the player cast, such as a Rend tick off its rhythm, so it is no Deep
 	-- Wounds tick: a Physical DoT's cast, or one whose spell ID is secret,
@@ -1341,10 +1363,10 @@ function Identity.New(saved, class, startedAt)
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
 			local spellID, possible = ofTick(hit, school, together, sure, plate)
-			if spellID or possible or not deepWounds or school ~= SCHOOL_PHYSICAL or physicalDotRuns(hit) then
+			if spellID or possible or not deepWounds or school ~= SCHOOL_PHYSICAL then
 				return spellID, possible
 			end
-			return deepWounds.ProcSpell(hit, plate, false, startedAt)
+			return deepWounds.ProcSpell(hit, plate, false, startedAt, physicalDotRuns(hit))
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
@@ -1352,11 +1374,14 @@ function Identity.New(saved, class, startedAt)
 		if not group then
 			return nil
 		end
-		if deepWounds and group == "direct" and not miss and school == SCHOOL_PHYSICAL then
-			local fittingCasts = castsFitting(hit, group, school)
-			if #fittingCasts == 0 then
-				return deepWounds.ProcSpell(hit, plate, true, startedAt)
+		-- A cast that a Hit on another unit already took can still be this
+		-- Hit's, so it gets none.
+		if deepWounds and group == "direct" and not miss and school == SCHOOL_PHYSICAL
+			and #(castsFitting(hit, group, school)) == 0 then
+			if takenCastCould(hit, group, school, plate) then
+				return nil
 			end
+			return deepWounds.ProcSpell(hit, plate, true, startedAt)
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
 			local brand = brands.ProcSpell(line, plate)
