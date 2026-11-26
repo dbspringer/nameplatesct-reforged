@@ -10,16 +10,11 @@ local DEFAULT_WOW_DIR = "/Applications/World of Warcraft/_forever_"
 -- Margin around the Trace, so the label script also sees the lines that a
 -- Hit at either end pairs with.
 local MARGIN_MS = 10000
--- A Hit's file event can come this long after it (LATEST in label-trace.lua).
-local END_MARGIN_MS = 100
-
 local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
 local Trace = assert(loadfile(here .. "trace.lua"))()
-local hasFlag, parseLine = Trace.HasFlag, Trace.ParseLogLine
-
-local function isGuid(token)
-	return token == "0000000000000000" or token:find("^%a+%-%d+%-") ~= nil
-end
+local parseLine = Trace.ParseLogLine
+-- A Hit's file event can come this long after it.
+local END_MARGIN_MS = Trace.LATEST * 1000
 
 -- The recorder's GUID: public on the Trace's own "player" Hits, and otherwise
 -- the player that the log marks as mine.
@@ -33,9 +28,8 @@ local function findRecorder(trace, lines)
 	for i = 2, #lines do
 		local _, tokens = parseLine(lines[i])
 		for _, at in ipairs({ 2, 6 }) do
-			local flags = tonumber(tokens[at + 2] or "")
-			if tokens[at] and tokens[at]:find("^Player%-") and flags
-				and hasFlag(flags, Trace.COMBATLOG_OBJECT_AFFILIATION_MINE) and hasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PLAYER) then
+			if tokens[at] and tokens[at]:find("^Player%-")
+				and Trace.WhoIs(tokens[at], tonumber(tokens[at + 2] or "")) == "you" then
 				return tokens[at]
 			end
 		end
@@ -66,7 +60,7 @@ end
 function Import.ScrubNames(line)
 	local stamp, tokens = parseLine(line)
 	for at = 1, #tokens - 1 do
-		if isGuid(tokens[at]) and tokens[at + 1]:sub(1, 1) == '"' then
+		if Trace.IsGuid(tokens[at]) and tokens[at + 1]:sub(1, 1) == '"' then
 			tokens[at + 1] = '""'
 		end
 	end

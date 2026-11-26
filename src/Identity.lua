@@ -1,5 +1,7 @@
 local _, ns = ...
 
+local School = ns.School
+
 local Identity = {}
 ns.Identity = Identity
 
@@ -34,11 +36,8 @@ local SHOT_FLIGHT = ns.Pairing.SHOT_FLIGHT
 -- How much later than its time a Hit can be decided, with a margin. Casts stay
 -- this much longer.
 local DECIDE_LATE = ns.Pairing.LATEST_DECISION + 0.1
--- How far a tick can be from its Tick Rhythm. Nearly all ticks came within
--- 0.07 s of it in the Warlock Traces; one batch came 0.18 s off and gets no
--- icon. A wider window lets another spell's tick that comes just before fit
--- too, which moves the rhythm off its own next tick.
-local TICK_TOLERANCE = 0.1
+-- How far a tick can be from its Tick Rhythm (see Pairing).
+local TICK_TOLERANCE = ns.Pairing.TICK_TOLERANCE
 -- How near another DoT's due tick keeps a Stop Tick unsure: twice the
 -- rhythm's tolerance, as a killing tick can come a little off its rhythm.
 local STOP_RIVAL = 2 * TICK_TOLERANCE
@@ -48,7 +47,7 @@ local STOP_RIVAL = 2 * TICK_TOLERANCE
 -- on Forever).
 local RIVAL_ONLY = {}
 for _, spellID in ipairs({ 603, 30910 }) do
-	RIVAL_ONLY[spellID] = { interval = 60, duration = 60, school = 32 }
+	RIVAL_ONLY[spellID] = { interval = 60, duration = 60, school = ns.School.SHADOW }
 end
 -- How long any DoT can run, for a cast whose spell ID is secret.
 local LONGEST_DOT = ns.LONGEST_DOT
@@ -68,8 +67,6 @@ local CONSECRATION_DURATION = 8.2
 -- ground damage came 8.034 s after the cast in the Combat Log Files, and
 -- Pairing lets a direct line come up to 0.125 s before its Hit.
 local FLAMESTRIKE_GROUND = 8.3
-local SCHOOL_FIRE = 4
-local SCHOOL_HOLY = 2
 -- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
 -- melee line is the longest, and this is well past it.
 local SEAL_CHANGE_AGE = 2
@@ -82,14 +79,12 @@ local INSTANT_POISON, DEADLY_POISON = 8680, 2818
 -- or strikes in the Combat Log File, on the same target. The same window as a
 -- Seal Proc's.
 local POISON_PROC_WINDOW = 0.15
-local SCHOOL_PHYSICAL, SCHOOL_NATURE = 1, 8
 -- A Brand Proc's spell: the damage spell of a Warlock's Demonic Brand
 -- (Forever), which the pet's Hits set off.
 local DEMONIC_BRAND = 1293697
 -- How soon after the pet's landed swing line a Brand Proc's line comes (see
 -- Pairing).
 local BRAND_PROC_WINDOW = ns.Pairing.BRAND_PROC_WINDOW
-local SCHOOL_SHADOW = 32
 
 -- How long a cast can explain a Hit: a direct hit until DIRECT_WINDOW, a shot
 -- until SHOT_FLIGHT, a first tick until one interval after it lands, an area
@@ -119,10 +114,11 @@ local function clean(saved)
 end
 
 -- Whether a tick comes one interval after from, with extra time for a spell
--- that travels.
-local function firstTickFits(hit, spell, from, extra)
+-- that travels. tolerance defaults to TICK_TOLERANCE.
+local function firstTickFits(hit, spell, from, extra, tolerance)
+	tolerance = tolerance or TICK_TOLERANCE
 	local since = hit.time - from
-	return since >= spell.interval - TICK_TOLERANCE and since <= spell.interval + TICK_TOLERANCE + extra
+	return since >= spell.interval - tolerance and since <= spell.interval + tolerance + extra
 end
 
 -- Whether a channel stopped before this Hit: its last tick can come with the
@@ -132,11 +128,11 @@ local function stoppedBefore(cast, hit)
 end
 
 -- How many whole intervals, one or more, a tick comes after from, or nil when
--- it comes more than TICK_TOLERANCE off them.
-local function intervalsAfter(hit, spell, from)
+-- it comes more than tolerance (by default TICK_TOLERANCE) off them.
+local function intervalsAfter(hit, spell, from, tolerance)
 	local since = hit.time - from
 	local steps = math.floor(since / spell.interval + 0.5)
-	if steps >= 1 and math.abs(since - steps * spell.interval) <= TICK_TOLERANCE then
+	if steps >= 1 and math.abs(since - steps * spell.interval) <= (tolerance or TICK_TOLERANCE) then
 		return steps
 	end
 end
@@ -203,6 +199,35 @@ local function possibleOf(spellIDs)
 	return list
 end
 
+-- The recent landed Hits or lines that can set off a Proc with no cast, each
+-- with its time and, when given, its plate. Each is kept while a Hit decided
+-- up to DECIDE_LATE late can still need it.
+local function newTriggers(window)
+	local list = {}
+	local triggers = {}
+
+	function triggers.Add(time, plate)
+		while list[1] and time - list[1].time > window + DECIDE_LATE do
+			table.remove(list, 1)
+		end
+		list[#list + 1] = { time = time, plate = plate }
+	end
+
+	-- Whether one came at most window before time, or at it, and passes
+	-- accept(trigger, since) when that is given.
+	function triggers.Before(time, accept)
+		for _, trigger in ipairs(list) do
+			local since = time - trigger.time
+			if since >= 0 and since <= window and (not accept or accept(trigger, since)) then
+				return true
+			end
+		end
+		return false
+	end
+
+	return triggers
+end
+
 -- Follows the player's Active Seal, Consecration, and landed swings, which are
 -- all that tie a Seal Proc or a Judgement to the player, as a proc has no cast.
 local function newSealTracker()
@@ -215,8 +240,8 @@ local function newSealTracker()
 	-- The player's recent casts of Consecration, or ones that could be, oldest
 	-- first. A late Hit can need an older one than the latest.
 	local consecrations = {}
-	-- The times of the player's latest swing lines that landed, oldest first.
-	local swingLines = {}
+	-- The player's latest swing lines that landed.
+	local swingLines = newTriggers(SEAL_PROC_WINDOW)
 
 	-- Keeps the changes of the Active Seal, which a late Hit can still need, and
 	-- the change that was in force before them.
@@ -260,10 +285,7 @@ local function newSealTracker()
 		if record.lineKind ~= "swing" or record.pet then
 			return
 		end
-		while swingLines[1] and record.time - swingLines[1] > SEAL_PROC_WINDOW + DECIDE_LATE do
-			table.remove(swingLines, 1)
-		end
-		swingLines[#swingLines + 1] = record.time
+		swingLines.Add(record.time)
 	end
 
 	-- Whether Consecration could be ticking at this Hit's moment. Its ticks are
@@ -283,7 +305,7 @@ local function newSealTracker()
 	-- another on-hit proc's miss looks the same (Touch of the Grave's 21 and
 	-- Windfury's 4 to Seal of Command's 4 in the Traces), so it gets none.
 	function tracker.ProcSpell(hit, school)
-		if school ~= SCHOOL_HOLY then
+		if school ~= School.HOLY then
 			return nil
 		end
 		local seal
@@ -299,21 +321,16 @@ local function newSealTracker()
 		if tracker.Consecrated(hit) then
 			return nil
 		end
-		for _, time in ipairs(swingLines) do
-			local sinceSwing = hit.time - time
-			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
-				return seal.spellID
-			end
-		end
+		return swingLines.Before(hit.time) and seal.spellID or nil
 	end
 
 	-- Whether a Holy Hit with no cast could have made this direct Hit: a
 	-- Consecration tick, or a Seal Proc, whose miss reports no school.
 	function tracker.CastlessCould(hit, school)
-		if school ~= nil and school ~= SCHOOL_HOLY then
+		if school ~= nil and school ~= School.HOLY then
 			return false
 		end
-		return tracker.Consecrated(hit) or tracker.ProcSpell(hit, SCHOOL_HOLY) ~= nil
+		return tracker.Consecrated(hit) or tracker.ProcSpell(hit, School.HOLY) ~= nil
 	end
 
 	return tracker
@@ -325,39 +342,27 @@ end
 -- which then shows a poison's icon: the poison on a weapon is not checked
 -- (ADR 0004).
 local function newPoisonTracker()
-	-- The times of the player's latest landed swing lines and strike Hits.
-	local landed = {}
-
-	local function land(time)
-		while landed[1] and time - landed[1] > POISON_PROC_WINDOW + DECIDE_LATE do
-			table.remove(landed, 1)
-		end
-		landed[#landed + 1] = time
-	end
+	-- The player's latest landed swing lines and strike Hits.
+	local landed = newTriggers(POISON_PROC_WINDOW)
 
 	local tracker = {}
 
 	-- A pet's swing line lands no poison, and a swing that missed lands none.
 	function tracker.Line(record)
 		if record.lineKind == "swing" and not record.pet then
-			land(record.time)
+			landed.Add(record.time)
 		end
 	end
 
 	-- A strike's Hit: a Physical direct Hit of the player's.
 	function tracker.Strike(hit)
-		land(hit.time)
+		landed.Add(hit.time)
 	end
 
 	-- Instant Poison if this Nature direct Hit comes just after a landed melee
 	-- hit, or nil.
 	function tracker.ProcSpell(hit)
-		for _, time in ipairs(landed) do
-			local since = hit.time - time
-			if since >= 0 and since <= POISON_PROC_WINDOW then
-				return INSTANT_POISON
-			end
-		end
+		return landed.Before(hit.time) and INSTANT_POISON or nil
 	end
 
 	return tracker
@@ -371,21 +376,14 @@ end
 local function newBrandTracker()
 	-- The latest lines of the pet's landed swings, and of its spell Hits, each
 	-- with its time and, for a spell Hit, its plate.
-	local swings, spells = {}, {}
-
-	local function add(list, time, plate)
-		while list[1] and time - list[1].time > BRAND_PROC_WINDOW + DECIDE_LATE do
-			table.remove(list, 1)
-		end
-		list[#list + 1] = { time = time, plate = plate }
-	end
+	local swings, spells = newTriggers(BRAND_PROC_WINDOW), newTriggers(BRAND_PROC_WINDOW)
 
 	local tracker = {}
 
 	-- A swing that missed sets off no Brand Proc (none in warlock-zf).
 	function tracker.Line(record)
 		if record.lineKind == "swing" and record.pet then
-			add(swings, record.time)
+			swings.Add(record.time)
 		end
 	end
 
@@ -393,7 +391,7 @@ local function newBrandTracker()
 	-- the Hit's plate.
 	function tracker.PetSpell(line, plate)
 		if line.time then
-			add(spells, line.time, plate)
+			spells.Add(line.time, plate)
 		end
 	end
 
@@ -407,18 +405,10 @@ local function newBrandTracker()
 		if not line.time then
 			return nil
 		end
-		for _, swing in ipairs(swings) do
-			local since = line.time - swing.time
-			if since >= 0 and since <= BRAND_PROC_WINDOW then
-				return DEMONIC_BRAND
-			end
-		end
-		for _, spell in ipairs(spells) do
-			local since = line.time - spell.time
-			if spell.plate == plate and since > 0 and since <= BRAND_PROC_WINDOW then
-				return DEMONIC_BRAND
-			end
-		end
+		local setOff = swings.Before(line.time) or spells.Before(line.time, function(spell, since)
+			return spell.plate == plate and since > 0
+		end)
+		return setOff and DEMONIC_BRAND or nil
 	end
 
 	return tracker
@@ -454,8 +444,8 @@ local function newDeepWoundsTracker()
 	local tracker = {}
 
 	-- record is the cast record, with its time and entry.
-	function tracker.Cast(spellID, record, secret)
-		if secret or spellID == SWEEPING_STRIKES then
+	function tracker.Cast(record, secret)
+		if secret or record.spellID == SWEEPING_STRIKES then
 			while sweepings[1] and record.time - sweepings[1].time > SWEEPING_STRIKES_DURATION + DECIDE_LATE do
 				table.remove(sweepings, 1)
 			end
@@ -534,10 +524,6 @@ function Identity.New(saved, class, startedAt)
 	-- secret spells, kept while their DoT can run, longer than casts: what
 	-- rivalDue reads.
 	local dotCasts = {}
-	-- When Identity started (startedAt, given), or the time of the first
-	-- record: a DoT cast before it, as before a /reload or a Trace's start, is
-	-- in no list, so rivalDue cannot see it until it has run out
-	-- (warlock-drain-life replayed from entry 3919).
 	-- For each unit and spell that ticks, the Tick Rhythms it can have there:
 	-- one, or after a Tick Tie each one that can be true (see ofTick). A rhythm
 	-- is { source, cast, last, anchor, ticks, ends }: source is the time of the
@@ -621,10 +607,10 @@ function Identity.New(saved, class, startedAt)
 	-- Identity started, as before a /reload, which is in no list.
 	local function groundCould(cast, hit, school)
 		local since = hit.time - startedAt
-		if (school == nil or school == SCHOOL_HOLY) and (since <= CONSECRATION_DURATION or seals.Consecrated(hit)) then
+		if (school == nil or school == School.HOLY) and (since <= CONSECRATION_DURATION or seals.Consecrated(hit)) then
 			return true
 		end
-		if school == nil or school == SCHOOL_FIRE then
+		if school == nil or school == School.FIRE then
 			if since <= FLAMESTRIKE_GROUND then
 				return true
 			end
@@ -718,19 +704,22 @@ function Identity.New(saved, class, startedAt)
 	-- secret, or one of a spell whose school is not known (castOf already
 	-- leaves out a cast whose school differs from the Hit's). The pet's casts
 	-- count as the player's.
-	local function possibleOfCasts(fittingCasts)
-		if #fittingCasts < 2 then
-			return nil
-		end
-		local spellIDs = {}
+	-- The spell IDs of these casts, after any given first, or nil when one of
+	-- them could be another spell: see possibleOfCasts.
+	local function spellIDsOf(fittingCasts, first)
+		local spellIDs = { first }
 		for _, cast in ipairs(fittingCasts) do
-			local known = not cast.secret and schoolOf(cast.spellID)
-			if not known then
+			if cast.secret or not schoolOf(cast.spellID) then
 				return nil
 			end
 			spellIDs[#spellIDs + 1] = cast.spellID
 		end
-		return possibleOf(spellIDs)
+		return spellIDs
+	end
+
+	local function possibleOfCasts(fittingCasts)
+		local spellIDs = #fittingCasts >= 2 and spellIDsOf(fittingCasts)
+		return spellIDs and possibleOf(spellIDs) or nil
 	end
 
 	-- The casts of the area spell whose tick this direct hit is, nil when none
@@ -747,7 +736,7 @@ function Identity.New(saved, class, startedAt)
 			local spell = cast.unit == "player" and not cast.secret and ns.TickSpells[cast.spellID]
 			if spell and spell.area and (not school or spell.school == school)
 				and hit.time - cast.time <= spell.duration + TICK_TOLERANCE
-				and not (cast.stopped and hit.time > cast.stopped + TICK_TOLERANCE) then
+				and not stoppedBefore(cast, hit) then
 				local from = cast.lastTick or cast.time
 				local steps = math.floor((hit.time - from) / spell.interval + 0.5)
 				local fits = (steps >= 1 or (steps == 0 and cast.lastTick))
@@ -808,7 +797,7 @@ function Identity.New(saved, class, startedAt)
 		local found, fitting, fittingCasts = castOf(hit, group, school, miss)
 		-- A cast that fits could have made the Hit too, so it goes on as any
 		-- direct Hit, and uses that cast up.
-		local poison = poisons and group == "direct" and school == SCHOOL_NATURE and fitting == 0
+		local poison = poisons and group == "direct" and school == School.NATURE and fitting == 0
 			and poisons.ProcSpell(hit)
 		if poison then
 			return poison
@@ -826,7 +815,7 @@ function Identity.New(saved, class, startedAt)
 			-- before a /reload, is in no list, so a Holy Hit gets none until a
 			-- Seal from then has run out.
 			if seals.CastlessCould(hit, school)
-				or (school == nil or school == SCHOOL_HOLY) and hit.time - startedAt <= SEAL_DURATION then
+				or (school == nil or school == School.HOLY) and hit.time - startedAt <= SEAL_DURATION then
 				return nil
 			end
 			return nil, possibleOfCasts(fittingCasts)
@@ -834,7 +823,7 @@ function Identity.New(saved, class, startedAt)
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
-		if direct and direct.window and (school == nil or school == SCHOOL_HOLY) and seals.Consecrated(hit) then
+		if direct and direct.window and (school == nil or school == School.HOLY) and seals.Consecrated(hit) then
 			return nil
 		end
 		found.used = true
@@ -890,6 +879,14 @@ function Identity.New(saved, class, startedAt)
 			end
 		end
 		return false
+	end
+
+	-- Whether a rhythm can still fit a later tick: it has not run out, its
+	-- channel has not stopped, and no recast has replaced it.
+	local function stillRuns(spellID, spell, rhythm, plate, hit)
+		return rhythm == NO_RHYTHM or not rhythm.last
+			or hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
+			and not refreshed(spellID, spell, plate, rhythm.source, hit)
 	end
 
 	-- The cast or landing whose Tick Rhythm on this unit this tick starts, and
@@ -953,8 +950,7 @@ function Identity.New(saved, class, startedAt)
 				ends = hit.time - steps * spell.interval + spell.duration }
 		end
 		local intervals = rhythm and rhythm.anchor and intervalsAfter(hit, spell, rhythm.anchor)
-		if intervals and hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-			and not refreshed(spellID, spell, plate, rhythm.source, hit) then
+		if intervals and stillRuns(spellID, spell, rhythm, plate, hit) then
 			local onGrid = rhythm.anchor + intervals * spell.interval
 			return { source = rhythm.source, cast = rhythm.cast, last = hit.time, ends = rhythm.ends,
 				anchor = onGrid + (hit.time - onGrid) / (rhythm.ticks + 1), ticks = rhythm.ticks + 1 }
@@ -976,15 +972,8 @@ function Identity.New(saved, class, startedAt)
 		-- out a hair over it: the window gets a little slack.
 		local window = STOP_RIVAL + 1e-6
 		local function due(spell, from, extra)
-			local since = hit.time - from
-			if since > spell.duration + window then
-				return false
-			end
-			if since >= spell.interval - window and since <= spell.interval + window + extra then
-				return true
-			end
-			local steps = math.floor(since / spell.interval + 0.5)
-			return steps >= 1 and math.abs(since - steps * spell.interval) <= window
+			return hit.time - from <= spell.duration + window
+				and (firstTickFits(hit, spell, from, extra, window) or intervalsAfter(hit, spell, from, window) ~= nil)
 		end
 		for spellID, candidates in pairs(plateRhythms) do
 			local spell = rival(spellID)
@@ -1020,7 +1009,10 @@ function Identity.New(saved, class, startedAt)
 	-- have been a Tick Tie. The stop is known in time, as Flow takes a frame's
 	-- casts before Pairing decides that frame's Hits.
 	local function stopTickOf(hit, school, plateRhythms)
-		if not startedAt or hit.time - startedAt <= LONGEST_DOT + STOP_RIVAL then
+		-- A DoT cast before Identity started, as before a /reload or a Trace's
+		-- start, is in no list, so rivalDue cannot see it until it has run out
+		-- (warlock-drain-life replayed from entry 3919).
+		if hit.time - startedAt <= LONGEST_DOT + STOP_RIVAL then
 			return nil
 		end
 		for spellID, candidates in pairs(plateRhythms) do
@@ -1100,14 +1092,6 @@ function Identity.New(saved, class, startedAt)
 		list[#list + 1] = rhythm
 	end
 
-	-- Whether a rhythm can still fit a later tick: it has not run out, its
-	-- channel has not stopped, and no recast has replaced it.
-	local function stillRuns(spellID, spell, rhythm, plate, hit)
-		return rhythm == NO_RHYTHM or not rhythm.last
-			or hit.time <= rhythm.ends + TICK_TOLERANCE and not (rhythm.cast and stoppedBefore(rhythm.cast, hit))
-			and not refreshed(spellID, spell, plate, rhythm.source, hit)
-	end
-
 	local function ofTick(hit, school, together, sure, plate)
 		local plateRhythms = rhythms[plate] or {}
 		rhythms[plate] = plateRhythms
@@ -1175,7 +1159,8 @@ function Identity.New(saved, class, startedAt)
 		-- spell could be the only one that fits that DoT's tick: while one can
 		-- run, that tick gets no icon and, like a tie, narrows no rhythm.
 		local unsettled = fits == 1 and #(plateRhythms[found] or {}) > 1
-		local tie = fits > (sure or 1) or (unsettled and secretDotRuns(hit))
+		local secretRival = unsettled and secretDotRuns(hit)
+		local tie = fits > (sure or 1) or secretRival
 		for spellID, list in pairs(moved) do
 			if tie then
 				local spell = ns.TickSpells[spellID]
@@ -1193,12 +1178,12 @@ function Identity.New(saved, class, startedAt)
 		end
 		-- A Rogue's Nature tick that no rhythm fits is Deadly Poison's, which
 		-- has no cast. Its stacks tick as one, so crowding does not matter.
-		if fits == 0 and poisons and school == SCHOOL_NATURE then
+		if fits == 0 and poisons and school == School.NATURE then
 			return DEADLY_POISON
 		end
 		-- Two ticks of one school at one time on one unit cannot be told
 		-- apart, such as Fireball's and an Ignite that its crit started.
-		if fits == 1 and not together and not (unsettled and secretDotRuns(hit)) then
+		if fits == 1 and not together and not secretRival then
 			return found
 		end
 		-- A tick that no spell surely made alone has the spells that fit it as
@@ -1285,7 +1270,7 @@ function Identity.New(saved, class, startedAt)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
 			if deepWounds then
-				deepWounds.Cast(not secret and record.spellID or nil, record, secret)
+				deepWounds.Cast(record, secret)
 			end
 		end
 		local cast = { time = record.time, entry = record.entry, spellID = not secret and record.spellID or nil,
@@ -1329,12 +1314,7 @@ function Identity.New(saved, class, startedAt)
 		end
 	end
 
-	-- Whether a used cast in its window could still have made this Hit on
-	-- this plate: a Hit on another unit took it, or one on this unit in this
-	-- frame, which could be the castless one. A castless Hit can take a
-	-- strike's cast before the strike lands. A cast's plate is the player's
-	-- target as it started, which need not be the unit it hit, so it does
-	-- not count.
+	-- Whether a Hit on a unit other than this plate took the cast.
 	local function hitElsewhere(cast, plate)
 		for other in pairs(cast.hitUnits) do
 			if other ~= plate then
@@ -1344,6 +1324,12 @@ function Identity.New(saved, class, startedAt)
 		return false
 	end
 
+	-- Whether a used cast in its window could still have made this Hit on
+	-- this plate: a Hit on another unit took it, or one on this unit in this
+	-- frame, which could be the castless one. A castless Hit can take a
+	-- strike's cast before the strike lands. A cast's plate is the player's
+	-- target as it started, which need not be the unit it hit, so it does
+	-- not count.
 	local function takenCastCould(hit, group, school, plate)
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
@@ -1370,7 +1356,7 @@ function Identity.New(saved, class, startedAt)
 		for _, cast in ipairs(dotCasts) do
 			local spell = cast.spellID and ns.TickSpells[cast.spellID]
 			local runs = spell and spell.duration or LONGEST_DOT
-			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL) and not cast.missed and cameBefore(cast, hit)
+			if (cast.secret or spell and spell.school == School.PHYSICAL) and not cast.missed and cameBefore(cast, hit)
 				and hit.time - cast.time <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
 				return true
 			end
@@ -1399,12 +1385,12 @@ function Identity.New(saved, class, startedAt)
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
 			local spellID, possible = ofTick(hit, school, together, sure, plate)
-			if spellID or possible or not deepWounds or school ~= SCHOOL_PHYSICAL then
+			if spellID or possible or not deepWounds or school ~= School.PHYSICAL then
 				return spellID, possible
 			end
 			return deepWounds.ProcSpell(hit, plate, false, startedAt, physicalDotRuns(hit))
 		end
-		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
+		if poisons and group == "direct" and school == School.PHYSICAL then
 			poisons.Strike(hit)
 		end
 		if not group then
@@ -1412,14 +1398,14 @@ function Identity.New(saved, class, startedAt)
 		end
 		-- A cast that a Hit on another unit already took can still be this
 		-- Hit's, so it gets none.
-		if deepWounds and group == "direct" and not miss and school == SCHOOL_PHYSICAL
+		if deepWounds and group == "direct" and not miss and school == School.PHYSICAL
 			and #(castsFitting(hit, group, school)) == 0 then
 			if takenCastCould(hit, group, school, plate) then
 				return nil
 			end
 			return deepWounds.ProcSpell(hit, plate, true, startedAt)
 		end
-		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
+		if brands and group == "direct" and not miss and (school == nil or school == School.SHADOW) then
 			local brand = brands.ProcSpell(line, plate)
 			local fittingCasts, petFits
 			if brand then
@@ -1431,17 +1417,11 @@ function Identity.New(saved, class, startedAt)
 			-- in the window, so for a Shadow Hit the Brand Proc wins (ADR
 			-- 0004). Fire Hits do come in it, so a Hit of secret school gets
 			-- Possible Spells. The casts stay for their own Hits.
-			if brand and (#fittingCasts == 0 or school == SCHOOL_SHADOW and not petFits) then
+			if brand and (#fittingCasts == 0 or school == School.SHADOW and not petFits) then
 				return brand
 			elseif brand and not petFits then
-				local spellIDs = { brand }
-				for _, cast in ipairs(fittingCasts) do
-					if cast.secret or not schoolOf(cast.spellID) then
-						return nil
-					end
-					spellIDs[#spellIDs + 1] = cast.spellID
-				end
-				return nil, possibleOf(spellIDs)
+				local spellIDs = spellIDsOf(fittingCasts, brand)
+				return nil, spellIDs and possibleOf(spellIDs)
 			elseif brand then
 				-- The pet's cast or the Brand Proc made it, so a stack of the
 				-- casts alone could miss its spell.

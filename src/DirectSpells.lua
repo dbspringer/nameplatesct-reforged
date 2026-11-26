@@ -25,7 +25,9 @@ local _, ns = ...
 -- Blast, and Forever's Lava Burst ranks). They stay, as a cast that no player
 -- makes costs nothing.
 
-local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
+local School = ns.School
+local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = School.PHYSICAL, School.HOLY, School.FIRE,
+	School.NATURE, School.FROST, School.SHADOW, School.ARCANE
 
 local spells = {}
 ns.DirectSpells = spells

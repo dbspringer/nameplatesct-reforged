@@ -22,7 +22,7 @@ local LATE_LINE_MS = 250
 local MIN_ALIGNED = 0.9
 -- A Hit's file event comes from this long before it to this long after it.
 local EARLIEST = 1.5
-local LATEST = 0.1
+local LATEST = Trace.LATEST
 -- The cast of each damage spell ID that differs from its cast's, so that a
 -- Label names the cast that made the Hit, as Spell Identity does. On Forever
 -- an area spell's damage comes with a spell ID other than its cast's. Only
@@ -46,8 +46,6 @@ local SPELL_NEAR = 0.04
 local SWING_NEAR = 0.02
 local SWING_SAMPLES_NEAR = 3
 local SWING_SAMPLES = 5
--- How much brighter a highlighted line is under colours by source.
-local HIGHLIGHT = 1.5
 
 -- Fields between the event name and an event's own fields. Advanced logging
 -- adds unit fields before an amount: 19 in the Forever 1.60.1 log files.
@@ -66,22 +64,6 @@ local PREFIX_FIELDS = {
 
 local function unquote(token)
 	return token and token:match('^"(.*)"$') or token
-end
-
-local function whoIs(guid, flags)
-	if flags and Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_AFFILIATION_MINE) then
-		if Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PLAYER) then
-			return "you"
-		end
-		if Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_PET)
-			or Trace.HasFlag(flags, Trace.COMBATLOG_OBJECT_TYPE_GUARDIAN) then
-			return "pet"
-		end
-	end
-	if guid and (guid:find("^Creature%-") or guid:find("^Vehicle%-")) then
-		return "creature"
-	end
-	return "other"
 end
 
 -- Splits an event name such as SPELL_PERIODIC_DAMAGE into its prefix and
@@ -105,7 +87,7 @@ end
 -- or the field after its prefix is the advanced fields' first, a GUID. Forever
 -- can write them while its first line says they are off.
 local function hasAdvancedFields(fileSaysSo, token)
-	return fileSaysSo or token == "0000000000000000" or (token or ""):find("^%a+%-%d+%-") ~= nil
+	return fileSaysSo or Trace.IsGuid(token)
 end
 
 local function parseEvents(lines)
@@ -120,8 +102,8 @@ local function parseEvents(lines)
 			name = tokens[1],
 			src = tokens[2],
 			dst = tokens[6],
-			srcWho = whoIs(tokens[2], srcFlags),
-			dstWho = whoIs(tokens[6], dstFlags),
+			srcWho = Trace.WhoIs(tokens[2], srcFlags),
+			dstWho = Trace.WhoIs(tokens[6], dstFlags),
 		}
 		local prefix, suffix = splitEvent(tokens[1])
 		if prefix then
@@ -167,7 +149,7 @@ local function load()
 	local env = setmetatable({
 		-- A Trace holds secrets as this placeholder.
 		issecretvalue = function(value)
-			return value == "<secret>"
+			return value == Trace.SECRET
 		end,
 		-- The adapter drops the lines that refill a chat frame by this order.
 		Enum = { CombatLogMessageOrder = { Newest = 0, Oldest = 1 } },
@@ -222,11 +204,11 @@ end
 -- colours lines: the player's and the pet's grey, and a highlighted event's
 -- line brighter, at most white.
 local function sourceColourOf(event, filter)
-	local colour = load().LineKind.OWN_BY_SOURCE
+	local LineKind = load().LineKind
 	local settings, colors = filter.settings or {}, filter.colors or {}
-	local scale = settings.lineHighlighting and colors.highlightedEvents
-		and colors.highlightedEvents[event.name] and HIGHLIGHT or 1
-	return { r = math.min(colour.r * scale, 1), g = math.min(colour.g * scale, 1), b = math.min(colour.b * scale, 1) }
+	local highlighted = settings.lineHighlighting and colors.highlightedEvents
+		and colors.highlightedEvents[event.name]
+	return highlighted and LineKind.Highlighted(LineKind.OWN_BY_SOURCE) or LineKind.OWN_BY_SOURCE
 end
 
 -- Whether a Log Line can report this file event. Lines of one frame share a
@@ -511,7 +493,7 @@ local function fits(hit, event)
 		and event.school ~= hit.school then
 		return false
 	end
-	return event.amount == nil or hit.amount == "<secret>" or event.amount == hit.amount
+	return event.amount == nil or hit.amount == Trace.SECRET or event.amount == hit.amount
 end
 
 local function isSwing(event)
@@ -679,7 +661,7 @@ function Label.Make(trace, lines)
 		if not unsure and event and moved[event] then
 			unsure = "Log Line matched by order"
 		end
-		if not unsure and hit.amount == "<secret>" then
+		if not unsure and hit.amount == Trace.SECRET then
 			unsure = "secret amount"
 		end
 		-- Only your events and your pet's have a Log Line in lineOf.

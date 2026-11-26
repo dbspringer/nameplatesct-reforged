@@ -36,6 +36,10 @@ local _, ns = ...
 -- a pet's missed application gets its spell, as in DirectSpells.lua.
 
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = 1, 2, 4, 8, 16, 32, 64
+-- The school bitmasks that Hits report, shared by the modules that load after
+-- this one.
+ns.School = { PHYSICAL = PHYSICAL, HOLY = HOLY, FIRE = FIRE, NATURE = NATURE, FROST = FROST, SHADOW = SHADOW,
+	ARCANE = ARCANE }
 
 local spells = {}
 ns.TickSpells = spells

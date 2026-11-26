@@ -70,7 +70,7 @@ local HIDE_KEEP = 5
 local HOLD = 0.15
 -- How much later than its time a held Hit can be decided, at the next Tick.
 Pairing.LATEST_DECISION = HOLD + SHOT_WINDOW
-local SCHOOL_PHYSICAL, SCHOOL_HOLY, SCHOOL_SHADOW = 1, 2, 32
+local School = ns.School
 -- The Proc of each class that has a hint. A Proc has no cast of its own, so a
 -- landed Hit that can set it off is a hint of it: the Proc's school, how soon
 -- after that Hit's line the Proc's line comes, and what sets it off. swing is
@@ -85,8 +85,8 @@ local SCHOOL_PHYSICAL, SCHOOL_HOLY, SCHOOL_SHADOW = 1, 2, 32
 -- on a weapon, and Touch of the Grave is a Shadow Proc of the same swings. A
 -- Weapon Proc's Hit comes too late for such a window.
 local PROC_HINTS = {
-	WARLOCK = { school = SCHOOL_SHADOW, window = BRAND_PROC_WINDOW, petSwing = true, petSpell = true },
-	PALADIN = { school = SCHOOL_HOLY, window = SEAL_PROC_WINDOW, swing = true, seal = true },
+	WARLOCK = { school = School.SHADOW, window = BRAND_PROC_WINDOW, petSwing = true, petSpell = true },
+	PALADIN = { school = School.HOLY, window = SEAL_PROC_WINDOW, swing = true, seal = true },
 }
 -- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
 -- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
@@ -102,8 +102,13 @@ local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 -- How long after its longest duration a DoT still counts as active, for a
 -- cast that travels or a tick that drifts late.
 local DOT_SLACK = 1
--- How far a tick can be from its interval, as in Spell Identity.
+-- How far a tick can be from its interval, here and in Spell Identity's Tick
+-- Rhythms. Nearly all ticks came within 0.07 s of their rhythm in the Warlock
+-- Traces; one batch came 0.18 s off and gets no icon. A wider window lets
+-- another spell's tick that comes just before fit too, which moves the rhythm
+-- off its own next tick.
 local TICK_TOLERANCE = 0.1
+Pairing.TICK_TOLERANCE = TICK_TOLERANCE
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
@@ -127,7 +132,7 @@ end
 -- Heals also report school 1, so a physical Hit is a school 1 Hit that is
 -- not a heal.
 local function isPhysical(hit)
-	return hit.action ~= "HEAL" and not issecretvalue(hit.school) and hit.school == SCHOOL_PHYSICAL
+	return hit.action ~= "HEAL" and not issecretvalue(hit.school) and hit.school == School.PHYSICAL
 end
 
 -- A WOUND of 0, such as the one right after a pet's Torment, has no event
@@ -150,7 +155,10 @@ end
 -- any unit; nil for a cast that makes none. These are the casts that Spell
 -- Identity can give a direct Hit: a spell that hits, in its window; a DoT that
 -- also hits; and an area spell, whose ticks come with direct lines, until its
--- duration ends. A shot has lines of its own.
+-- duration ends. A shot has lines of its own. An area spell's window here has
+-- DOT_SLACK, wider than Spell Identity's TICK_TOLERANCE on purpose: it only
+-- puts a direct line first for a Hit of the cast's school, so a wide window
+-- costs little, and a narrow one can let another player's Hit take the line.
 local function directHitsOf(record)
 	if record.stage ~= "SUCCEEDED" or (record.unit ~= "player" and record.unit ~= "pet")
 		or issecretvalue(record.spellID) then
@@ -440,29 +448,34 @@ function Pairing.New(options)
 		end
 	end
 
-	-- The schools that the spell of a tick or shot line can have at this
-	-- time, as a set, or nil when none is known: for a tick line, those of the
-	-- DoTs that are active, and for a shot line, those of the shots that can
-	-- still fly.
-	local function knownSchools(line, time)
-		local group, schools = ns.LineKind.Group(line.lineKind), nil
+	-- Whether the spell of a tick or shot line can have this school at this
+	-- time, or nil when no school is known: for a tick line, the schools of
+	-- the DoTs that are active, and for a shot line, those of the shots that
+	-- can still fly. It runs for many Hit and line pairs in a raid frame, so
+	-- it builds no set.
+	local function canHaveSchool(line, time, school)
+		local group, known = ns.LineKind.Group(line.lineKind), nil
 		if group == "tick" then
-			for school, ends in pairs(dotEnds) do
+			for dotSchool, ends in pairs(dotEnds) do
 				if time <= ends then
-					schools = schools or {}
-					schools[school] = true
+					if dotSchool == school then
+						return true
+					end
+					known = false
 				end
 			end
 		elseif group == "shot" then
 			for _, shot in ipairs(shots) do
-				local school = time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
-				if school then
-					schools = schools or {}
-					schools[school] = true
+				local shotSchool = time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
+				if shotSchool then
+					if shotSchool == school then
+						return true
+					end
+					known = false
 				end
 			end
 		end
-		return schools
+		return known
 	end
 
 	-- Whether the Hit's school is known to be, or known not to be, one that
@@ -472,8 +485,8 @@ function Pairing.New(options)
 		if hit.action ~= "WOUND" or issecretvalue(hit.school) then
 			return false
 		end
-		local schools = knownSchools(line, hit.time)
-		return schools ~= nil and (schools[hit.school] == true) == right
+		local can = canHaveSchool(line, hit.time, hit.school)
+		return can ~= nil and can == right
 	end
 
 	local function isShotTarget(hit)
@@ -900,16 +913,16 @@ function Pairing.New(options)
 			endFrame()
 		end
 		if record.kind == "cast" then
+			local secret = issecretvalue(record.spellID)
 			if record.stage == "SUCCEEDED" and record.unit == "player" then
-				local procs
-				if not issecretvalue(record.spellID) then
-					procs = ns.Seals[record.spellID]
-				end
-				if procs ~= nil or issecretvalue(record.spellID) then
-					sealProcsUntil = procs and record.time + SEAL_DURATION or nil
+				-- A secret cast can be a Seal's, so it ends the known one.
+				if secret then
+					sealProcsUntil = nil
+				elseif ns.Seals[record.spellID] ~= nil then
+					sealProcsUntil = ns.Seals[record.spellID] and record.time + SEAL_DURATION or nil
 				end
 			end
-			local dot = record.stage == "SUCCEEDED" and not issecretvalue(record.spellID) and ns.TickSpells[record.spellID]
+			local dot = record.stage == "SUCCEEDED" and not secret and ns.TickSpells[record.spellID]
 			if dot and not dot.area then
 				dotEnds[dot.school] = math.max(dotEnds[dot.school] or 0, record.time + dot.duration + DOT_SLACK)
 			end
@@ -920,11 +933,11 @@ function Pairing.New(options)
 				addDirectCast({ time = record.time, school = school, life = life, many = anyUnit, pet = record.unit == "pet",
 					spellID = channel and record.spellID or nil, burnsSelf = channel and dot.burnsSelf or nil,
 					interval = channel and dot.interval or nil }, lasts)
-			elseif record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
+			elseif record.stage == "CHANNEL_STOP" and record.unit == "player" and not secret then
 				stopChannel(record)
 			end
 			local spell = spellTakingEffect(record)
-			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
+			if spell and spell.school == School.PHYSICAL and not spell.shot then
 				lastStrike = record.time
 			end
 			if spell and spell.nextSwing then
