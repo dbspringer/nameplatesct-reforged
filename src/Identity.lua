@@ -443,8 +443,9 @@ function Identity.New(saved, class, startedAt)
 	-- hitFrom, hitTo, hitUnits, units, missed, secret, lastTick, stopped,
 	-- plate, hidden, unitKnown }. hitFrom and hitTo are the earliest and latest
 	-- Hits that took the cast, hitUnits counts them by plate, and units counts
-	-- the plates, for a multi-hit spell. A cast whose spell ID is secret still competes, but never wins. lastTick is an area spell's last
-	-- tick on any unit, stopped when its channel stopped, and plate the key of
+	-- the plates, for a multi-hit spell. A cast whose spell ID is secret
+	-- still competes, but never wins. lastTick is an area spell's last tick
+	-- on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
 	-- keys of the units that were hidden at a cast with no plate, and
 	-- unitKnown says that plate is a unit key, so its unit is no other one.
