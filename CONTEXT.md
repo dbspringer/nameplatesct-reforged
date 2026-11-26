@@ -63,16 +63,12 @@ The time by which a melee Log Line comes before its Hit. It depends on the unit 
 _Avoid_: Melee lag, offset, cluster, learned window
 
 **Proc**:
-Your Hit with no cast of its own, set off when another Hit of the player's or the pet's lands. A Seal Proc, a Poison Proc, a Brand Proc, a Weapon Proc, an Extra Strike, and a Deep Wounds tick are Procs.
+Your Hit with no cast of its own, set off when another Hit of the player's or the pet's lands. A Seal Proc, a Poison Proc, a Brand Proc, a Weapon Proc, and a Deep Wounds tick are Procs.
 _Avoid_: Castless hit, on-hit effect, trigger
 
 **Weapon Proc**:
 An extra attack from a weapon enchant, such as Windfury Weapon. Its Log Line looks like a direct spell's, but its Hit comes about as late as a swing's, and its Plate Text looks like a swing.
 _Avoid_: Extra swing, Windfury hit
-
-**Extra Strike**:
-Your Hit on a second unit that a buff adds to the player's own Hit, such as Sweeping Strikes or Blade Flurry. It lands just after that Hit, on another unit, with no cast of its own.
-_Avoid_: Cleave hit, splash hit, Sweeping Strikes hit
 
 **Next-Swing Ability**:
 An ability that replaces the player's next melee swing, such as Maul, Heroic Strike, or Raptor Strike.
