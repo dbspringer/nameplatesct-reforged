@@ -677,17 +677,6 @@ function Pairing.New(options)
 			and hitAfterLine(line, later, first) ~= nil
 	end
 
-	-- Whether a line of the frame that the Hit leaves to the Hit after it
-	-- counts on other, so other cannot also take a tick line.
-	local function heldForLine(hit, other, lines, later, first)
-		for _, held in ipairs(lines) do
-			if leavesLineToHitAfter(hit, held, later, first) and hitAfterLine(held, later, first) == other then
-				return true
-			end
-		end
-		return false
-	end
-
 	local function takesFromFrame(hit, line, lines, later, first)
 		if leavesLineToHitAfter(hit, line, later, first) or leavesDirectLine(hit, line, lines, later, first) then
 			return false
@@ -698,44 +687,19 @@ function Pairing.New(options)
 		if isShotLine(line) then
 			return false
 		end
-		-- A direct line that the Hit leaves to a Hit with a fitting cast, or to
-		-- a Hit after the line, is not one it could take (warlock-zf hit 37310).
-		-- When only the Hit after the line takes it from the Hit, the frame's
-		-- order counts from here on: a tick's Hit comes before its line, so a
-		-- Hit after the tick line is not the tick's.
-		local ordered = false
+		-- A direct line that the Hit leaves to a Hit with a fitting cast is not
+		-- one it could take (warlock-zf hit 37310).
 		for _, other in ipairs(lines) do
 			if ns.LineKind.Group(other.lineKind) ~= "tick" and not isShotLine(other)
 				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other)
 				and not leavesDirectLine(hit, other, lines, later, first) then
-				if not leavesLineToHitAfter(hit, other, later, first) then
-					return true
-				end
-				ordered = true
+				return true
 			end
 		end
-		-- When the only later Hits of the tick's school are held for their own
-		-- lines, the tick can be a Hit with no cast of its own (Deadly Poison
-		-- with Rupture up), so it waits for a later Hit that is free, before
-		-- the tick line.
-		local held = false
 		for i = first, #later do
 			local other = later[i]
-			if (not ordered or other.entry < line.entry) and not OWN_UNITS[other.unit] and suits(other, line)
-				and schoolIs(other, line, true) then
-				if not heldForLine(hit, other, lines, later, first) then
-					return false
-				end
-				held = true
-			end
-		end
-		if held then
-			for i = first, #later do
-				local other = later[i]
-				if other.entry < line.entry and not OWN_UNITS[other.unit] and not isZeroWound(other)
-					and not isOthersHeal(other) and suits(other, line) and not heldForLine(hit, other, lines, later, first) then
-					return false
-				end
+			if not OWN_UNITS[other.unit] and suits(other, line) and schoolIs(other, line, true) then
+				return false
 			end
 		end
 		return true
