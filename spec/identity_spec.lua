@@ -509,6 +509,18 @@ describe("Spell Identity", function()
 			assert.is_nil(of(identity, 1.05, "direct", HOLY, "nameplate2"))
 		end)
 
+		it("gives a Fire Hit no area spell that already hit while an older Flamestrike's ground burns", function()
+			local FLAMESTRIKE, BLAST_WAVE = 2120, 11113
+			local identity = Identity.New({})
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 3, BLAST_WAVE)
+			assert.are.equal(BLAST_WAVE, of(identity, 3, "direct", FIRE))
+			assert.is_nil(of(identity, 3.05, "direct", FIRE, "nameplate2"))
+			cast(identity, 10, BLAST_WAVE)
+			of(identity, 10, "direct", FIRE)
+			assert.are.equal(BLAST_WAVE, of(identity, 10.05, "direct", FIRE, "nameplate2"))
+		end)
+
 		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
 			local identity = Identity.New({})
 			cast(identity, 1, MULTI_SHOT)

@@ -63,6 +63,10 @@ local SEAL_PROC_WINDOW = ns.Pairing.SEAL_PROC_WINDOW
 local SEAL_DURATION = ns.Pairing.SEAL_DURATION
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
+-- How long Flamestrike's ground burns after its cast: Classic's 8 s, plus the
+-- tick tolerance (unverified on Forever).
+local FLAMESTRIKE_GROUND = 8.1
+local SCHOOL_FIRE = 4
 local SCHOOL_HOLY = 2
 -- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
 -- melee line is the longest, and this is well past it.
@@ -463,6 +467,8 @@ function Identity.New(saved, class)
 	local rhythms = setmetatable({}, { __mode = "k" })
 	local NO_RHYTHM = {}
 	local seals = newSealTracker()
+	-- The player's Flamestrike casts whose ground can still burn.
+	local grounds = {}
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 	local brands = class == "WARLOCK" and newBrandTracker() or nil
 
@@ -705,6 +711,15 @@ function Identity.New(saved, class)
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
 		if direct and (direct.window or found.used) and seals.Consecrated(hit) then
 			return nil
+		end
+		-- Likewise, an older Flamestrike's ground burns with direct Fire Hits
+		-- with no cast, which a multi-hit spell's cast fits by nearness alone.
+		if found.used and (school == nil or school == SCHOOL_FIRE) then
+			for _, ground in ipairs(grounds) do
+				if ground ~= found and hit.time - ground.time <= FLAMESTRIKE_GROUND then
+					return nil
+				end
+			end
 		end
 		found.used = true
 		found.hitFrom = math.min(found.hitFrom or hit.time, hit.time)
@@ -1147,6 +1162,12 @@ function Identity.New(saved, class)
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
 			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
+		if cast.spellID and ns.FlamestrikeSpells[cast.spellID] then
+			while grounds[1] and record.time - grounds[1].time > FLAMESTRIKE_GROUND do
+				table.remove(grounds, 1)
+			end
+			grounds[#grounds + 1] = cast
+		end
 		-- A cast with no known target can be a refresh on a unit that was hidden
 		-- then. A refresh moves the spell's ticks off the old rhythm, which
 		-- could then fit another spell's tick when the unit shows again. So

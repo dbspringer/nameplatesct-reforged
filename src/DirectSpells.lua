@@ -111,6 +111,11 @@ sealsWith(false, { 407798 }) -- Martyrdom
 -- own, so during it they cannot be told from a Seal Proc (see Identity).
 ns.ConsecrationSpells = { [20116] = true, [20922] = true, [20923] = true, [20924] = true, [26573] = true }
 
+-- Flamestrike's casts. Its ground burns after its first Hit, with direct Fire
+-- Hits of another spell (1279985, 1279989 in the Combat Log Files) and no cast
+-- of their own, which the tick table leaves out (see Identity).
+ns.FlamestrikeSpells = { [2120] = true, [2121] = true, [8422] = true, [8423] = true, [10215] = true, [10216] = true }
+
 -- A Next-Swing Ability: its frame has an Empty Report before the real Hit (see
 -- Pairing.New). Seen on Heroic Strike in the Warrior Trace and on other
 -- players' Heroic Strikes in the open-world Traces. Unverified on Maul, Raptor
