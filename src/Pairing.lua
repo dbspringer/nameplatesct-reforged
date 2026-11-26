@@ -155,7 +155,10 @@ end
 -- any unit; nil for a cast that makes none. These are the casts that Spell
 -- Identity can give a direct Hit: a spell that hits, in its window; a DoT that
 -- also hits; and an area spell, whose ticks come with direct lines, until its
--- duration ends. A shot has lines of its own.
+-- duration ends. A shot has lines of its own. An area spell's window here has
+-- DOT_SLACK, wider than Spell Identity's TICK_TOLERANCE on purpose: it only
+-- puts a direct line first for a Hit of the cast's school, so a wide window
+-- costs little, and a narrow one can let another player's Hit take the line.
 local function directHitsOf(record)
 	if record.stage ~= "SUCCEEDED" or (record.unit ~= "player" and record.unit ~= "pet")
 		or issecretvalue(record.spellID) then
