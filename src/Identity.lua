@@ -639,14 +639,12 @@ function Identity.New(saved, class, startedAt)
 	-- from the earliest Hit, as a held Hit is decided late. Its later Hits fit
 	-- by nearness alone, so it fits none that a castless ground or a castless
 	-- proc's miss (a miss has no school) could have made. This holds for its
-	-- Possible Spells too.
-	local function isOpen(cast, hit, school, miss)
-		if not cast.used then
-			return true
-		end
+	-- Possible Spells too. hasRoom says whether a used cast still has room
+	-- for this Hit, by its spread, units, and Hits on this unit.
+	local function hasRoom(cast, hit)
 		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 		local multi = direct and direct.multi
-		if miss or not multi then
+		if not multi then
 			return false
 		end
 		local onUnit = cast.hitUnits[plateOf(hit)] or 0
@@ -654,7 +652,10 @@ function Identity.New(saved, class, startedAt)
 			return false
 		end
 		return math.max(cast.hitTo, hit.time) - math.min(cast.hitFrom, hit.time) <= multi.spread
-			and not groundCould(cast, hit, school)
+	end
+
+	local function isOpen(cast, hit, school, miss)
+		return not cast.used or not miss and hasRoom(cast, hit) and not groundCould(cast, hit, school)
 	end
 
 	-- The one cast that fits a direct hit or a shot by time and whose school
@@ -669,11 +670,18 @@ function Identity.New(saved, class, startedAt)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
 		local oldestFitting, oneSpell, fittingCasts = nil, true, {}
 		local groupWindow = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
+		-- A miss that a reused cast could still have made, but may not take,
+		-- is unsure: another cast must not win it.
+		local unsure = false
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local window = direct and direct.window or groupWindow
-			if isOpen(cast, hit, school, miss) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
+			local inWindow = age >= 0 and age <= window and canHit(cast, group, miss, age)
+			if miss and cast.used and inWindow and hasRoom(cast, hit) then
+				unsure = true
+			end
+			if isOpen(cast, hit, school, miss) and inWindow then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
@@ -686,6 +694,9 @@ function Identity.New(saved, class, startedAt)
 					end
 				end
 			end
+		end
+		if unsure then
+			return nil, fitting + 1, fittingCasts
 		end
 		if timely == 1 and learns(lastTimely) then
 			return lastTimely, fitting, fittingCasts
