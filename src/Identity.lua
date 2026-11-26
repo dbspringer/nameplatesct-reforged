@@ -434,9 +434,10 @@ end
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- firstHit, missed, secret, lastTick, stopped, plate, hidden, unitKnown }.
-	-- firstHit is when the first Hit used the cast up. A cast whose spell ID is
-	-- secret still competes, but never wins. lastTick is an area spell's last
+	-- hitFrom, hitTo, hitUnits, missed, secret, lastTick, stopped, plate,
+	-- hidden, unitKnown }. hitFrom and hitTo are the earliest and latest Hits
+	-- that took the cast, and hitUnits counts them by plate, for a multi-hit
+	-- spell. A cast whose spell ID is secret still competes, but never wins. lastTick is an area spell's last
 	-- tick on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
 	-- keys of the units that were hidden at a cast with no plate, and
@@ -525,14 +526,19 @@ function Identity.New(saved, class)
 		return direct and direct.learns
 	end
 
-	-- Whether a cast can still explain a Hit at this time: one that no Hit
-	-- used up, or a multi-hit spell's within its spread after its first Hit.
-	local function isOpen(cast, time)
+	-- Whether a cast can still explain this Hit: one that no Hit used up, or
+	-- a multi-hit spell's, while its Hits with this one span no more than its
+	-- spread, and it has Hits left on this unit. The span counts from the
+	-- earliest Hit, as a held Hit is decided late.
+	local function isOpen(cast, hit)
 		if not cast.used then
 			return true
 		end
 		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
-		return direct and direct.spread and time - cast.firstHit <= direct.spread or false
+		if not (direct and direct.spread) or (cast.hitUnits[plateOf(hit)] or 0) >= (direct.perUnit or 1) then
+			return false
+		end
+		return math.max(cast.hitTo, hit.time) - math.min(cast.hitFrom, hit.time) <= direct.spread
 	end
 
 	-- The one cast that fits a direct hit or a shot by time and whose school
@@ -551,7 +557,7 @@ function Identity.New(saved, class)
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local window = direct and direct.window or groupWindow
-			if isOpen(cast, hit.time) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
+			if isOpen(cast, hit) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
@@ -693,13 +699,18 @@ function Identity.New(saved, class)
 			return nil, possibleOfCasts(fittingCasts)
 		end
 		-- Judgement fits only by being near its cast, and so does a Consecration
-		-- tick, so during Consecration the Hit gets none and the cast stays.
+		-- tick, so during Consecration the Hit gets none and the cast stays. So
+		-- does a multi-hit spell's cast that a Hit already took, as its later
+		-- Hits fit by nearness alone too.
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
-		if direct and direct.window and seals.Consecrated(hit) then
+		if direct and (direct.window or found.used) and seals.Consecrated(hit) then
 			return nil
 		end
 		found.used = true
-		found.firstHit = found.firstHit or hit.time
+		found.hitFrom = math.min(found.hitFrom or hit.time, hit.time)
+		found.hitTo = math.max(found.hitTo or hit.time, hit.time)
+		found.hitUnits = found.hitUnits or {}
+		found.hitUnits[plate] = (found.hitUnits[plate] or 0) + 1
 		-- A cast whose spell ID is secret competes but never wins. The pet's
 		-- casts win as the player's do, since Your Hit is the pet's too.
 		if found.secret then

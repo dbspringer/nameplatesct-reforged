@@ -48,13 +48,21 @@ end
 -- taking the spell. These are Combat Log times, not Hit times (unverified).
 local SPREAD = 0.1
 -- Multi-Shot's Hits travel: they came 0.97 to 1.47 s after the cast in the
--- same logs, so its cast stays open for its whole window.
+-- same logs, so its cast stays open for its whole window, one Hit on each
+-- unit.
 local TRAVELS = math.huge
 
--- spread, for a multi-hit spell, is how long its cast stays open after its
--- first Hit (see Identity's castOf).
-local function hits(school, ids, spread)
-	addSpell({ school = school, spread = spread }, ids)
+-- How many Hits a multi-hit cast can make on one unit: one, or two for a
+-- strike with both weapons. Forever's Whirlwind tooltip says "weapon damage
+-- from both melee weapons to each enemy", and Mutilate's "attacks with both
+-- weapons".
+local BOTH_WEAPONS = 2
+
+-- spread, for a multi-hit spell, is how long its cast stays open from its
+-- first Hit to its last, and perUnit how many Hits it can make on one unit,
+-- one when nil (see Identity's castOf).
+local function hits(school, ids, spread, perUnit)
+	addSpell({ school = school, spread = spread, perUnit = perUnit }, ids)
 end
 
 -- A ranged attack: its Hits come with shot Log Lines, not direct ones.
@@ -192,7 +200,7 @@ do
 	-- The casts. Each one makes two Hits, a main-hand and an off-hand strike
 	-- (untested), and a cast gives its spell to one Hit, so only the first
 	-- gets the icon.
-	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }, SPREAD) -- Mutilate, Forever only
+	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }, SPREAD, BOTH_WEAPONS) -- Mutilate, Forever only
 
 	-- Shaman
 	hits(NATURE, { 403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208 }) -- Lightning Bolt
@@ -220,7 +228,7 @@ do
 	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
 	replacesSwing({ 845, 7369, 11608, 11609, 20569 }, SPREAD) -- Cleave
 	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
-	hits(PHYSICAL, { 1680 }, SPREAD) -- Whirlwind
+	hits(PHYSICAL, { 1680 }, SPREAD, BOTH_WEAPONS) -- Whirlwind
 	addSpell({ school = PHYSICAL, window = EXECUTE_WINDOW }, { 5308, 20658, 20660, 20661, 20662 }) -- Execute
 	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring
 	hits(PHYSICAL, { 6343, 8198, 8204, 8205, 11580, 11581 }, SPREAD) -- Thunder Clap
