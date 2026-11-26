@@ -797,7 +797,7 @@ local function main(...)
 	if not name or not name:find("^[%w%-]+$") then
 		fail("usage: luajit tools/label-trace.lua [--spells] <name>")
 	end
-	local base = "spec/traces/" .. name
+	local base = Trace.Base(name)
 	local labelPath = base .. ".labels.lua"
 	local exists = Trace.Exists(labelPath)
 	if exists and not spellsOnly then
