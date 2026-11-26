@@ -63,6 +63,11 @@ local SEAL_PROC_WINDOW = ns.Pairing.SEAL_PROC_WINDOW
 local SEAL_DURATION = ns.Pairing.SEAL_DURATION
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
+-- How long Flamestrike's ground can still make a Hit after its cast: its last
+-- ground damage came 8.034 s after the cast in the Combat Log Files, and
+-- Pairing lets a direct line come up to 0.125 s before its Hit.
+local FLAMESTRIKE_GROUND = 8.3
+local SCHOOL_FIRE = 4
 local SCHOOL_HOLY = 2
 -- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
 -- melee line is the longest, and this is well past it.
@@ -431,12 +436,17 @@ end
 -- school; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
 -- table or from the Spell Facts that count, or nil. class is the player's
 -- class token from UnitClass, which turns on the Poison Procs for a Rogue.
-function Identity.New(saved, class)
+-- startedAt is when the addon started, or nil for the first record's time,
+-- as in a Trace's replay.
+function Identity.New(saved, class, startedAt)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret, lastTick, stopped, plate, hidden, unitKnown }. A cast whose spell ID is
-	-- secret still competes, but never wins. lastTick is an area spell's last
-	-- tick on any unit, stopped when its channel stopped, and plate the key of
+	-- hitFrom, hitTo, hitUnits, units, missed, secret, lastTick, stopped,
+	-- plate, hidden, unitKnown }. hitFrom and hitTo are the earliest and latest
+	-- Hits that took the cast, hitUnits counts them by plate, and units counts
+	-- the plates, for a multi-hit spell. A cast whose spell ID is secret
+	-- still competes, but never wins. lastTick is an area spell's last tick
+	-- on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
 	-- keys of the units that were hidden at a cast with no plate, and
 	-- unitKnown says that plate is a unit key, so its unit is no other one.
@@ -445,10 +455,10 @@ function Identity.New(saved, class)
 	-- secret spells, kept while their DoT can run, longer than casts: what
 	-- rivalDue reads.
 	local dotCasts = {}
-	-- The time of the first record: a DoT cast before it, as before a /reload
-	-- or a Trace's start, is in no list, so rivalDue cannot see it until it has
-	-- run out (warlock-drain-life replayed from entry 3919).
-	local startedAt
+	-- When Identity started (startedAt, given), or the time of the first
+	-- record: a DoT cast before it, as before a /reload or a Trace's start, is
+	-- in no list, so rivalDue cannot see it until it has run out
+	-- (warlock-drain-life replayed from entry 3919).
 	-- For each unit and spell that ticks, the Tick Rhythms it can have there:
 	-- one, or after a Tick Tie each one that can be true (see ofTick). A rhythm
 	-- is { source, cast, last, anchor, ticks, ends }: source is the time of the
@@ -461,6 +471,8 @@ function Identity.New(saved, class)
 	local rhythms = setmetatable({}, { __mode = "k" })
 	local NO_RHYTHM = {}
 	local seals = newSealTracker()
+	-- The player's Flamestrike casts whose ground can still burn.
+	local grounds = {}
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 	local brands = class == "WARLOCK" and newBrandTracker() or nil
 
@@ -524,6 +536,52 @@ function Identity.New(saved, class)
 		return direct and direct.learns
 	end
 
+	-- Whether a ground with no cast could have made this Hit: Consecration's
+	-- Holy ticks or an older Flamestrike's Fire ones, or either from before
+	-- Identity started, as before a /reload, which is in no list.
+	local function groundCould(cast, hit, school)
+		local since = hit.time - startedAt
+		if (school == nil or school == SCHOOL_HOLY) and (since <= CONSECRATION_DURATION or seals.Consecrated(hit)) then
+			return true
+		end
+		if school == nil or school == SCHOOL_FIRE then
+			if since <= FLAMESTRIKE_GROUND then
+				return true
+			end
+			for _, ground in ipairs(grounds) do
+				if ground ~= cast and hit.time - ground.time <= FLAMESTRIKE_GROUND then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
+	-- Whether a cast can still explain this Hit: one that no Hit used up, or
+	-- a multi-hit spell's, while its Hits with this one span no more than its
+	-- spread, and it has units and Hits on this unit left. The span counts
+	-- from the earliest Hit, as a held Hit is decided late. Its later Hits fit
+	-- by nearness alone, so it fits none that a castless ground or a castless
+	-- proc's miss (a miss has no school) could have made. This holds for its
+	-- Possible Spells too. hasRoom says whether a used cast still has room
+	-- for this Hit, by its spread, units, and Hits on this unit.
+	local function hasRoom(cast, hit)
+		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+		local multi = direct and direct.multi
+		if not multi then
+			return false
+		end
+		local onUnit = cast.hitUnits[plateOf(hit)] or 0
+		if onUnit >= multi.perUnit or onUnit == 0 and multi.units and cast.units >= multi.units then
+			return false
+		end
+		return math.max(cast.hitTo, hit.time) - math.min(cast.hitFrom, hit.time) <= multi.spread
+	end
+
+	local function isOpen(cast, hit, school, miss)
+		return not cast.used or not miss and hasRoom(cast, hit) and not groundCould(cast, hit, school)
+	end
+
 	-- The one cast that fits a direct hit or a shot by time and whose school
 	-- is not known to differ from the Hit's, how many casts fit, and those
 	-- casts. A cast of
@@ -536,11 +594,18 @@ function Identity.New(saved, class)
 		local timely, lastTimely, fitting, lastFitting = 0, nil, 0, nil
 		local oldestFitting, oneSpell, fittingCasts = nil, true, {}
 		local groupWindow = group == "shot" and SHOT_FLIGHT or DIRECT_WINDOW
+		-- A miss that a reused cast could still have made, but may not take,
+		-- is unsure: another cast must not win it.
+		local unsure = false
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local window = direct and direct.window or groupWindow
-			if not cast.used and age >= 0 and age <= window and canHit(cast, group, miss, age) then
+			local inWindow = age >= 0 and age <= window and canHit(cast, group, miss, age)
+			if miss and cast.used and inWindow and hasRoom(cast, hit) then
+				unsure = true
+			end
+			if isOpen(cast, hit, school, miss) and inWindow then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
@@ -553,6 +618,11 @@ function Identity.New(saved, class)
 					end
 				end
 			end
+		end
+		-- Its fitting casts leave the reused one out, so they are no Possible
+		-- Spells.
+		if unsure then
+			return nil, fitting + 1, {}
 		end
 		if timely == 1 and learns(lastTimely) then
 			return lastTimely, fitting, fittingCasts
@@ -684,10 +754,17 @@ function Identity.New(saved, class)
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
-		if direct and direct.window and seals.Consecrated(hit) then
+		if direct and direct.window and (school == nil or school == SCHOOL_HOLY) and seals.Consecrated(hit) then
 			return nil
 		end
 		found.used = true
+		found.hitFrom = math.min(found.hitFrom or hit.time, hit.time)
+		found.hitTo = math.max(found.hitTo or hit.time, hit.time)
+		found.hitUnits = found.hitUnits or {}
+		if not found.hitUnits[plate] then
+			found.units = (found.units or 0) + 1
+		end
+		found.hitUnits[plate] = (found.hitUnits[plate] or 0) + 1
 		-- A cast whose spell ID is secret competes but never wins. The pet's
 		-- casts win as the player's do, since Your Hit is the pet's too.
 		if found.secret then
@@ -1061,6 +1138,12 @@ function Identity.New(saved, class)
 
 	local identity = {}
 
+	-- Starts Identity's clock at this time, unless a start time was given or
+	-- a record came first: a replay's first entry.
+	function identity.Start(time)
+		startedAt = startedAt or time
+	end
+
 	function identity.Line(record)
 		seals.Line(record)
 		if poisons then
@@ -1124,6 +1207,13 @@ function Identity.New(saved, class)
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
 			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
+		-- A cast whose spell ID is secret can be Flamestrike's.
+		if record.unit == "player" and (secret or ns.FlamestrikeSpells[cast.spellID]) then
+			while grounds[1] and record.time - grounds[1].time > FLAMESTRIKE_GROUND do
+				table.remove(grounds, 1)
+			end
+			grounds[#grounds + 1] = cast
+		end
 		-- A cast with no known target can be a refresh on a unit that was hidden
 		-- then. A refresh moves the spell's ticks off the old rhythm, which
 		-- could then fit another spell's tick when the unit shows again. So

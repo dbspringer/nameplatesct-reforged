@@ -447,6 +447,214 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of a multi-hit spell", function()
+		local WHIRLWIND, MULTI_SHOT, MORTAL_STRIKE = 1680, 2643, 12294
+
+		it("gives Whirlwind to each Hit of one cast, on several units and twice on one, as a dual wield strikes", function()
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			assert.are.same({ WHIRLWIND, WHIRLWIND, WHIRLWIND, WHIRLWIND }, {
+				of(identity, 1, "direct", PHYSICAL),
+				of(identity, 1, "direct", PHYSICAL, "nameplate2"),
+				of(identity, 1.01, "direct", PHYSICAL),
+				of(identity, 1.05, "direct", PHYSICAL, "nameplate3"),
+			})
+		end)
+
+		it("closes the cast 0.1 s after its first Hit, where a one-target cast closes at its first", function()
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			assert.are.equal(WHIRLWIND, of(identity, 1.3, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 1.45, "direct", PHYSICAL, "nameplate2"))
+			cast(identity, 5, MORTAL_STRIKE)
+			assert.are.equal(MORTAL_STRIKE, of(identity, 5, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 5, "direct", PHYSICAL, "nameplate2"))
+		end)
+
+		it("gives a cast one Hit on each unit, or two for a strike with both weapons", function()
+			local THUNDER_CLAP = 6343
+			local identity = Identity.New({})
+			cast(identity, 1, THUNDER_CLAP)
+			assert.are.equal(THUNDER_CLAP, of(identity, 1, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 1.01, "direct", PHYSICAL))
+			cast(identity, 5, WHIRLWIND)
+			of(identity, 5, "direct", PHYSICAL)
+			of(identity, 5, "direct", PHYSICAL)
+			assert.is_nil(of(identity, 5.01, "direct", PHYSICAL))
+		end)
+
+		it("gives a cast no more Hits than its spell's targets, and no miss once it has hit", function()
+			local CLEAVE, MUTILATE = 845, 1310707
+			local identity = Identity.New({})
+			cast(identity, 1, CLEAVE)
+			of(identity, 1, "direct", PHYSICAL)
+			assert.are.equal(CLEAVE, of(identity, 1, "direct", PHYSICAL, "nameplate2"))
+			assert.is_nil(of(identity, 1.03, "direct", PHYSICAL, "nameplate3"))
+			cast(identity, 5, MUTILATE)
+			assert.are.equal(MUTILATE, of(identity, 5, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 5, "directMiss"))
+			assert.are.equal(MUTILATE, of(identity, 5.01, "direct", PHYSICAL))
+		end)
+
+		it("gives a strike with both weapons no more units than its spell's targets", function()
+			local MUTILATE = 1310707
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			for i = 1, 4 do
+				of(identity, 1, "direct", PHYSICAL, "nameplate" .. i)
+			end
+			assert.is_nil(of(identity, 1.01, "direct", PHYSICAL, "nameplate5"))
+			cast(identity, 5, MUTILATE)
+			of(identity, 5, "direct", PHYSICAL)
+			assert.is_nil(of(identity, 5, "direct", PHYSICAL, "nameplate2"))
+		end)
+
+		it("keeps a reused cast out of Possible Spells where a castless ground could have made the Hit", function()
+			local FLAMESTRIKE, FIRE_BLAST = 2120, 2136
+			local identity = Identity.New({})
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 3, FLAMESTRIKE)
+			of(identity, 3, "direct", FIRE)
+			cast(identity, 3.02, FIRE_BLAST)
+			assert.are.same({ FIRE_BLAST }, { of(identity, 3.04, "direct", FIRE, "nameplate2") })
+		end)
+
+		it("counts the spread from the earliest Hit, when a held one is decided late", function()
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			assert.are.equal(WHIRLWIND, of(identity, 1.13, "direct", PHYSICAL))
+			assert.are.equal(WHIRLWIND, of(identity, 1.04, "direct", PHYSICAL, "nameplate2"))
+			assert.is_nil(of(identity, 1.19, "direct", PHYSICAL, "nameplate3"))
+		end)
+
+		it("leaves a pet's Hit on a unit that Multi-Shot already hit to the pet's cast", function()
+			local BITE = 17253
+			local identity = Identity.New({})
+			cast(identity, 1, MULTI_SHOT)
+			of(identity, 1.97, "direct", PHYSICAL)
+			cast(identity, 2.4, BITE, "pet")
+			assert.are.equal(BITE, of(identity, 2.5, "direct", PHYSICAL))
+		end)
+
+		it("gives a Holy Hit during Consecration no area spell that already hit, as it can be Consecration's", function()
+			local HOLY_WRATH = 2812
+			local identity = Identity.New({})
+			cast(identity, 0, CONSECRATION)
+			cast(identity, 1, HOLY_WRATH)
+			assert.are.equal(HOLY_WRATH, of(identity, 1, "direct", HOLY))
+			assert.is_nil(of(identity, 1.05, "direct", HOLY, "nameplate2"))
+		end)
+
+		it("gives a Fire Hit no area spell that already hit while an older Flamestrike's ground burns", function()
+			local FLAMESTRIKE, BLAST_WAVE = 2120, 11113
+			local identity = Identity.New({})
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 3, BLAST_WAVE)
+			assert.are.equal(BLAST_WAVE, of(identity, 3, "direct", FIRE))
+			assert.is_nil(of(identity, 3.05, "direct", FIRE, "nameplate2"))
+			cast(identity, 10, BLAST_WAVE)
+			of(identity, 10, "direct", FIRE)
+			assert.are.equal(BLAST_WAVE, of(identity, 10.05, "direct", FIRE, "nameplate2"))
+		end)
+
+		it("gives a Fire or Holy Hit no area spell that already hit just after a start, as a ground from before can burn", function()
+			local BLAST_WAVE, HOLY_NOVA = 11113, 15237
+			local identity = Identity.New({})
+			cast(identity, 0, BLAST_WAVE)
+			assert.are.equal(BLAST_WAVE, of(identity, 0, "direct", FIRE))
+			assert.is_nil(of(identity, 0.05, "direct", FIRE, "nameplate2"))
+			cast(identity, 5, HOLY_NOVA)
+			assert.are.equal(HOLY_NOVA, of(identity, 5, "direct", HOLY))
+			assert.is_nil(of(identity, 5.05, "direct", HOLY, "nameplate2"))
+			cast(identity, 9, BLAST_WAVE)
+			of(identity, 9, "direct", FIRE)
+			assert.are.equal(BLAST_WAVE, of(identity, 9.05, "direct", FIRE, "nameplate2"))
+		end)
+
+		it("counts the startup guard from the addon's start, and a secret cast as a possible Flamestrike", function()
+			local BLAST_WAVE = 11113
+			local idle = Identity.New({}, nil, 0)
+			cast(idle, 40, BLAST_WAVE)
+			of(idle, 40, "direct", FIRE)
+			assert.are.equal(BLAST_WAVE, of(idle, 40, "direct", FIRE, "nameplate2"))
+			local secret = Identity.New({}, nil, 0)
+			secret.Cast({ kind = "cast", stage = "SUCCEEDED", time = 40, spellID = "<secret>", unit = "player" })
+			cast(secret, 42, BLAST_WAVE)
+			of(secret, 42, "direct", FIRE)
+			assert.is_nil(of(secret, 42.05, "direct", FIRE, "nameplate2"))
+		end)
+
+		it("starts a replay's clock at its first entry, not its first cast", function()
+			local BLAST_WAVE = 11113
+			assert.are.same({ BLAST_WAVE, BLAST_WAVE }, shownSpells({
+				lineEntry(0, "swing"),
+				castEntry(40, BLAST_WAVE),
+				hitEntry(40.01, "nameplate1", FIRE), lineEntry(40.01, "direct"),
+				hitEntry(40.01, "nameplate2", FIRE), lineEntry(40.01, "direct"),
+			}))
+		end)
+
+		it("gives a miss that a reused cast could have made no other cast's spell", function()
+			local BITE = 17253
+			local identity = Identity.New({})
+			cast(identity, 1, MULTI_SHOT)
+			of(identity, 1.97, "direct", PHYSICAL)
+			cast(identity, 2.1, BITE, "pet")
+			of(identity, 2.2, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(of(identity, 2.3, "directMiss", nil, "nameplate2"))
+			-- Nor a stack of the other casts, which leaves the reused one out.
+			local ARCANE_SHOT = 3044
+			local stacked = Identity.New({}, nil, -100)
+			cast(stacked, 1, MULTI_SHOT)
+			of(stacked, 1.97, "direct", PHYSICAL)
+			cast(stacked, 2.1, BITE, "pet")
+			cast(stacked, 2.15, ARCANE_SHOT)
+			assert.are.same({}, { of(stacked, 2.3, "directMiss", nil, "nameplate2") })
+		end)
+
+		it("keeps a reused cast off a Flamestrike ground Hit whose line came within its last tick", function()
+			local FLAMESTRIKE, BLAST_WAVE = 2120, 11113
+			local identity = Identity.New({}, nil, -100)
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 8.1, BLAST_WAVE)
+			of(identity, 8.12, "direct", FIRE)
+			assert.is_nil(of(identity, 8.151, "direct", FIRE, "nameplate2"))
+		end)
+
+		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
+			local identity = Identity.New({})
+			cast(identity, 1, MULTI_SHOT)
+			assert.are.same({ MULTI_SHOT, MULTI_SHOT, MULTI_SHOT }, {
+				of(identity, 1.97, "direct", PHYSICAL),
+				of(identity, 2.2, "direct", PHYSICAL, "nameplate2"),
+				of(identity, 2.47, "direct", PHYSICAL, "nameplate3"),
+			})
+		end)
+	end)
+
+	describe("of Execute", function()
+		local EXECUTE = 5308
+
+		it("gives Execute, whose damage is another spell, to a Physical Hit up to 0.2 s after its cast, and not later", function()
+			local function executed()
+				local identity = Identity.New({})
+				cast(identity, 5, EXECUTE)
+				return identity
+			end
+			assert.are.equal(EXECUTE, of(executed(), 5, "direct", PHYSICAL))
+			assert.are.equal(EXECUTE, of(executed(), 5.19, "direct", PHYSICAL))
+			assert.is_nil(of(executed(), 5.25, "direct", PHYSICAL))
+		end)
+	end)
+
+	it("gives Execute its Physical Hit after a secret cast, which can be Consecration but not Physical", function()
+		local EXECUTE = 5308
+		local identity = Identity.New({}, nil, 0)
+		identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 40, spellID = "<secret>", unit = "player" })
+		cast(identity, 42, EXECUTE)
+		assert.are.equal(EXECUTE, of(identity, 42.05, "direct", PHYSICAL))
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}
