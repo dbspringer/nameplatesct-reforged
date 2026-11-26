@@ -1,6 +1,6 @@
 # nameplatesct-reforged
 
-A WoW addon that draws NameplateSCT's combat text above enemy nameplates on the Forever client (`_forever_`, 1.60.x, Interface 16001). It is seeded from Justw8/NameplateSCT (MIT, remote `upstream`; read only, push to `origin`). Forever closes the combat log to addons and can make amounts secret, so the upstream data path is replaced; the renderer, animations, and Ace3 options stay. Client-specific code stays in one module, so a Retail TOC remains a small later step.
+A WoW addon that draws NameplateSCT's combat text above enemy nameplates on the Forever client (`_forever_`, 1.60.x, Interface 16001). It is seeded from Justw8/NameplateSCT (MIT, remote `upstream`; read only, push to `origin`). Forever closes the combat log to addons and can make amounts secret, so the upstream data path is replaced; the renderer, animations, and Ace3 options stay. Client-specific code stays in the data path (`src/`) and in the `COMPATIBILITY` block at the top of `NameplateSCT.lua`; keep the renderer below that block client-neutral, so a Retail TOC remains a small later step.
 
 ## Agent skills
 
