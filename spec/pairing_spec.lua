@@ -666,6 +666,14 @@ describe("Pairing", function()
 			assert.are.equal(direct.entry, decided[first.entry])
 		end)
 
+		it("leaves the Hit after a shield line to that line, not to a tick line before it", function()
+			local mob = {}
+			local tickLine, fire = line(5, "tick"), hitOn(5, mob, FIRE)
+			local shieldLine, shadow = line(5, "shield"), hitOn(5, mob, SHADOW)
+			local decided = pair({ cast(0, CORRUPTION), tickLine, fire, shieldLine, shadow })
+			assert.are.same({ tickLine.entry, shieldLine.entry }, { decided[fire.entry], decided[shadow.entry] })
+		end)
+
 		it("gives a tick line to the Hit of its school when a later Hit takes the frame's direct line", function()
 			local mob = {}
 			local rival, direct, tickLine = hitOn(5, mob, 1), line(5, "direct"), line(5, "tick")

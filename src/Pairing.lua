@@ -662,14 +662,26 @@ function Pairing.New(options)
 	-- later Hit of the frame that suits it (warlock-zf Retribution Aura and
 	-- Brand Procs, warlock-maraudon hits 32528 and 32530). Not for shot
 	-- lines: there the same rule made 13 of 16 changed Hits worse.
-	local function leavesLineToHitAfter(hit, line, later, first)
-		if (line.lineKind ~= "direct" and line.lineKind ~= "shield") or hit.entry > line.entry then
-			return false
-		end
+	local function hitAfterLine(line, later, first)
 		for i = first, #later do
 			local other = later[i]
 			if other.entry > line.entry and not OWN_UNITS[other.unit] and not isZeroWound(other)
 				and not isOthersHeal(other) and suits(other, line) then
+				return other
+			end
+		end
+	end
+
+	local function leavesLineToHitAfter(hit, line, later, first)
+		return (line.lineKind == "direct" or line.lineKind == "shield") and hit.entry < line.entry
+			and hitAfterLine(line, later, first) ~= nil
+	end
+
+	-- Whether a line of the frame that the Hit leaves to the Hit after it
+	-- counts on other, so other cannot also take a tick line.
+	local function heldForLine(hit, other, lines, later, first)
+		for _, held in ipairs(lines) do
+			if leavesLineToHitAfter(hit, held, later, first) and hitAfterLine(held, later, first) == other then
 				return true
 			end
 		end
@@ -698,7 +710,8 @@ function Pairing.New(options)
 		end
 		for i = first, #later do
 			local other = later[i]
-			if not OWN_UNITS[other.unit] and suits(other, line) and schoolIs(other, line, true) then
+			if not OWN_UNITS[other.unit] and suits(other, line) and schoolIs(other, line, true)
+				and not heldForLine(hit, other, lines, later, first) then
 				return false
 			end
 		end
