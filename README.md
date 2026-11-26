@@ -2,13 +2,33 @@
 
 NameplateSCT's scrolling combat text, drawn above enemy nameplates, for WoW: Forever.
 
-Forever closes the combat log to addons, so the original NameplateSCT can't tell which hits are yours. This version works it out from what the game still sends. Your damage, misses, and your pet's damage show above the enemy you hit, with the original's animations and options.
+Forever closes the combat log to addons, so the original NameplateSCT can't tell which hits are yours. Most of what the game still sends is secret. A hit on an enemy doesn't say who made it, and its amount is secret, which means the addon can show the number but can't read or compare it. Your combat log lines reach addons with no words, so their colour is all the addon can read.
 
-## Work in progress
+This version pairs those hits with your combat log lines to work out which ones are yours. Your damage, misses, and your pet's damage show above the enemy you hit, with the original's animations and options.
 
-Solo, the addon tells your hits apart well. In groups and busy fights, it can still mistake other players' hits for yours, so some of your numbers can be wrong or missing. Melee hits and misses get mixed up the most.
+## How it pairs your hits
 
-I'm still working on this. If you see it happen, a recording of that fight (`/nsctr record`, see below) helps a lot.
+The addon matches each hit on an enemy with one of your combat log lines, or with none, and then picks the spell that made it.
+
+- **Timing.** A spell's line and its hit come within a fraction of a second of each other. A melee swing's hit comes a short, steady delay after its line, and the addon learns that delay as you fight.
+- **Line colour.** The colour tells the kind of line: a spell hit, a DoT tick, a melee swing, a shot, a miss, or a heal.
+- **School.** When the game shows a hit's school, the addon prefers lines from spells of that school, so a Fire hit won't take your Corruption tick's line.
+- **Icons.** The icon comes from what you and your pet just cast, and from the steady rhythm of each DoT's ticks. When the addon isn't sure, it shows no icon (see [Icons](#icons)).
+
+## If something looks off
+
+Solo, the addon tells your hits apart well. In groups and busy fights, other players' hits can still pass for yours, so some of your numbers can be wrong or missing. Melee hits and misses get mixed up the most.
+
+I'm still tuning it, and most of the tuning so far comes from Warlock fights. If you play another class or run in busy groups, you're the likeliest to see something off, and your report helps the most.
+
+To send one:
+
+1. Before the fight, type `/nsctr record` and `/combatlog`.
+2. After the fight, type both again to stop them, then `/reload`.
+3. Open an [issue](https://github.com/dbspringer/nameplatesct-reforged/issues) and attach two files from your Forever client folder: the recording, `WTF\Account\<account>\SavedVariables\NameplateSCT_Reforged.lua`, and the newest combat log, `Logs\WoWCombatLog-<date>_<time>.txt`. Say your class, whether you were solo or in a group, and what looked wrong.
+4. Type `/nsctr record clear` once you've sent it. A long recording can slow down your login.
+
+The recording holds your character name and zone, and the combat log holds the names of everyone in the fight. If you'd rather not use GitHub, a comment on [CurseForge](https://www.curseforge.com/wow/addons/nameplate-scrolling-combat-text-reforged) works too.
 
 ## Install
 
@@ -20,8 +40,7 @@ Enemy nameplates need to be on (press V), since the numbers draw on them.
 
 - `/nsctr` opens the options. The Filters page can hide some spells, or some kinds of enemies.
 - If your combat log filter isn't set up the way the addon needs, a window offers to fix it with one click and a reload. The colour of each combat log line is how the addon tells your hits from everything else.
-- `/nsctr record` records your combat events, and typing it again stops. If something looks wrong, attach the recording to an [issue](https://github.com/dbspringer/nameplatesct-reforged/issues).
-- `/nsctr record clear` deletes the recording once you've sent it. A long one can slow down your login.
+- `/nsctr record` starts or stops a recording for a bug report, and `/nsctr record clear` deletes it. See [If something looks off](#if-something-looks-off).
 - `/nsctr forget` clears what the addon learned about your wand.
 
 ## Icons
