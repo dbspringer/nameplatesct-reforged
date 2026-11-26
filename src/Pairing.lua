@@ -70,7 +70,7 @@ local HIDE_KEEP = 5
 local HOLD = 0.15
 -- How much later than its time a held Hit can be decided, at the next Tick.
 Pairing.LATEST_DECISION = HOLD + SHOT_WINDOW
-local SCHOOL_PHYSICAL, SCHOOL_HOLY, SCHOOL_SHADOW = 1, 2, 32
+local School = ns.School
 -- The Proc of each class that has a hint. A Proc has no cast of its own, so a
 -- landed Hit that can set it off is a hint of it: the Proc's school, how soon
 -- after that Hit's line the Proc's line comes, and what sets it off. swing is
@@ -85,8 +85,8 @@ local SCHOOL_PHYSICAL, SCHOOL_HOLY, SCHOOL_SHADOW = 1, 2, 32
 -- on a weapon, and Touch of the Grave is a Shadow Proc of the same swings. A
 -- Weapon Proc's Hit comes too late for such a window.
 local PROC_HINTS = {
-	WARLOCK = { school = SCHOOL_SHADOW, window = BRAND_PROC_WINDOW, petSwing = true, petSpell = true },
-	PALADIN = { school = SCHOOL_HOLY, window = SEAL_PROC_WINDOW, swing = true, seal = true },
+	WARLOCK = { school = School.SHADOW, window = BRAND_PROC_WINDOW, petSwing = true, petSpell = true },
+	PALADIN = { school = School.HOLY, window = SEAL_PROC_WINDOW, swing = true, seal = true },
 }
 -- A Weapon Proc's Log Line is a spell's, but its Hit comes late like a swing's.
 -- A Shaman's Windfury lines (Trace from issue #48, 9 procs) came 0 to 0.122 s
@@ -102,8 +102,13 @@ local PROC_TO = ns.LineKind.LONGEST_PROC_DELAY
 -- How long after its longest duration a DoT still counts as active, for a
 -- cast that travels or a tick that drifts late.
 local DOT_SLACK = 1
--- How far a tick can be from its interval, as in Spell Identity.
+-- How far a tick can be from its interval, here and in Spell Identity's Tick
+-- Rhythms. Nearly all ticks came within 0.07 s of their rhythm in the Warlock
+-- Traces; one batch came 0.18 s off and gets no icon. A wider window lets
+-- another spell's tick that comes just before fit too, which moves the rhythm
+-- off its own next tick.
 local TICK_TOLERANCE = 0.1
+Pairing.TICK_TOLERANCE = TICK_TOLERANCE
 
 -- In the Warlock Traces, a Hit on the player or the pet had a Log Line only
 -- for a heal or damage in its own frame (Drain Life, Health Funnel); a mob's
@@ -127,7 +132,7 @@ end
 -- Heals also report school 1, so a physical Hit is a school 1 Hit that is
 -- not a heal.
 local function isPhysical(hit)
-	return hit.action ~= "HEAL" and not issecretvalue(hit.school) and hit.school == SCHOOL_PHYSICAL
+	return hit.action ~= "HEAL" and not issecretvalue(hit.school) and hit.school == School.PHYSICAL
 end
 
 -- A WOUND of 0, such as the one right after a pet's Torment, has no event
@@ -900,16 +905,16 @@ function Pairing.New(options)
 			endFrame()
 		end
 		if record.kind == "cast" then
+			local secret = issecretvalue(record.spellID)
 			if record.stage == "SUCCEEDED" and record.unit == "player" then
-				local procs
-				if not issecretvalue(record.spellID) then
-					procs = ns.Seals[record.spellID]
-				end
-				if procs ~= nil or issecretvalue(record.spellID) then
-					sealProcsUntil = procs and record.time + SEAL_DURATION or nil
+				-- A secret cast can be a Seal's, so it ends the known one.
+				if secret then
+					sealProcsUntil = nil
+				elseif ns.Seals[record.spellID] ~= nil then
+					sealProcsUntil = ns.Seals[record.spellID] and record.time + SEAL_DURATION or nil
 				end
 			end
-			local dot = record.stage == "SUCCEEDED" and not issecretvalue(record.spellID) and ns.TickSpells[record.spellID]
+			local dot = record.stage == "SUCCEEDED" and not secret and ns.TickSpells[record.spellID]
 			if dot and not dot.area then
 				dotEnds[dot.school] = math.max(dotEnds[dot.school] or 0, record.time + dot.duration + DOT_SLACK)
 			end
@@ -920,11 +925,11 @@ function Pairing.New(options)
 				addDirectCast({ time = record.time, school = school, life = life, many = anyUnit, pet = record.unit == "pet",
 					spellID = channel and record.spellID or nil, burnsSelf = channel and dot.burnsSelf or nil,
 					interval = channel and dot.interval or nil }, lasts)
-			elseif record.stage == "CHANNEL_STOP" and record.unit == "player" and not issecretvalue(record.spellID) then
+			elseif record.stage == "CHANNEL_STOP" and record.unit == "player" and not secret then
 				stopChannel(record)
 			end
 			local spell = spellTakingEffect(record)
-			if spell and spell.school == SCHOOL_PHYSICAL and not spell.shot then
+			if spell and spell.school == School.PHYSICAL and not spell.shot then
 				lastStrike = record.time
 			end
 			if spell and spell.nextSwing then

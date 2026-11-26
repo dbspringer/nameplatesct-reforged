@@ -1,4 +1,5 @@
 local ns = {}
+assert(loadfile("src/TickSpells.lua"))("NameplateSCT_Reforged", ns)
 assert(loadfile("src/DirectSpells.lua"))("NameplateSCT_Reforged", ns)
 
 describe("IsPhysicalShot", function()
