@@ -1310,16 +1310,16 @@ function Identity.New(saved, class, startedAt)
 	end
 
 	-- Whether a used cast in its window could still have made this Hit on
-	-- this plate: a Hit on another unit took it, and its target was this unit
-	-- or is not known. A castless Hit can take a strike's cast before the
-	-- strike lands.
+	-- this plate: a Hit on another unit took it. A castless Hit can take a
+	-- strike's cast before the strike lands. A cast's plate is the player's
+	-- target as it started, which need not be the unit it hit, so it does
+	-- not count.
 	local function takenCastCould(hit, group, school, plate)
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local known = not cast.secret and schoolOf(cast.spellID)
-			if cast.used and not (cast.hitUnits and cast.hitUnits[plate]) and (cast.plate == nil or cast.plate == plate)
-				and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
+			if cast.used and not (cast.hitUnits and cast.hitUnits[plate]) and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
 				and not (known and known ~= school) then
 				return true
 			end

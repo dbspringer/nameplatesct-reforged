@@ -536,6 +536,14 @@ describe("Spell Identity", function()
 			cast(identity, 102.99, MORTAL_STRIKE)
 			of(identity, 103, "direct", PHYSICAL, "nameplate2")
 			assert.is_nil(bleed(identity, 103.03, "direct"))
+			-- The cast's target, the player's target as it started, is no proof of
+			-- the unit it hit.
+			local aimed = warrior()
+			bleed(aimed, 100, "direct")
+			aimed.Cast({ kind = "cast", stage = "SUCCEEDED", time = 102.99, spellID = MORTAL_STRIKE, unit = "player",
+				startTargetLife = { unitKey = "nameplate2" } })
+			of(aimed, 103, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(aimed, 103.03, "direct"))
 			-- A strike that its own unit's Hit took leaves the rhythm alone.
 			local other = warrior()
 			bleed(other, 100, "direct")
