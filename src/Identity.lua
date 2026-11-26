@@ -452,47 +452,71 @@ local DEEP_WOUNDS, DEEP_WOUNDS_INTERVAL = 12834, 3
 -- such Hit gets Deep Wounds: a Weapon Proc or a late strike almost never
 -- lands on that rhythm.
 local function newPhysicalProcTracker(class)
-	local buffs = EXTRA_STRIKE_BUFFS[class] or {}
-	-- The player's latest landed Hits, each with its time and plate.
+	local buffSpells = EXTRA_STRIKE_BUFFS[class] or {}
+	-- The player's latest landed Hits that can set off an Extra Strike, each
+	-- with its time, plate, and whether the plate is a plate life's key.
 	local landed = {}
-	-- The latest buff cast: { spellID, ends, left }.
-	local buff
-	-- By plate, the time of the last Physical Hit with no cast that was not
+	-- The buff casts that can still give a held Hit their spell, oldest
+	-- first: { spellID, time, ends, left }. A held Hit is decided up to
+	-- DECIDE_LATE late, so a cast after it can come first.
+	local buffs = {}
+	-- By plate, the time of the latest Physical Hit with no cast that was not
 	-- an Extra Strike, for Deep Wounds' rhythm.
 	local lastBleed = setmetatable({}, { __mode = "k" })
 
 	local tracker = {}
 
-	function tracker.Landed(time, plate)
+	-- A Hit that can set off an Extra Strike: a swing, or a strike that a
+	-- cast explains. A Physical Hit with no cast cannot, as it can be an
+	-- Extra Strike itself: two in a frame would each be the other's.
+	function tracker.Landed(time, plate, onLife)
 		while landed[1] and time - landed[1].time > EXTRA_STRIKE_WINDOW + DECIDE_LATE do
 			table.remove(landed, 1)
 		end
-		landed[#landed + 1] = { time = time, plate = plate }
+		landed[#landed + 1] = { time = time, plate = plate, onLife = onLife }
 	end
 
 	function tracker.Cast(spellID, time)
-		local spell = buffs[spellID]
+		local spell = buffSpells[spellID]
 		if spell then
-			buff = { spellID = spellID, ends = time + spell.duration, left = spell.hits }
+			while buffs[1] and time - buffs[1].ends > DECIDE_LATE do
+				table.remove(buffs, 1)
+			end
+			buffs[#buffs + 1] = { spellID = spellID, time = time, ends = time + spell.duration, left = spell.hits }
 		end
 	end
 
-	local function extraStrike(hit, plate)
+	-- A unit from a plate life's key and one from a bare unit token can be the
+	-- same unit, as a Nameplate can show between two Hits, so only two keys of
+	-- one kind can tell two units apart.
+	local function extraStrike(hit, plate, onLife)
 		for _, other in ipairs(landed) do
 			local since = hit.time - other.time
-			if other.plate ~= plate and since >= 0 and since <= EXTRA_STRIKE_WINDOW then
+			if other.onLife == onLife and other.plate ~= plate and since >= 0 and since <= EXTRA_STRIKE_WINDOW then
 				return true
 			end
 		end
 		return false
 	end
 
+	-- The buff of the newest cast at or before the Hit's time, while it lasts
+	-- and has Hits left: a recast replaces the buff.
+	local function buffAt(time)
+		for i = #buffs, 1, -1 do
+			local buff = buffs[i]
+			if buff.time <= time then
+				return time <= buff.ends and buff.left ~= 0 and buff or nil
+			end
+		end
+	end
+
 	-- The spell of a Physical Hit with no cast on this plate, or nil. direct
 	-- says it came on a direct line, as an Extra Strike's does; a tick line
-	-- can only be Deep Wounds'.
-	function tracker.ProcSpell(hit, plate, direct)
-		if direct and extraStrike(hit, plate) then
-			if buff and hit.time <= buff.ends and buff.left ~= 0 then
+	-- can only be Deep Wounds'. onLife says the plate is a plate life's key.
+	function tracker.ProcSpell(hit, plate, direct, onLife)
+		if direct and extraStrike(hit, plate, onLife) then
+			local buff = buffAt(hit.time)
+			if buff then
 				buff.left = buff.left and buff.left - 1
 				return buff.spellID
 			end
@@ -501,7 +525,12 @@ local function newPhysicalProcTracker(class)
 		if class ~= "WARRIOR" or plate == nil then
 			return nil
 		end
+		-- A held Hit decided after a newer one on its plate keeps the rhythm
+		-- on the newer one, and gets none.
 		local last = lastBleed[plate]
+		if last and hit.time < last then
+			return nil
+		end
 		lastBleed[plate] = hit.time
 		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
 			return DEEP_WOUNDS
@@ -1308,7 +1337,7 @@ function Identity.New(saved, class)
 			if spellID or possible or not physicalProcs or school ~= SCHOOL_PHYSICAL or physicalDotRuns(hit) then
 				return spellID, possible
 			end
-			return physicalProcs.ProcSpell(hit, plate, false)
+			return physicalProcs.ProcSpell(hit, plate, false, hit.life ~= nil)
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
@@ -1319,7 +1348,7 @@ function Identity.New(saved, class)
 		if physicalProcs and group == "direct" and not miss and school == SCHOOL_PHYSICAL then
 			local fittingCasts = castsFitting(hit, group, school)
 			if #fittingCasts == 0 then
-				return physicalProcs.ProcSpell(hit, plate, true)
+				return physicalProcs.ProcSpell(hit, plate, true, hit.life ~= nil)
 			end
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
@@ -1368,13 +1397,16 @@ function Identity.New(saved, class)
 	-- it did not come from.
 	function identity.OfAll(decisions)
 		local spellIDs, possibles = {}, {}
-		-- Every landed Hit of the player's counts for an Extra Strike, a swing
-		-- too, and one later in this list as well, as its Extra Strike can
-		-- come in the same frame.
+		-- The player's landed swings and strikes that a cast explains can set
+		-- off an Extra Strike, one later in this list too, as its Extra Strike
+		-- can come in the same frame.
 		if physicalProcs then
 			for _, decision in ipairs(decisions) do
-				if not isMiss(decision.line.lineKind) and not decision.line.pet then
-					physicalProcs.Landed(decision.hit.time, plateOf(decision.hit))
+				local line, hit = decision.line, decision.hit
+				if not isMiss(line.lineKind) and not line.pet and (decision.how == "melee"
+					or ns.LineKind.Group(line.lineKind) == "direct" and #(castsFitting(hit, "direct",
+						not issecretvalue(hit.school) and hit.school or nil)) > 0) then
+					physicalProcs.Landed(hit.time, plateOf(hit), hit.life ~= nil)
 				end
 			end
 		end

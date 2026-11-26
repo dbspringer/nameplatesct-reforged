@@ -516,6 +516,38 @@ describe("Spell Identity", function()
 			assert.are.equal(DEEP_WOUNDS, decide(identity, { { 106, "nameplate1", "direct" } })[1])
 		end)
 
+		it("gives no Extra Strike to two castless Hits in a frame, as each could be the other's trigger", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, SWEEPING_STRIKES)
+			assert.are.same({}, decide(identity, { { 1, "nameplate1", "direct" }, { 1, "nameplate2", "direct" } }))
+		end)
+
+		it("gives an Extra Strike no buff that was cast after it, when its decision comes late", function()
+			local identity = Identity.New({}, "ROGUE")
+			cast(identity, 1.1, BLADE_FLURRY)
+			assert.is_nil(extraStrike(identity, 1))
+			assert.are.equal(BLADE_FLURRY, extraStrike(identity, 1.2))
+		end)
+
+		it("takes no unit with a plate life and one without as two units", function()
+			local identity = Identity.New({}, "ROGUE")
+			cast(identity, 0, BLADE_FLURRY)
+			local life = { unitKey = "Creature-1" }
+			assert.is_nil(identity.OfAll({
+				{ hit = { time = 1, unit = "nameplate1", school = PHYSICAL }, line = { lineKind = "swing" }, how = "melee" },
+				{ hit = { time = 1.03, unit = "nameplate1", school = PHYSICAL, life = life }, line = { lineKind = "direct" } },
+			})[2])
+		end)
+
+		it("keeps Deep Wounds' rhythm on the newer Hit when an older one is decided after it", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, BATTLE_SHOUT)
+			decide(identity, { { 103.12, "nameplate1", "direct" } })
+			assert.is_nil(decide(identity, { { 103, "nameplate1", "tick" } })[1])
+			assert.is_nil(decide(identity, { { 106, "nameplate1", "direct" } })[1])
+			assert.are.equal(DEEP_WOUNDS, decide(identity, { { 109.05, "nameplate1", "direct" } })[1])
+		end)
+
 		it("gives no Deep Wounds to a Physical tick while Rend can run, as it can be Rend's off its rhythm", function()
 			local identity = Identity.New({}, "WARRIOR")
 			cast(identity, 0, BATTLE_SHOUT)
