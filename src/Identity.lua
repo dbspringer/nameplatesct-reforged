@@ -64,9 +64,10 @@ local SEAL_PROC_WINDOW = ns.Pairing.SEAL_PROC_WINDOW
 local SEAL_DURATION = ns.Pairing.SEAL_DURATION
 -- Other players' Consecration ticked up to 8.1 s after its cast in the Traces.
 local CONSECRATION_DURATION = 8.2
--- How long Flamestrike's ground burns after its cast: Classic's 8 s, plus the
--- tick tolerance (unverified on Forever).
-local FLAMESTRIKE_GROUND = 8.1
+-- How long Flamestrike's ground can still make a Hit after its cast: its last
+-- ground damage came 8.034 s after the cast in the Combat Log Files, and
+-- Pairing lets a direct line come up to 0.125 s before its Hit.
+local FLAMESTRIKE_GROUND = 8.3
 local SCHOOL_FIRE = 4
 local SCHOOL_HOLY = 2
 -- How long a Seal change stays for a Hit decided late: an early Hit's wait on a
@@ -698,8 +699,10 @@ function Identity.New(saved, class, startedAt)
 				end
 			end
 		end
+		-- Its fitting casts leave the reused one out, so they are no Possible
+		-- Spells.
 		if unsure then
-			return nil, fitting + 1, fittingCasts
+			return nil, fitting + 1, {}
 		end
 		if timely == 1 and learns(lastTimely) then
 			return lastTimely, fitting, fittingCasts

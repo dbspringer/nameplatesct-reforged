@@ -747,6 +747,23 @@ describe("Spell Identity", function()
 			cast(identity, 2.1, BITE, "pet")
 			of(identity, 2.2, "direct", PHYSICAL, "nameplate2")
 			assert.is_nil(of(identity, 2.3, "directMiss", nil, "nameplate2"))
+			-- Nor a stack of the other casts, which leaves the reused one out.
+			local ARCANE_SHOT = 3044
+			local stacked = Identity.New({}, nil, -100)
+			cast(stacked, 1, MULTI_SHOT)
+			of(stacked, 1.97, "direct", PHYSICAL)
+			cast(stacked, 2.1, BITE, "pet")
+			cast(stacked, 2.15, ARCANE_SHOT)
+			assert.are.same({}, { of(stacked, 2.3, "directMiss", nil, "nameplate2") })
+		end)
+
+		it("keeps a reused cast off a Flamestrike ground Hit whose line came within its last tick", function()
+			local FLAMESTRIKE, BLAST_WAVE = 2120, 11113
+			local identity = Identity.New({}, nil, -100)
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 8.1, BLAST_WAVE)
+			of(identity, 8.12, "direct", FIRE)
+			assert.is_nil(of(identity, 8.151, "direct", FIRE, "nameplate2"))
 		end)
 
 		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
