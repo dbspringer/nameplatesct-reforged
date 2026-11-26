@@ -684,6 +684,16 @@ describe("Pairing", function()
 				{ decided[frost.entry], decided[strike.entry], decided[poison.entry] })
 		end)
 
+		-- Immolate makes Fire the tick's school; the first Hit's spell has no cast.
+		it("keeps a tick line on the Hit before it when the only free Hit comes after the line", function()
+			local IMMOLATE, mob = 348, {}
+			local tickHit, tickLine, shieldLine = hitOn(5, mob, SHADOW), line(5, "tick"), line(5, "shield")
+			local fire, party = hitOn(5, mob, FIRE), hitOn(5, mob, 1)
+			local decided = pair({ cast(0, IMMOLATE), tickHit, tickLine, shieldLine, fire, party })
+			assert.are.same({ tickLine.entry, shieldLine.entry, false },
+				{ decided[tickHit.entry], decided[fire.entry], decided[party.entry] })
+		end)
+
 		it("gives a tick line to the Hit of its school when a later Hit takes the frame's direct line", function()
 			local mob = {}
 			local rival, direct, tickLine = hitOn(5, mob, 1), line(5, "direct"), line(5, "tick")

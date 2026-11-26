@@ -710,7 +710,8 @@ function Pairing.New(options)
 		end
 		-- When the only later Hits of the tick's school are held for their own
 		-- lines, the tick can be a Hit with no cast of its own (Deadly Poison
-		-- with Rupture up), so it waits for any later Hit that is free.
+		-- with Rupture up), so it waits for a later Hit that is free. Only one
+		-- before the tick line: a tick's Hit comes before its line.
 		local held = false
 		for i = first, #later do
 			local other = later[i]
@@ -724,8 +725,8 @@ function Pairing.New(options)
 		if held then
 			for i = first, #later do
 				local other = later[i]
-				if not OWN_UNITS[other.unit] and not isZeroWound(other) and not isOthersHeal(other)
-					and suits(other, line) and not heldForLine(hit, other, lines, later, first) then
+				if other.entry < line.entry and not OWN_UNITS[other.unit] and not isZeroWound(other)
+					and not isOthersHeal(other) and suits(other, line) and not heldForLine(hit, other, lines, later, first) then
 					return false
 				end
 			end
