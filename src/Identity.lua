@@ -21,7 +21,11 @@ ns.Identity = Identity
 -- Brand Proc have no cast: a Seal Proc goes by the Active Seal and a landed
 -- swing, a poison by its school and a landed melee hit, a Brand Proc by its
 -- school and the pet's landed swing line (see newSealTracker,
--- newPoisonTracker and newBrandTracker).
+-- newPoisonTracker and newBrandTracker). A Warrior's Deep Wounds and Sweeping
+-- Strikes and a Rogue's Blade Flurry are Physical Hits with no cast: an
+-- Extra Strike by its time after the player's Hit on another unit and a
+-- recent cast of the buff, Deep Wounds by its rhythm (see
+-- newPhysicalProcTracker).
 -- When it is not sure, it gives none. A Hit that gets none can still get its
 -- Possible Spells, when one of two or three known spells surely made it (see
 -- ofTick and possibleOfCasts).
@@ -418,6 +422,95 @@ local function newBrandTracker()
 	return tracker
 end
 
+-- How soon after the player's Hit on one unit an Extra Strike lands on another:
+-- in the Combat Log Files of the group Traces, all 234 of a party Rogue's
+-- Blade Flurry Hits (1230700, direct lines) came 0 to 0.05 s after their own
+-- Hit on another unit. Sweeping Strikes' Hits on Forever are unverified.
+local EXTRA_STRIKE_WINDOW = 0.1
+-- The buffs whose Extra Strikes get an icon, by the spell ID of their cast:
+-- how long after the cast, and how many Hits at most. Blade Flurry lasted
+-- 15.0 s in all 11 of the logged casts (13877), and its Forever tooltip says
+-- 15 s. Sweeping Strikes' 10 s is Classic's (unverified on Forever); its
+-- tooltip says 5 attacks.
+local EXTRA_STRIKE_BUFFS = {
+	WARRIOR = { [12292] = { duration = 10, hits = 5 } }, -- Sweeping Strikes
+	ROGUE = { [13877] = { duration = 15 } }, -- Blade Flurry
+}
+-- Deep Wounds' talent, whose icon and name its Hits show, and its bleed's
+-- tick interval (Forever's 412609: every 3 s for 12 s). On Forever the bleed
+-- is a dummy aura with a separate damage spell (412613), so its Hits can come
+-- on tick or direct lines (unverified); its tooltip says a crit sets it off.
+local DEEP_WOUNDS, DEEP_WOUNDS_INTERVAL = 12834, 3
+
+-- Follows the player's landed Hits and buff casts, which are all that tie a
+-- Physical Hit with no cast to the player's Extra Strike or Deep Wounds. An
+-- Extra Strike is a Physical direct Hit with no cast that lands just after the
+-- player's Hit on another unit, so it is never Deep Wounds' tick. It shows the
+-- buff of a recent cast (Sweeping Strikes, Blade Flurry), or none. Deep Wounds
+-- has no cast and its first tick no anchor, so the first such Hit on a unit
+-- starts a rhythm and gets none, and one an interval after the unit's last
+-- such Hit gets Deep Wounds: a Weapon Proc or a late strike almost never
+-- lands on that rhythm.
+local function newPhysicalProcTracker(class)
+	local buffs = EXTRA_STRIKE_BUFFS[class] or {}
+	-- The player's latest landed Hits, each with its time and plate.
+	local landed = {}
+	-- The latest buff cast: { spellID, ends, left }.
+	local buff
+	-- By plate, the time of the last Physical Hit with no cast that was not
+	-- an Extra Strike, for Deep Wounds' rhythm.
+	local lastBleed = setmetatable({}, { __mode = "k" })
+
+	local tracker = {}
+
+	function tracker.Landed(time, plate)
+		while landed[1] and time - landed[1].time > EXTRA_STRIKE_WINDOW + DECIDE_LATE do
+			table.remove(landed, 1)
+		end
+		landed[#landed + 1] = { time = time, plate = plate }
+	end
+
+	function tracker.Cast(spellID, time)
+		local spell = buffs[spellID]
+		if spell then
+			buff = { spellID = spellID, ends = time + spell.duration, left = spell.hits }
+		end
+	end
+
+	local function extraStrike(hit, plate)
+		for _, other in ipairs(landed) do
+			local since = hit.time - other.time
+			if other.plate ~= plate and since >= 0 and since <= EXTRA_STRIKE_WINDOW then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- The spell of a Physical Hit with no cast on this plate, or nil. direct
+	-- says it came on a direct line, as an Extra Strike's does; a tick line
+	-- can only be Deep Wounds'.
+	function tracker.ProcSpell(hit, plate, direct)
+		if direct and extraStrike(hit, plate) then
+			if buff and hit.time <= buff.ends and buff.left ~= 0 then
+				buff.left = buff.left and buff.left - 1
+				return buff.spellID
+			end
+			return nil
+		end
+		if class ~= "WARRIOR" or plate == nil then
+			return nil
+		end
+		local last = lastBleed[plate]
+		lastBleed[plate] = hit.time
+		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
+			return DEEP_WOUNDS
+		end
+	end
+
+	return tracker
+end
+
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
@@ -430,7 +523,9 @@ end
 -- that unit, this one included, and sure how many of them surely have its
 -- school; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
 -- table or from the Spell Facts that count, or nil. class is the player's
--- class token from UnitClass, which turns on the Poison Procs for a Rogue.
+-- class token from UnitClass, which turns on the Poison Procs for a Rogue,
+-- the Brand Procs for a Warlock, and the Physical Procs for a Warrior or a
+-- Rogue.
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
@@ -464,6 +559,7 @@ function Identity.New(saved, class)
 	local seals = newSealTracker()
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 	local brands = class == "WARLOCK" and newBrandTracker() or nil
+	local physicalProcs = (class == "WARRIOR" or class == "ROGUE") and newPhysicalProcTracker(class) or nil
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -1131,6 +1227,9 @@ function Identity.New(saved, class)
 		local secret = issecretvalue(record.spellID)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
+			if physicalProcs and not secret then
+				physicalProcs.Cast(record.spellID, record.time)
+			end
 		end
 		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
@@ -1165,6 +1264,26 @@ function Identity.New(saved, class)
 		end
 	end
 
+	-- Whether a Physical tick with no Tick Rhythm can still be a DoT's that
+	-- the player cast, such as a Rend tick off its rhythm, so it is no Deep
+	-- Wounds tick: a Physical DoT's cast, or one whose spell ID is secret,
+	-- that can still run, or any from before Identity started, as before a
+	-- /reload.
+	local function physicalDotRuns(hit)
+		if hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE then
+			return true
+		end
+		for _, cast in ipairs(dotCasts) do
+			local spell = cast.spellID and ns.TickSpells[cast.spellID]
+			local runs = spell and spell.duration or LONGEST_DOT
+			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL)
+				and hit.time - cast.time <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- ofDirect, which also tells the Brand tracker of a Hit that is surely the
 	-- pet's spell's, as it can set off a Brand Proc; a miss sets off none.
 	local function petNoted(hit, line, group, school, miss, plate)
@@ -1185,13 +1304,23 @@ function Identity.New(saved, class)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
-			return ofTick(hit, school, together, sure, plate)
+			local spellID, possible = ofTick(hit, school, together, sure, plate)
+			if spellID or possible or not physicalProcs or school ~= SCHOOL_PHYSICAL or physicalDotRuns(hit) then
+				return spellID, possible
+			end
+			return physicalProcs.ProcSpell(hit, plate, false)
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
 		end
 		if not group then
 			return nil
+		end
+		if physicalProcs and group == "direct" and not miss and school == SCHOOL_PHYSICAL then
+			local fittingCasts = castsFitting(hit, group, school)
+			if #fittingCasts == 0 then
+				return physicalProcs.ProcSpell(hit, plate, true)
+			end
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
 			local brand = brands.ProcSpell(line, plate)
@@ -1239,6 +1368,16 @@ function Identity.New(saved, class)
 	-- it did not come from.
 	function identity.OfAll(decisions)
 		local spellIDs, possibles = {}, {}
+		-- Every landed Hit of the player's counts for an Extra Strike, a swing
+		-- too, and one later in this list as well, as its Extra Strike can
+		-- come in the same frame.
+		if physicalProcs then
+			for _, decision in ipairs(decisions) do
+				if not isMiss(decision.line.lineKind) and not decision.line.pet then
+					physicalProcs.Landed(decision.hit.time, plateOf(decision.hit))
+				end
+			end
+		end
 		for i, decision in ipairs(decisions) do
 			local together, sure
 			if decision.line.lineKind == "tick" then

@@ -447,6 +447,84 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of a Physical Proc", function()
+		local SWEEPING_STRIKES, BLADE_FLURRY, DEEP_WOUNDS, REND, BATTLE_SHOUT = 12292, 13877, 12834, 772, 6673
+
+		-- The spells of Hits that came together, each { time, unit, lineKind,
+		-- how }, all Physical.
+		local function decide(identity, hits)
+			local decisions = {}
+			for i, hit in ipairs(hits) do
+				decisions[i] = { hit = { time = hit[1], unit = hit[2], school = PHYSICAL }, line = { lineKind = hit[3] },
+					how = hit[4] }
+			end
+			return (identity.OfAll(decisions))
+		end
+
+		-- The spell of a castless Physical Hit on nameplate2 just after the
+		-- player's swing on nameplate1.
+		local function extraStrike(identity, time)
+			return decide(identity, { { time, "nameplate1", "swing", "melee" }, { time + 0.03, "nameplate2", "direct" } })[2]
+		end
+
+		it("gives Sweeping Strikes to a Warrior's Extra Strikes, at most 5, and only within 10 s of its cast", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, SWEEPING_STRIKES)
+			local spells = {}
+			for i = 1, 6 do
+				spells[i] = extraStrike(identity, i) or "none"
+			end
+			assert.are.same({ SWEEPING_STRIKES, SWEEPING_STRIKES, SWEEPING_STRIKES, SWEEPING_STRIKES, SWEEPING_STRIKES,
+				"none" }, spells)
+			cast(identity, 20, SWEEPING_STRIKES)
+			assert.is_nil(extraStrike(identity, 30.5))
+		end)
+
+		it("gives Blade Flurry to a Rogue's Extra Strikes within 15 s of its cast, and none with no cast or for another class", function()
+			local identity = Identity.New({}, "ROGUE")
+			cast(identity, 0, BLADE_FLURRY)
+			assert.are.equal(BLADE_FLURRY, extraStrike(identity, 14.9))
+			assert.is_nil(extraStrike(identity, 15.2))
+			assert.is_nil(extraStrike(Identity.New({}, "WARRIOR"), 1))
+			local mage = Identity.New({}, "MAGE")
+			cast(mage, 0, BLADE_FLURRY)
+			assert.is_nil(extraStrike(mage, 1))
+		end)
+
+		it("gives a Warrior's castless Physical Hits on a 3 s rhythm Deep Wounds, on tick or direct lines, but not the first", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, BATTLE_SHOUT)
+			assert.are.same({ "none", DEEP_WOUNDS, DEEP_WOUNDS, "none", DEEP_WOUNDS }, {
+				decide(identity, { { 100, "nameplate1", "tick" } })[1] or "none",
+				decide(identity, { { 103, "nameplate1", "direct" } })[1] or "none",
+				decide(identity, { { 106.05, "nameplate1", "tick" } })[1] or "none",
+				decide(identity, { { 110, "nameplate1", "tick" } })[1] or "none",
+				decide(identity, { { 113, "nameplate1", "tick" } })[1] or "none",
+			})
+			local rogue = Identity.New({}, "ROGUE")
+			cast(rogue, 0, BATTLE_SHOUT)
+			decide(rogue, { { 100, "nameplate1", "direct" } })
+			assert.is_nil(decide(rogue, { { 103, "nameplate1", "direct" } })[1])
+		end)
+
+		it("keeps an Extra Strike out of Deep Wounds' rhythm", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, BATTLE_SHOUT)
+			decide(identity, { { 97, "nameplate1", "direct" } })
+			assert.is_nil(decide(identity, { { 100, "nameplate2", "swing", "melee" }, { 100, "nameplate1", "direct" } })[2])
+			assert.is_nil(decide(identity, { { 103, "nameplate1", "direct" } })[1])
+			assert.are.equal(DEEP_WOUNDS, decide(identity, { { 106, "nameplate1", "direct" } })[1])
+		end)
+
+		it("gives no Deep Wounds to a Physical tick while Rend can run, as it can be Rend's off its rhythm", function()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, BATTLE_SHOUT)
+			cast(identity, 100, REND)
+			decide(identity, { { 101.5, "nameplate1", "tick" } })
+			assert.is_nil(decide(identity, { { 104.5, "nameplate1", "tick" } })[1])
+		end)
+	end)
+
 	describe("of a multi-hit spell", function()
 		local WHIRLWIND, MULTI_SHOT, MORTAL_STRIKE = 1680, 2643, 12294
 
