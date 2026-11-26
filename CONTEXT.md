@@ -78,6 +78,10 @@ _Avoid_: On-next-hit ability, queued attack
 Your Hit from the pet's melee swing, not the player's. Its Plate Text has the pet's colour and icon.
 _Avoid_: Pet melee, pet auto attack
 
+**Physical Shot**:
+Your Hit from a ranged weapon attack that is not a wand's: Auto Shot, a bow, gun, or crossbow shot, or Throw. Its Plate Text looks like the player's swing, but with its own spell's icon, which the player hides along with the Swing Icon. A wand's shot keeps the look of a spell of its school.
+_Avoid_: Ranged auto attack, white shot, ranged swing
+
 **Swing Icon**:
 The icon on a swing's Plate Text: the Auto Attack icon for the player's swing, the pet Attack icon for a Pet Swing. A Weapon Proc shows it too.
 _Avoid_: Weapon icon, melee icon, white hit icon

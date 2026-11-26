@@ -937,8 +937,9 @@ end
 
 local eastAsiaLetter = L["Truncate Letter East Asia"]
 
--- swinger is who swung, "player" or "pet", or nil for a Hit that is no
--- swing. textures is the list of icon textures, or nil for none.
+-- swinger is whose swing the text looks like, "player" or "pet", or nil for
+-- a Hit that looks like no swing. textures is the list of icon textures, or
+-- nil for none.
 function NameplateSCT:DamageEvent(where, swinger, amount, school, crit, textures)
 	if not issecretvalue(amount) then
 		amount = amount or 0
@@ -1034,7 +1035,9 @@ end
 -- Plate Text for Your Hit on an enemy Nameplate. A swing gets the autoattack
 -- animation, the colour of who swung, and its Swing Icon unless the player
 -- turned that off: swinger is "player", "pet", or nil for a Hit that is no
--- swing. spellID, from Spell Identity, gives the
+-- swing. A Physical Shot looks like the player's swing, with its own icon,
+-- which the same option hides; the Spell Filter's melee key word still
+-- leaves it out. spellID, from Spell Identity, gives the
 -- icon, and is nil when the spell is not known. possible, the Hit's Possible
 -- Spells or nil, gives a stack of their icons when the player turned that on,
 -- and the Spell Filter reads it either way.
@@ -1069,8 +1072,18 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 			return
 		end
 	end
+	-- A shot whose spell is not sure is still a Physical Shot when each of its
+	-- Possible Spells is one.
+	local physicalShot
+	if spellID then
+		physicalShot = ns.IsPhysicalShot(spellID)
+	elseif possible then
+		physicalShot = allOf(possible, function(possibleID)
+			return ns.IsPhysicalShot(possibleID) or nil
+		end) ~= nil
+	end
 	local textures
-	if self.db.global.showIcon then
+	if self.db.global.showIcon and not (physicalShot and not self.db.global.showSwingIcon) then
 		-- A missing texture shows no icon, and a stack shows only when each of
 		-- its spells has one.
 		if spellID then
@@ -1084,7 +1097,8 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 	if hit.action == "WOUND" then
 		local school = not issecretvalue(hit.school) and hit.school or nil
 		local crit = not issecretvalue(hit.descriptor) and hit.descriptor == "CRITICAL"
-		self:DamageEvent(where, swinger, hit.amount, school, crit, textures)
+		local looksLike = swinger or physicalShot and "player" or nil
+		self:DamageEvent(where, looksLike, hit.amount, school, crit, textures)
 	elseif MISS_EVENT_STRINGS[hit.action] then
 		self:MissEvent(where, hit.action, textures)
 	end
@@ -1602,7 +1616,7 @@ local menu = {
 						showSwingIcon = {
 							type = 'toggle',
 							name = L["Display Auto Attacks"],
-							desc = L["Show an icon on your auto attacks and your pet's: the Auto Attack icon on yours, the pet Attack icon on your pet's."],
+							desc = L["Show an icon on your auto attacks and your pet's: the Auto Attack icon on your swings, the spell's icon on your shots (not a wand's), the pet Attack icon on your pet's swings."],
 							get = function() return NameplateSCT.db.global.showSwingIcon end,
 							set = function(_, newValue) NameplateSCT.db.global.showSwingIcon = newValue end,
 							order = 2,
