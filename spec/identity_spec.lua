@@ -554,6 +554,29 @@ describe("Spell Identity", function()
 			assert.are.equal(MUTILATE, of(identity, 5.01, "direct", PHYSICAL))
 		end)
 
+		it("gives a strike with both weapons no more units than its spell's targets", function()
+			local MUTILATE = 1310707
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			for i = 1, 4 do
+				of(identity, 1, "direct", PHYSICAL, "nameplate" .. i)
+			end
+			assert.is_nil(of(identity, 1.01, "direct", PHYSICAL, "nameplate5"))
+			cast(identity, 5, MUTILATE)
+			of(identity, 5, "direct", PHYSICAL)
+			assert.is_nil(of(identity, 5, "direct", PHYSICAL, "nameplate2"))
+		end)
+
+		it("keeps a reused cast out of Possible Spells where a castless ground could have made the Hit", function()
+			local FLAMESTRIKE, FIRE_BLAST = 2120, 2136
+			local identity = Identity.New({})
+			cast(identity, 0, FLAMESTRIKE)
+			cast(identity, 3, FLAMESTRIKE)
+			of(identity, 3, "direct", FIRE)
+			cast(identity, 3.02, FIRE_BLAST)
+			assert.are.same({ FIRE_BLAST }, { of(identity, 3.04, "direct", FIRE, "nameplate2") })
+		end)
+
 		it("counts the spread from the earliest Hit, when a held one is decided late", function()
 			local identity = Identity.New({})
 			cast(identity, 1, WHIRLWIND)

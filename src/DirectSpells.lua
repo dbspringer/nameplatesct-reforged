@@ -59,11 +59,11 @@ local TRAVELS = math.huge
 local BOTH_WEAPONS = 2
 
 -- A multi-hit spell's limits on the Hits of one cast (see Identity's castOf):
--- most Hits in all, from the spell data's chain targets or MaxTargets (nil
--- where it sets none), perUnit on one unit (one when nil), and spread from the
+-- units it can hit, from the spell data's chain targets or MaxTargets (nil
+-- where it sets none), Hits on each unit (one when nil), and spread from the
 -- first Hit to the last (SPREAD when nil).
-local function many(most, perUnit, spread)
-	return { most = most, perUnit = perUnit or 1, spread = spread or SPREAD }
+local function many(units, perUnit, spread)
+	return { units = units, perUnit = perUnit or 1, spread = spread or SPREAD }
 end
 
 -- multi, for a multi-hit spell, is its limits from many.
@@ -211,7 +211,7 @@ do
 	-- The casts. Each one makes two Hits, a main-hand and an off-hand strike
 	-- (untested), and a cast gives its spell to one Hit, so only the first
 	-- gets the icon.
-	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }, many(BOTH_WEAPONS, BOTH_WEAPONS)) -- Mutilate, Forever only
+	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }, many(1, BOTH_WEAPONS)) -- Mutilate, Forever only
 
 	-- Shaman
 	hits(NATURE, { 403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208 }) -- Lightning Bolt
@@ -239,7 +239,7 @@ do
 	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
 	replacesSwing({ 845, 7369, 11608, 11609, 20569 }, many(2)) -- Cleave
 	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
-	hits(PHYSICAL, { 1680 }, many(4 * BOTH_WEAPONS, BOTH_WEAPONS)) -- Whirlwind
+	hits(PHYSICAL, { 1680 }, many(4, BOTH_WEAPONS)) -- Whirlwind
 	addSpell({ school = PHYSICAL, window = EXECUTE_WINDOW }, { 5308, 20658, 20660, 20661, 20662 }) -- Execute
 	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring
 	hits(PHYSICAL, { 6343, 8198, 8204, 8205, 11580, 11581 }, many(4)) -- Thunder Clap
