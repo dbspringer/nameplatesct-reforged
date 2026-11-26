@@ -1335,12 +1335,22 @@ function Identity.New(saved, class, startedAt)
 	-- strike's cast before the strike lands. A cast's plate is the player's
 	-- target as it started, which need not be the unit it hit, so it does
 	-- not count.
+	local function hitElsewhere(cast, plate)
+		for other in pairs(cast.hitUnits) do
+			if other ~= plate then
+				return true
+			end
+		end
+		return false
+	end
+
 	local function takenCastCould(hit, group, school, plate)
 		for _, cast in ipairs(casts) do
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local known = not cast.secret and schoolOf(cast.spellID)
-			if cast.used and not (cast.hitUnits and cast.hitUnits[plate] and cast.lastHits[plate] ~= hit.time) and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
+			if cast.used and (hitElsewhere(cast, plate) or cast.lastHits[plate] == hit.time)
+				and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
 				and not (known and known ~= school) then
 				return true
 			end

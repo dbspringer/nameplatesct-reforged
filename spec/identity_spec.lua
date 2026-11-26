@@ -584,6 +584,16 @@ describe("Spell Identity", function()
 			assert.are.equal(DEEP_WOUNDS, hitAt(sweeping, 103, 2, "direct"))
 		end)
 
+		it("gives no Deep Wounds to a strike whose cast also hit another unit, whatever hit this unit first", function()
+			local CLEAVE = 845
+			local identity = warrior()
+			bleed(identity, 100, "direct")
+			cast(identity, 102.9, CLEAVE)
+			of(identity, 102.95, "direct", PHYSICAL)
+			of(identity, 103.03, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(identity, 103.03, "direct"))
+		end)
+
 		it("gives no Deep Wounds to a Physical tick while Rend can run, as it can be Rend's off its rhythm", function()
 			local identity = warrior()
 			cast(identity, 100, REND)
