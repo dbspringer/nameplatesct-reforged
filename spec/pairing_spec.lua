@@ -625,6 +625,19 @@ describe("Pairing", function()
 				{ decided[lashHit.entry], decided[brandHit.entry], decided[fire.entry], decided[rival.entry] })
 		end)
 
+		-- The player's Hit is the first after its direct line, so a Hit of a
+		-- cast still in flight on another mob, later in the frame, does not take
+		-- the line from the Brand Proc's Hit.
+		it("gives a direct line to the Hit just after it before a later Hit of a cast still in flight", function()
+			local mob, other = {}, {}
+			local bolt = cast(5.05, SHADOW_BOLT)
+			bolt.targetLife = other
+			local lashLine, lashHit = line(5.1, "direct"), hitOn(5.1, mob, SHADOW)
+			local direct, brand, rival = line(5.12, "direct"), hitOn(5.12, mob, SHADOW), hitOn(5.12, other, SHADOW)
+			local decided = pair({ lashCast(5), bolt, lashLine, lashHit, direct, brand, rival }, nil, "WARLOCK")
+			assert.are.same({ direct.entry, false }, { decided[brand.entry], decided[rival.entry] })
+		end)
+
 		it("gives a Shadow Bolt's line to its Hit before a Hit on another mob just after the pet's swing line", function()
 			local mob, other = {}, {}
 			local bolt = cast(4.8, SHADOW_BOLT)

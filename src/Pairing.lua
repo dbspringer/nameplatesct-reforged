@@ -633,9 +633,11 @@ function Pairing.New(options)
 	-- the school of a hint (see castOf). A Hit with a lower rank still takes
 	-- one when the frame's later Hits of a higher rank are fewer than its
 	-- direct lines left: both of a frame's Hits can be the player's (a Seal
-	-- Proc and a Judgement).
+	-- Proc and a Judgement). The player's Hit is the first after its line
+	-- (see hitAfterLine), so a Hit after the line keeps it from a later Hit of
+	-- a higher rank.
 	local function leavesDirectLine(hit, line, lines, later, first)
-		if line.lineKind ~= "direct" then
+		if line.lineKind ~= "direct" or hit.entry > line.entry then
 			return false
 		end
 		local rank, waiting = castRank(hit), 0
