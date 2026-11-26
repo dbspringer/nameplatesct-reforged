@@ -113,6 +113,8 @@ function Flow.New(options)
 	local flow = {}
 
 	function flow.Push(entry)
+		-- A replay has no start time, so its first entry is the start.
+		identity.Start(entry[1])
 		if entry[2] == "NAME_PLATE_UNIT_REMOVED" then
 			-- Decide the Hits from before this moment first, as the live Tick of
 			-- each frame does, so the result is the same at any tick rate.
