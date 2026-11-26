@@ -481,12 +481,12 @@ describe("Flow", function()
 	-- each rival took the line.
 	it("gives a swing line to the Hit on the Druid's Swing Delay, not to a rival's Hit before it", function()
 		local trace = assert(Trace.Load("spec/traces/druid-weapon-swap.lua"))
-		local shown = {}
+		local kindOf = {}
 		for _, result in ipairs((run(trace.entries))) do
-			shown[result.hit.entry] = true
+			kindOf[result.hit.entry] = result.lineKind
 		end
-		assert.are.same({ false, true, false, true }, { shown[69] == true, shown[70] == true, shown[168] == true,
-			shown[169] == true })
+		assert.are.same({ "none", "swing", "none", "swing" }, { kindOf[69] or "none", kindOf[70] or "none",
+			kindOf[168] or "none", kindOf[169] or "none" })
 	end)
 
 	-- Unit A's Nameplate hid, and its token and frame now show unit B. A's late
@@ -692,20 +692,23 @@ describe("Flow", function()
 	-- Hits count as an area spell's: before that, zf was at 60 and 85. With the
 	-- line-order rule zf is at 49 and 72, and warlock-maraudon, a party run
 	-- with an Imp, at 31 and 62. warlock-open-world-2 is a busy open-world
-	-- fight on the beta, where GUIDs and amounts are public, so its Labels are
-	-- proven by amount: 18 and 13.
+	-- fight on the beta, where GUIDs and amounts are public, so 846 of its
+	-- 1,090 Labels are not unsure, and those count here: 18 and 13. The replay
+	-- is the same on each run, so each floor is the count itself, and one
+	-- more wrong or missing Hit fails it.
 	it("gives a direct line to the Hit with its cast's school in a group", function()
-		local floors = { ["warlock-rfk"] = { 42, 124 }, ["warlock-zf"] = { 50, 73 }, ["warlock-maraudon"] = { 32, 63 },
-			["warlock-open-world-2"] = { 19, 14 } }
+		local floors = { ["warlock-rfk"] = { 41, 123 }, ["warlock-zf"] = { 49, 72 }, ["warlock-maraudon"] = { 31, 62 },
+			["warlock-open-world-2"] = { 18, 13 } }
 		for name, floor in pairs(floors) do
 			local trace, labels = Trace.LoadLabelled(name)
 			local shown = {}
 			for _, result in ipairs(run(trace.entries, trace.header.class)) do
 				shown[result.hit.entry] = true
 			end
-			local wrong, missing = 0, 0
+			local wrong, missing, sure = 0, 0, 0
 			for _, row in ipairs(labels) do
 				if Trace.IsSure(row) then
+					sure = sure + 1
 					local unit = tostring(trace.entries[row.hit][3])
 					if shown[row.hit] and not row.line then
 						wrong = wrong + 1
@@ -714,6 +717,7 @@ describe("Flow", function()
 					end
 				end
 			end
+			assert.is_true(sure > 0, name .. " has no Checked or Sure Label")
 			assert.is_true(wrong <= floor[1], ("%s: %d wrong"):format(name, wrong))
 			assert.is_true(missing <= floor[2], ("%s: %d missing"):format(name, missing))
 		end
