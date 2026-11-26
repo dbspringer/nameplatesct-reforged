@@ -700,22 +700,29 @@ function Pairing.New(options)
 		end
 		-- A direct line that the Hit leaves to a Hit with a fitting cast, or to
 		-- a Hit after the line, is not one it could take (warlock-zf hit 37310).
+		-- When only the Hit after the line takes it from the Hit, the frame's
+		-- order counts from here on: a tick's Hit comes before its line, so a
+		-- Hit after the tick line is not the tick's.
+		local ordered = false
 		for _, other in ipairs(lines) do
 			if ns.LineKind.Group(other.lineKind) ~= "tick" and not isShotLine(other)
 				and not ns.LineKind.IsMelee(other.lineKind) and suits(hit, other)
-				and not leavesLineToHitAfter(hit, other, later, first)
 				and not leavesDirectLine(hit, other, lines, later, first) then
-				return true
+				if not leavesLineToHitAfter(hit, other, later, first) then
+					return true
+				end
+				ordered = true
 			end
 		end
 		-- When the only later Hits of the tick's school are held for their own
 		-- lines, the tick can be a Hit with no cast of its own (Deadly Poison
-		-- with Rupture up), so it waits for a later Hit that is free. Only one
-		-- before the tick line: a tick's Hit comes before its line.
+		-- with Rupture up), so it waits for a later Hit that is free, before
+		-- the tick line.
 		local held = false
 		for i = first, #later do
 			local other = later[i]
-			if not OWN_UNITS[other.unit] and suits(other, line) and schoolIs(other, line, true) then
+			if (not ordered or other.entry < line.entry) and not OWN_UNITS[other.unit] and suits(other, line)
+				and schoolIs(other, line, true) then
 				if not heldForLine(hit, other, lines, later, first) then
 					return false
 				end

@@ -694,11 +694,21 @@ describe("Pairing", function()
 				{ decided[tickHit.entry], decided[fire.entry], decided[party.entry] })
 		end)
 
+		-- Rupture makes Physical the tick's school; neither poison has a cast.
+		it("keeps a tick line on the Hit before it when the Hit of the tick's school comes after the line", function()
+			local RUPTURE, mob = 1943, {}
+			local deadly, tickLine, instantLine = hitOn(5, mob, 8), line(5, "tick"), line(5, "direct")
+			local instant, party = hitOn(5, mob, 8), hitOn(5, mob, 1)
+			local decided = pair({ cast(0, RUPTURE), deadly, tickLine, instantLine, instant, party })
+			assert.are.same({ tickLine.entry, instantLine.entry, false },
+				{ decided[deadly.entry], decided[instant.entry], decided[party.entry] })
+		end)
+
 		it("gives a tick line to the Hit of its school when a later Hit takes the frame's direct line", function()
 			local mob = {}
-			local rival, direct, tickLine = hitOn(5, mob, 1), line(5, "direct"), line(5, "tick")
-			local fire, shadow = hitOn(5, mob, FIRE), hitOn(5, mob, SHADOW)
-			local decided = pair({ cast(0, CORRUPTION), rival, direct, tickLine, fire, shadow })
+			local rival, direct, fire = hitOn(5, mob, 1), line(5, "direct"), hitOn(5, mob, FIRE)
+			local shadow, tickLine = hitOn(5, mob, SHADOW), line(5, "tick")
+			local decided = pair({ cast(0, CORRUPTION), rival, direct, fire, shadow, tickLine })
 			assert.are.same({ false, direct.entry, tickLine.entry },
 				{ decided[rival.entry], decided[fire.entry], decided[shadow.entry] })
 		end)
