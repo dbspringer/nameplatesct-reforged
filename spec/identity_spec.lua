@@ -594,6 +594,16 @@ describe("Spell Identity", function()
 			}))
 		end)
 
+		it("gives a miss that a reused cast could have made no other cast's spell", function()
+			local BITE = 17253
+			local identity = Identity.New({})
+			cast(identity, 1, MULTI_SHOT)
+			of(identity, 1.97, "direct", PHYSICAL)
+			cast(identity, 2.1, BITE, "pet")
+			of(identity, 2.2, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(of(identity, 2.3, "directMiss", nil, "nameplate2"))
+		end)
+
 		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
 			local identity = Identity.New({})
 			cast(identity, 1, MULTI_SHOT)
