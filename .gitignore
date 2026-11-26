@@ -1,3 +1,4 @@
 Libs/
 .release
 .vscode/
+spec/traces/local/

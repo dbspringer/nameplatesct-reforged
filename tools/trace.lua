@@ -51,10 +51,22 @@ function Trace.Load(path)
 	return env.NameplateSCTReforgedTraces
 end
 
--- The Trace of this name in spec/traces/, and its Labels.
+-- Where import-trace.lua puts a new recording. Git ignores it. A Trace moves
+-- up to spec/traces/ when a spec reads it (see AGENTS.md).
+Trace.LOCAL_DIR = "spec/traces/local/"
+
+-- The path of this Trace's files, with no extension: in spec/traces/ when the
+-- Trace is there, else in the local folder.
+function Trace.Base(name)
+	local committed = "spec/traces/" .. name
+	return Trace.Exists(committed .. ".lua") and committed or Trace.LOCAL_DIR .. name
+end
+
+-- The Trace of this name, and its Labels.
 function Trace.LoadLabelled(name)
-	local trace = assert(Trace.Load("spec/traces/" .. name .. ".lua"))
-	local labels = assert(loadfile("spec/traces/" .. name .. ".labels.lua"))()
+	local base = Trace.Base(name)
+	local trace = assert(Trace.Load(base .. ".lua"))
+	local labels = assert(loadfile(base .. ".labels.lua"))()
 	return trace, labels
 end
 
@@ -83,7 +95,7 @@ end
 -- The lines of the Combat Log File of the checked Trace of this name.
 function Trace.LoadLog(name)
 	local lines = {}
-	for line in io.lines("spec/traces/" .. name .. ".combatlog.txt") do
+	for line in io.lines(Trace.Base(name) .. ".combatlog.txt") do
 		lines[#lines + 1] = line
 	end
 	return lines

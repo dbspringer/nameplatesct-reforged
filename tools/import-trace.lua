@@ -1,5 +1,6 @@
--- Copies a Trace and its part of the Combat Log File into spec/traces/, with
--- the personal data removed, because the repo is public.
+-- Copies a Trace and its part of the Combat Log File into spec/traces/local/,
+-- with the personal data removed, because a Trace that gets a spec moves up
+-- to spec/traces/, and the repo is public.
 --
 -- Usage: luajit tools/import-trace.lua <name> [savedvariables-file] [combatlog-file]
 
@@ -305,9 +306,13 @@ local function main(name, savedVariablesPath, combatLogPath)
 	if not name or not name:find("^[%w%-]+$") then
 		fail("usage: luajit tools/import-trace.lua <name> [savedvariables-file] [combatlog-file]")
 	end
-	local tracePath = "spec/traces/" .. name .. ".lua"
-	local logPath = "spec/traces/" .. name .. ".combatlog.txt"
-	for _, path in ipairs({ tracePath, logPath }) do
+	-- A new recording goes to the local folder. A name that spec/traces/
+	-- already has would hide the local files from Trace.Base, and Labels left
+	-- from an older recording of this name would not fit the new one.
+	local tracePath = Trace.LOCAL_DIR .. name .. ".lua"
+	local logPath = Trace.LOCAL_DIR .. name .. ".combatlog.txt"
+	local labelPath = Trace.LOCAL_DIR .. name .. ".labels.lua"
+	for _, path in ipairs({ "spec/traces/" .. name .. ".lua", tracePath, logPath, labelPath }) do
 		if Trace.Exists(path) then
 			fail(path .. " exists; remove it first to import again")
 		end
@@ -324,7 +329,7 @@ local function main(name, savedVariablesPath, combatLogPath)
 	end
 
 	local scrubbed, scrubbedLines = Import.Scrub(trace, lines)
-	os.execute("mkdir -p spec/traces")
+	os.execute("mkdir -p " .. Trace.LOCAL_DIR)
 	Trace.WriteFile(tracePath, "NameplateSCTReforgedTraces = " .. serialize(scrubbed, "") .. "\n")
 	Trace.WriteFile(logPath, table.concat(scrubbedLines, "\n") .. "\n")
 	print(("%s: %d entries, %d log lines from %s"):format(name, #scrubbed.entries, #scrubbedLines - 1, combatLogPath))
