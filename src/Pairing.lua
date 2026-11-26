@@ -445,29 +445,34 @@ function Pairing.New(options)
 		end
 	end
 
-	-- The schools that the spell of a tick or shot line can have at this
-	-- time, as a set, or nil when none is known: for a tick line, those of the
-	-- DoTs that are active, and for a shot line, those of the shots that can
-	-- still fly.
-	local function knownSchools(line, time)
-		local group, schools = ns.LineKind.Group(line.lineKind), nil
+	-- Whether the spell of a tick or shot line can have this school at this
+	-- time, or nil when no school is known: for a tick line, the schools of
+	-- the DoTs that are active, and for a shot line, those of the shots that
+	-- can still fly. It runs for many Hit and line pairs in a raid frame, so
+	-- it builds no set.
+	local function canHaveSchool(line, time, school)
+		local group, known = ns.LineKind.Group(line.lineKind), nil
 		if group == "tick" then
-			for school, ends in pairs(dotEnds) do
+			for dotSchool, ends in pairs(dotEnds) do
 				if time <= ends then
-					schools = schools or {}
-					schools[school] = true
+					if dotSchool == school then
+						return true
+					end
+					known = false
 				end
 			end
 		elseif group == "shot" then
 			for _, shot in ipairs(shots) do
-				local school = time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
-				if school then
-					schools = schools or {}
-					schools[school] = true
+				local shotSchool = time - shot.time <= SHOT_FLIGHT and schoolOf(shot.spellID)
+				if shotSchool then
+					if shotSchool == school then
+						return true
+					end
+					known = false
 				end
 			end
 		end
-		return schools
+		return known
 	end
 
 	-- Whether the Hit's school is known to be, or known not to be, one that
@@ -477,8 +482,8 @@ function Pairing.New(options)
 		if hit.action ~= "WOUND" or issecretvalue(hit.school) then
 			return false
 		end
-		local schools = knownSchools(line, hit.time)
-		return schools ~= nil and (schools[hit.school] == true) == right
+		local can = canHaveSchool(line, hit.time, hit.school)
+		return can ~= nil and can == right
 	end
 
 	local function isShotTarget(hit)
