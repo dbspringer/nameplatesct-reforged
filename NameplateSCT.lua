@@ -1072,14 +1072,21 @@ function NameplateSCT:ShowHit(hit, spellID, late, swinger, possible)
 			return
 		end
 	end
-	local physicalShot = spellID ~= nil and ns.IsPhysicalShot(spellID)
+	-- A shot whose spell is not sure is still a Physical Shot when each of its
+	-- Possible Spells is one.
+	local physicalShot
+	if spellID then
+		physicalShot = ns.IsPhysicalShot(spellID)
+	elseif possible then
+		physicalShot = allOf(possible, function(possibleID)
+			return ns.IsPhysicalShot(possibleID) or nil
+		end) ~= nil
+	end
 	local textures
-	if self.db.global.showIcon then
+	if self.db.global.showIcon and not (physicalShot and not self.db.global.showSwingIcon) then
 		-- A missing texture shows no icon, and a stack shows only when each of
 		-- its spells has one.
-		if physicalShot then
-			textures = self.db.global.showSwingIcon and allOf({ spellID }, GetSpellTexture) or nil
-		elseif spellID then
+		if spellID then
 			textures = allOf({ spellID }, GetSpellTexture)
 		elseif possible and self.db.global.showPossibleIcons then
 			textures = allOf(possible, GetSpellTexture)
