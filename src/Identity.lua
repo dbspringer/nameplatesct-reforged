@@ -445,16 +445,29 @@ local SWEEPING_STRIKES, SWEEPING_STRIKES_DURATION = 12292, 10
 local function newDeepWoundsTracker()
 	-- By plate, the time of the latest Physical Hit with no cast.
 	local lastBleed = setmetatable({}, { __mode = "k" })
-	-- The time of the player's latest cast that can be Sweeping Strikes: its
-	-- own, or one whose spell ID is secret.
-	local sweeping
+	-- The times of the player's recent casts that can be Sweeping Strikes: its
+	-- own, or one whose spell ID is secret. A held Hit is decided up to
+	-- DECIDE_LATE late, so a later cast must not replace an older one.
+	local sweepings = {}
 
 	local tracker = {}
 
 	function tracker.Cast(spellID, time, secret)
 		if secret or spellID == SWEEPING_STRIKES then
-			sweeping = time
+			while sweepings[1] and time - sweepings[1] > SWEEPING_STRIKES_DURATION + DECIDE_LATE do
+				table.remove(sweepings, 1)
+			end
+			sweepings[#sweepings + 1] = time
 		end
+	end
+
+	local function sweepingAt(time)
+		for _, cast in ipairs(sweepings) do
+			if time >= cast and time - cast <= SWEEPING_STRIKES_DURATION then
+				return true
+			end
+		end
+		return false
 	end
 
 	-- Deep Wounds for a Physical Hit with no cast on this plate, or nil.
@@ -469,8 +482,7 @@ local function newDeepWoundsTracker()
 			return nil
 		end
 		lastBleed[plate] = hit.time
-		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION
-			or sweeping and hit.time >= sweeping and hit.time - sweeping <= SWEEPING_STRIKES_DURATION) then
+		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION or sweepingAt(hit.time)) then
 			return nil
 		end
 		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
@@ -1295,8 +1307,9 @@ function Identity.New(saved, class)
 		for _, cast in ipairs(dotCasts) do
 			local spell = cast.spellID and ns.TickSpells[cast.spellID]
 			local runs = spell and spell.duration or LONGEST_DOT
-			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL)
-				and hit.time - cast.time <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
+			local since = hit.time - cast.time
+			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL) and not cast.missed
+				and since >= 0 and since <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
 				return true
 			end
 		end

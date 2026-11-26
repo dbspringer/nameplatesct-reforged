@@ -4,7 +4,7 @@
 
 - Spells that hit several enemies at once, like Whirlwind, Thunder Clap, Arcane Explosion, and Swipe, now show their icon on every hit. Before, only the first hit had it. Whirlwind's off-hand hits get it too.
 - Execute now shows its icon.
-- Deep Wounds now shows its icon, from its second tick on. During Sweeping Strikes, some of its ticks may still show no icon.
+- Deep Wounds now shows its icon on most ticks after its first. Some ticks still show none, like during Sweeping Strikes or Rend.
 
 ## 15
 
