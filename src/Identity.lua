@@ -740,7 +740,7 @@ function Identity.New(saved, class, startedAt)
 		-- Judgement fits only by being near its cast, and so does a Consecration
 		-- tick, so during Consecration the Hit gets none and the cast stays.
 		local direct = not found.secret and ns.DirectSpells[found.spellID]
-		if direct and direct.window and seals.Consecrated(hit) then
+		if direct and direct.window and (school == nil or school == SCHOOL_HOLY) and seals.Consecrated(hit) then
 			return nil
 		end
 		found.used = true
@@ -1123,6 +1123,12 @@ function Identity.New(saved, class, startedAt)
 	end
 
 	local identity = {}
+
+	-- Starts Identity's clock at this time, unless a start time was given or
+	-- a record came first: a replay's first entry.
+	function identity.Start(time)
+		startedAt = startedAt or time
+	end
 
 	function identity.Line(record)
 		seals.Line(record)

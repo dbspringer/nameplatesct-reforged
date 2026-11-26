@@ -584,6 +584,16 @@ describe("Spell Identity", function()
 			assert.is_nil(of(secret, 42.05, "direct", FIRE, "nameplate2"))
 		end)
 
+		it("starts a replay's clock at its first entry, not its first cast", function()
+			local BLAST_WAVE = 11113
+			assert.are.same({ BLAST_WAVE, BLAST_WAVE }, shownSpells({
+				lineEntry(0, "swing"),
+				castEntry(40, BLAST_WAVE),
+				hitEntry(40.01, "nameplate1", FIRE), lineEntry(40.01, "direct"),
+				hitEntry(40.01, "nameplate2", FIRE), lineEntry(40.01, "direct"),
+			}))
+		end)
+
 		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
 			local identity = Identity.New({})
 			cast(identity, 1, MULTI_SHOT)
@@ -608,6 +618,14 @@ describe("Spell Identity", function()
 			assert.are.equal(EXECUTE, of(executed(), 5.19, "direct", PHYSICAL))
 			assert.is_nil(of(executed(), 5.25, "direct", PHYSICAL))
 		end)
+	end)
+
+	it("gives Execute its Physical Hit after a secret cast, which can be Consecration but not Physical", function()
+		local EXECUTE = 5308
+		local identity = Identity.New({}, nil, 0)
+		identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 40, spellID = "<secret>", unit = "player" })
+		cast(identity, 42, EXECUTE)
+		assert.are.equal(EXECUTE, of(identity, 42.05, "direct", PHYSICAL))
 	end)
 
 	describe("of a direct hit", function()
