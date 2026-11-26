@@ -447,6 +447,56 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of a multi-hit spell", function()
+		local WHIRLWIND, MULTI_SHOT, MORTAL_STRIKE = 1680, 2643, 12294
+
+		it("gives Whirlwind to each Hit of one cast, on several units and twice on one, as a dual wield strikes", function()
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			assert.are.same({ WHIRLWIND, WHIRLWIND, WHIRLWIND, WHIRLWIND }, {
+				of(identity, 1, "direct", PHYSICAL),
+				of(identity, 1, "direct", PHYSICAL, "nameplate2"),
+				of(identity, 1.01, "direct", PHYSICAL),
+				of(identity, 1.05, "direct", PHYSICAL, "nameplate3"),
+			})
+		end)
+
+		it("closes the cast 0.1 s after its first Hit, where a one-target cast closes at its first", function()
+			local identity = Identity.New({})
+			cast(identity, 1, WHIRLWIND)
+			assert.are.equal(WHIRLWIND, of(identity, 1.3, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 1.45, "direct", PHYSICAL, "nameplate2"))
+			cast(identity, 5, MORTAL_STRIKE)
+			assert.are.equal(MORTAL_STRIKE, of(identity, 5, "direct", PHYSICAL))
+			assert.is_nil(of(identity, 5, "direct", PHYSICAL, "nameplate2"))
+		end)
+
+		it("keeps Multi-Shot open for its Hits' flight, which spreads them apart", function()
+			local identity = Identity.New({})
+			cast(identity, 1, MULTI_SHOT)
+			assert.are.same({ MULTI_SHOT, MULTI_SHOT, MULTI_SHOT }, {
+				of(identity, 1.97, "direct", PHYSICAL),
+				of(identity, 2.2, "direct", PHYSICAL, "nameplate2"),
+				of(identity, 2.47, "direct", PHYSICAL, "nameplate3"),
+			})
+		end)
+	end)
+
+	describe("of Execute", function()
+		local EXECUTE = 5308
+
+		it("gives Execute, whose damage is another spell, to a Physical Hit up to 0.2 s after its cast, and not later", function()
+			local function executed()
+				local identity = Identity.New({})
+				cast(identity, 5, EXECUTE)
+				return identity
+			end
+			assert.are.equal(EXECUTE, of(executed(), 5, "direct", PHYSICAL))
+			assert.are.equal(EXECUTE, of(executed(), 5.19, "direct", PHYSICAL))
+			assert.is_nil(of(executed(), 5.25, "direct", PHYSICAL))
+		end)
+	end)
+
 	describe("of a direct hit", function()
 		it("gives the one cast's spell at once, by the school from the table of spells that hit", function()
 			local saved = {}

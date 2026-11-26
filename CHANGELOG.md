@@ -1,5 +1,10 @@
 # Changelog
 
+## 16
+
+- Spells that hit several enemies at once, like Whirlwind, Thunder Clap, Arcane Explosion, and Swipe, now show their icon on every hit. Before, only the first hit had it. Whirlwind's off-hand hits get it too.
+- Execute now shows its icon.
+
 ## 15
 
 - In groups, more of your numbers show, like your damage shield's hits (Fire Shield, Retribution Aura) and Demonic Brand. Before, another player's hit at the same moment could show in their place.

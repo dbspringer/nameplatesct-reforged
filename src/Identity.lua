@@ -434,7 +434,8 @@ end
 function Identity.New(saved, class)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
-	-- missed, secret, lastTick, stopped, plate, hidden, unitKnown }. A cast whose spell ID is
+	-- firstHit, missed, secret, lastTick, stopped, plate, hidden, unitKnown }.
+	-- firstHit is when the first Hit used the cast up. A cast whose spell ID is
 	-- secret still competes, but never wins. lastTick is an area spell's last
 	-- tick on any unit, stopped when its channel stopped, and plate the key of
 	-- the player's target when it started (see plateOf), or nil. hidden is the
@@ -524,6 +525,16 @@ function Identity.New(saved, class)
 		return direct and direct.learns
 	end
 
+	-- Whether a cast can still explain a Hit at this time: one that no Hit
+	-- used up, or a multi-hit spell's within its spread after its first Hit.
+	local function isOpen(cast, time)
+		if not cast.used then
+			return true
+		end
+		local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+		return direct and direct.spread and time - cast.firstHit <= direct.spread or false
+	end
+
 	-- The one cast that fits a direct hit or a shot by time and whose school
 	-- is not known to differ from the Hit's, how many casts fit, and those
 	-- casts. A cast of
@@ -540,7 +551,7 @@ function Identity.New(saved, class)
 			local age = hit.time - cast.time
 			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
 			local window = direct and direct.window or groupWindow
-			if not cast.used and age >= 0 and age <= window and canHit(cast, group, miss, age) then
+			if isOpen(cast, hit.time) and age >= 0 and age <= window and canHit(cast, group, miss, age) then
 				timely, lastTimely = timely + 1, cast
 				local known = not cast.secret and schoolOf(cast.spellID)
 				if not (school and known and known ~= school) then
@@ -688,6 +699,7 @@ function Identity.New(saved, class)
 			return nil
 		end
 		found.used = true
+		found.firstHit = found.firstHit or hit.time
 		-- A cast whose spell ID is secret competes but never wins. The pet's
 		-- casts win as the player's do, since Your Hit is the pet's too.
 		if found.secret then

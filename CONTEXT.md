@@ -86,6 +86,10 @@ _Avoid_: Weapon icon, melee icon, white hit icon
 Which spell made Your Hit, the player's or the pet's. Icons and spell filters depend on it.
 _Avoid_: Spell attribution, spell match
 
+**Multi-Hit Spell**:
+A spell whose one cast can make several of Your Hits: one on each of several units, as Arcane Explosion or Whirlwind does, or two on one unit, when a strike uses both weapons. Each of those Hits gets its Spell Identity from the one cast.
+_Avoid_: AoE spell, cleave, splash
+
 **Possible Spells**:
 The spells that could have made Your Hit when it has no Spell Identity, when the addon is sure that one of them did: two to three spells that fit a Tick Tie, the ticks of one frame, or a direct Hit or shot. Text for players calls their icons possible icons.
 _Avoid_: Candidates, ambiguous spells, guess

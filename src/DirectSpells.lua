@@ -15,7 +15,7 @@ local _, ns = ...
 -- (TraitDefinition), also where no trainer or talent is known to teach it,
 -- and the ranged attacks; the Classic spells' schools agree with the Classic
 -- Era data. Left out, among others: spells whose damage comes from another
--- spell (Arcane Missiles, Hellfire, Execute), procs (poisons, weapon enchants;
+-- spell (Arcane Missiles, Hellfire; Execute is in, see EXECUTE_WINDOW), procs (poisons, weapon enchants;
 -- a Seal Proc has its own rule, see ns.Seals), totems, and Mana Burn. Holy
 -- Shock, whose damage a script makes, is in, so that its Hit on an enemy gets its icon; the cost is
 -- that its cast on a friend, which heals, competes with the casts that could
@@ -39,8 +39,22 @@ local function addSpell(spell, ids)
 	end
 end
 
-local function hits(school, ids)
-	addSpell({ school = school }, ids)
+-- How long after its first Hit a multi-hit spell's cast still explains Hits:
+-- one cast can hit several units, or one unit twice when a strike uses both
+-- weapons (Forever's Whirlwind, Mutilate). Other players' casts of instant
+-- area and chain spells put every Hit within 0.021 s of the cast (more than
+-- 700 casts in the Combat Log Files of the group Traces), so a short spread
+-- keeps a later Hit with no cast of its own, such as a Weapon Proc, from
+-- taking the spell. These are Combat Log times, not Hit times (unverified).
+local SPREAD = 0.1
+-- Multi-Shot's Hits travel: they came 0.97 to 1.47 s after the cast in the
+-- same logs, so its cast stays open for its whole window.
+local TRAVELS = math.huge
+
+-- spread, for a multi-hit spell, is how long its cast stays open after its
+-- first Hit (see Identity's castOf).
+local function hits(school, ids, spread)
+	addSpell({ school = school, spread = spread }, ids)
 end
 
 -- A ranged attack: its Hits come with shot Log Lines, not direct ones.
@@ -56,6 +70,12 @@ local JUDGEMENT_WINDOW = 0.2
 local function judges(ids)
 	addSpell({ school = HOLY, window = JUDGEMENT_WINDOW }, ids)
 end
+
+-- How long after its cast an Execute's Hit can come. Its damage is another
+-- spell (20647, from a script), so only this nearness ties it to the cast.
+-- Other players' 2 casts in the Combat Log Files had the Hit at the cast's
+-- timestamp; the value starts at Judgement's, and is not tested on Forever.
+local EXECUTE_WINDOW = 0.2
 
 -- The Seals, by the spell ID of their cast, from Forever's spell data, each with
 -- whether its Seal Proc gets an icon (see Identity's sealProc). Any Seal's cast
@@ -87,8 +107,8 @@ ns.ConsecrationSpells = { [20116] = true, [20922] = true, [20923] = true, [20924
 -- Pairing.New). Seen on Heroic Strike in the Warrior Trace and on other
 -- players' Heroic Strikes in the open-world Traces. Unverified on Maul, Raptor
 -- Strike, and Cleave, which replace a swing in the same way.
-local function replacesSwing(ids)
-	addSpell({ school = PHYSICAL, nextSwing = true }, ids)
+local function replacesSwing(ids, spread)
+	addSpell({ school = PHYSICAL, nextSwing = true, spread = spread }, ids)
 end
 
 do
@@ -98,7 +118,7 @@ do
 	shoots(PHYSICAL, { 2480, 7918, 7919 }) -- Shoot Bow, Shoot Gun, Shoot Crossbow
 	shoots(PHYSICAL, { 2764 }) -- Throw
 	-- Druid
-	hits(PHYSICAL, { 769, 779, 780, 9754, 9908 }) -- Swipe
+	hits(PHYSICAL, { 769, 779, 780, 9754, 9908 }, SPREAD) -- Swipe
 	hits(ARCANE, { 2912, 8949, 8950, 8951, 9875, 9876, 25298 }) -- Starfire
 	hits(PHYSICAL, { 1082, 3029, 5201, 9849, 9850 }) -- Claw
 	hits(NATURE, { 5176, 5177, 5178, 5179, 5180, 6780, 8905, 9912 }) -- Wrath
@@ -111,7 +131,7 @@ do
 
 	-- Hunter
 	hits(PHYSICAL, { 1495, 14269, 14270, 14271 }) -- Mongoose Bite
-	hits(PHYSICAL, { 2643 }) -- Multi-Shot
+	hits(PHYSICAL, { 2643 }, TRAVELS) -- Multi-Shot
 	hits(PHYSICAL, { 2974, 14267, 14268, 27633 }) -- Wing Clip
 	hits(ARCANE, { 3044, 14281, 14282, 14283, 14284, 14285, 14286, 14287 }) -- Arcane Shot
 	replacesSwing({ 2973, 14260, 14261, 14262, 14263, 14264, 14265, 14266 }) -- Raptor Strike
@@ -126,13 +146,13 @@ do
 
 	-- Mage
 	hits(FROST, { 116, 205, 837, 7322, 8406, 8407, 8408, 10179, 10180, 10181, 25304 }) -- Frostbolt
-	hits(FROST, { 120, 8492, 10159, 10160, 10161 }) -- Cone of Cold
-	hits(FROST, { 122, 865, 6131, 10230 }) -- Frost Nova
-	hits(ARCANE, { 1449, 8437, 8438, 8439, 10201, 10202 }) -- Arcane Explosion
+	hits(FROST, { 120, 8492, 10159, 10160, 10161 }, SPREAD) -- Cone of Cold
+	hits(FROST, { 122, 865, 6131, 10230 }, SPREAD) -- Frost Nova
+	hits(ARCANE, { 1449, 8437, 8438, 8439, 10201, 10202 }, SPREAD) -- Arcane Explosion
 	hits(FIRE, { 2136, 2137, 2138, 8412, 8413, 10197, 10199 }) -- Fire Blast
 	hits(FIRE, { 2948, 8444, 8445, 8446, 10205, 10206, 10207 }) -- Scorch
-	hits(FIRE, { 11113, 13018, 13019, 13020, 13021 }) -- Blast Wave
-	hits(FIRE, { 2120, 2121, 8422, 8423, 10215, 10216 }) -- Flamestrike; its DoT is left out (TickSpells.lua)
+	hits(FIRE, { 11113, 13018, 13019, 13020, 13021 }, SPREAD) -- Blast Wave
+	hits(FIRE, { 2120, 2121, 8422, 8423, 10215, 10216 }, SPREAD) -- Flamestrike; its DoT is left out (TickSpells.lua)
 	hits(FIRE, { 24530 }) -- Felfire
 	hits(ARCANE, { 400574 }) -- Arcane Blast
 	hits(FROST, { 400640 }) -- Ice Lance
@@ -143,7 +163,7 @@ do
 
 	-- Paladin
 	hits(HOLY, { 879, 5614, 5615, 10312, 10313, 10314 }) -- Exorcism
-	hits(HOLY, { 2812, 10318 }) -- Holy Wrath
+	hits(HOLY, { 2812, 10318 }, SPREAD) -- Holy Wrath
 	hits(HOLY, { 24239, 24274, 24275 }) -- Hammer of Wrath
 	-- Weapon damage plus Holy damage; which school the Hit reports is untested.
 	hits(HOLY, { 678, 679, 680, 1866, 2495, 5569, 10332, 10333 }) -- Holy Strike, Forever only
@@ -154,7 +174,7 @@ do
 	-- Priest
 	hits(HOLY, { 585, 591, 598, 984, 1004, 6060, 10933, 10934 }) -- Smite
 	hits(SHADOW, { 8092, 8102, 8103, 8104, 8105, 8106, 10945, 10946, 10947 }) -- Mind Blast
-	hits(HOLY, { 15237, 15430, 15431, 27799, 27800, 27801 }) -- Holy Nova
+	hits(HOLY, { 15237, 15430, 15431, 27799, 27800, 27801 }, SPREAD) -- Holy Nova
 	hits(HOLY, { 1277331, 1277332, 1277333, 1277334, 1277335 }) -- Chastise, Forever only
 	hits(SHADOW, { 1309595, 1309633, 1309635, 1309636 }) -- Shadow Word: Death, Forever only
 
@@ -172,11 +192,11 @@ do
 	-- The casts. Each one makes two Hits, a main-hand and an off-hand strike
 	-- (untested), and a cast gives its spell to one Hit, so only the first
 	-- gets the icon.
-	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }) -- Mutilate, Forever only
+	hits(PHYSICAL, { 1310707, 399956, 1241582, 1241584 }, SPREAD) -- Mutilate, Forever only
 
 	-- Shaman
 	hits(NATURE, { 403, 529, 548, 915, 943, 6041, 10391, 10392, 15207, 15208 }) -- Lightning Bolt
-	hits(NATURE, { 421, 930, 2860, 10605 }) -- Chain Lightning
+	hits(NATURE, { 421, 930, 2860, 10605 }, SPREAD) -- Chain Lightning
 	hits(NATURE, { 8042, 8044, 8045, 8046, 10412, 10413, 10414 }) -- Earth Shock
 	hits(FROST, { 8056, 8058, 10472, 10473 }) -- Frost Shock
 	hits(PHYSICAL, { 17364 }) -- Stormstrike
@@ -198,11 +218,12 @@ do
 	hits(PHYSICAL, { 72, 1671, 1672 }) -- Shield Bash
 	replacesSwing({ 78, 284, 285, 1608, 11564, 11565, 11566, 11567, 25286, 25712 }) -- Heroic Strike
 	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
-	replacesSwing({ 845, 7369, 11608, 11609, 20569 }) -- Cleave
+	replacesSwing({ 845, 7369, 11608, 11609, 20569 }, SPREAD) -- Cleave
 	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
-	hits(PHYSICAL, { 1680 }) -- Whirlwind
+	hits(PHYSICAL, { 1680 }, SPREAD) -- Whirlwind
+	addSpell({ school = PHYSICAL, window = EXECUTE_WINDOW }, { 5308, 20658, 20660, 20661, 20662 }) -- Execute
 	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring
-	hits(PHYSICAL, { 6343, 8198, 8204, 8205, 11580, 11581 }) -- Thunder Clap
+	hits(PHYSICAL, { 6343, 8198, 8204, 8205, 11580, 11581 }, SPREAD) -- Thunder Clap
 	hits(PHYSICAL, { 6552, 6554 }) -- Pummel
 	hits(PHYSICAL, { 6572, 6574, 7379, 11600, 11601, 25288 }) -- Revenge
 	hits(PHYSICAL, { 7384, 7887, 11584, 11585 }) -- Overpower
@@ -220,10 +241,10 @@ do
 	hits(PHYSICAL, { 17253, 17255, 17256, 17257, 17258, 17259, 17260, 17261 }) -- Bite
 	hits(NATURE, { 24844, 25008, 25009, 25010, 25011, 25012 }) -- Lightning Breath
 	hits(PHYSICAL, { 24423, 24577, 24578, 24579 }) -- Demoralizing Screech (Screech in Classic)
-	hits(NATURE, { 26090, 26187, 26188, 1264455 }) -- Thunderstomp
-	hits(FIRE, { 444678, 444681 }) -- Lava Breath
+	hits(NATURE, { 26090, 26187, 26188, 1264455 }, SPREAD) -- Thunderstomp
+	hits(FIRE, { 444678, 444681 }, SPREAD) -- Lava Breath
 	hits(NATURE, { 1264478, 1264479, 1264480, 1264481, 1264482 }) -- Sonic Blast, Forever only
-	hits(PHYSICAL, { 1264494, 1264497, 1264498, 1264501, 1264502 }) -- Swipe, Forever only
+	hits(PHYSICAL, { 1264494, 1264497, 1264498, 1264501, 1264502 }, SPREAD) -- Swipe, Forever only
 	hits(PHYSICAL, { 1264735, 1264736, 1264739, 1264741, 1264742 }) -- Pinch, Forever only
 	hits(PHYSICAL, { 1264758, 1264927, 1264929, 1264930, 1264933 }) -- Dismember, Forever only
 	hits(PHYSICAL, { 1265054, 1265055, 1265056, 1265057, 1265058 }) -- Mine!, Forever only
