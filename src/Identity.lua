@@ -199,6 +199,35 @@ local function possibleOf(spellIDs)
 	return list
 end
 
+-- The recent landed Hits or lines that can set off a Proc with no cast, each
+-- with its time and, when given, its plate. Each is kept while a Hit decided
+-- up to DECIDE_LATE late can still need it.
+local function newTriggers(window)
+	local list = {}
+	local triggers = {}
+
+	function triggers.Add(time, plate)
+		while list[1] and time - list[1].time > window + DECIDE_LATE do
+			table.remove(list, 1)
+		end
+		list[#list + 1] = { time = time, plate = plate }
+	end
+
+	-- Whether one came at most window before time, or at it, and passes
+	-- accept(trigger, since) when that is given.
+	function triggers.Before(time, accept)
+		for _, trigger in ipairs(list) do
+			local since = time - trigger.time
+			if since >= 0 and since <= window and (not accept or accept(trigger, since)) then
+				return true
+			end
+		end
+		return false
+	end
+
+	return triggers
+end
+
 -- Follows the player's Active Seal, Consecration, and landed swings, which are
 -- all that tie a Seal Proc or a Judgement to the player, as a proc has no cast.
 local function newSealTracker()
@@ -211,8 +240,8 @@ local function newSealTracker()
 	-- The player's recent casts of Consecration, or ones that could be, oldest
 	-- first. A late Hit can need an older one than the latest.
 	local consecrations = {}
-	-- The times of the player's latest swing lines that landed, oldest first.
-	local swingLines = {}
+	-- The player's latest swing lines that landed.
+	local swingLines = newTriggers(SEAL_PROC_WINDOW)
 
 	-- Keeps the changes of the Active Seal, which a late Hit can still need, and
 	-- the change that was in force before them.
@@ -256,10 +285,7 @@ local function newSealTracker()
 		if record.lineKind ~= "swing" or record.pet then
 			return
 		end
-		while swingLines[1] and record.time - swingLines[1] > SEAL_PROC_WINDOW + DECIDE_LATE do
-			table.remove(swingLines, 1)
-		end
-		swingLines[#swingLines + 1] = record.time
+		swingLines.Add(record.time)
 	end
 
 	-- Whether Consecration could be ticking at this Hit's moment. Its ticks are
@@ -295,12 +321,7 @@ local function newSealTracker()
 		if tracker.Consecrated(hit) then
 			return nil
 		end
-		for _, time in ipairs(swingLines) do
-			local sinceSwing = hit.time - time
-			if sinceSwing >= 0 and sinceSwing <= SEAL_PROC_WINDOW then
-				return seal.spellID
-			end
-		end
+		return swingLines.Before(hit.time) and seal.spellID or nil
 	end
 
 	-- Whether a Holy Hit with no cast could have made this direct Hit: a
@@ -321,39 +342,27 @@ end
 -- which then shows a poison's icon: the poison on a weapon is not checked
 -- (ADR 0004).
 local function newPoisonTracker()
-	-- The times of the player's latest landed swing lines and strike Hits.
-	local landed = {}
-
-	local function land(time)
-		while landed[1] and time - landed[1] > POISON_PROC_WINDOW + DECIDE_LATE do
-			table.remove(landed, 1)
-		end
-		landed[#landed + 1] = time
-	end
+	-- The player's latest landed swing lines and strike Hits.
+	local landed = newTriggers(POISON_PROC_WINDOW)
 
 	local tracker = {}
 
 	-- A pet's swing line lands no poison, and a swing that missed lands none.
 	function tracker.Line(record)
 		if record.lineKind == "swing" and not record.pet then
-			land(record.time)
+			landed.Add(record.time)
 		end
 	end
 
 	-- A strike's Hit: a Physical direct Hit of the player's.
 	function tracker.Strike(hit)
-		land(hit.time)
+		landed.Add(hit.time)
 	end
 
 	-- Instant Poison if this Nature direct Hit comes just after a landed melee
 	-- hit, or nil.
 	function tracker.ProcSpell(hit)
-		for _, time in ipairs(landed) do
-			local since = hit.time - time
-			if since >= 0 and since <= POISON_PROC_WINDOW then
-				return INSTANT_POISON
-			end
-		end
+		return landed.Before(hit.time) and INSTANT_POISON or nil
 	end
 
 	return tracker
@@ -367,21 +376,14 @@ end
 local function newBrandTracker()
 	-- The latest lines of the pet's landed swings, and of its spell Hits, each
 	-- with its time and, for a spell Hit, its plate.
-	local swings, spells = {}, {}
-
-	local function add(list, time, plate)
-		while list[1] and time - list[1].time > BRAND_PROC_WINDOW + DECIDE_LATE do
-			table.remove(list, 1)
-		end
-		list[#list + 1] = { time = time, plate = plate }
-	end
+	local swings, spells = newTriggers(BRAND_PROC_WINDOW), newTriggers(BRAND_PROC_WINDOW)
 
 	local tracker = {}
 
 	-- A swing that missed sets off no Brand Proc (none in warlock-zf).
 	function tracker.Line(record)
 		if record.lineKind == "swing" and record.pet then
-			add(swings, record.time)
+			swings.Add(record.time)
 		end
 	end
 
@@ -389,7 +391,7 @@ local function newBrandTracker()
 	-- the Hit's plate.
 	function tracker.PetSpell(line, plate)
 		if line.time then
-			add(spells, line.time, plate)
+			spells.Add(line.time, plate)
 		end
 	end
 
@@ -403,18 +405,10 @@ local function newBrandTracker()
 		if not line.time then
 			return nil
 		end
-		for _, swing in ipairs(swings) do
-			local since = line.time - swing.time
-			if since >= 0 and since <= BRAND_PROC_WINDOW then
-				return DEMONIC_BRAND
-			end
-		end
-		for _, spell in ipairs(spells) do
-			local since = line.time - spell.time
-			if spell.plate == plate and since > 0 and since <= BRAND_PROC_WINDOW then
-				return DEMONIC_BRAND
-			end
-		end
+		local setOff = swings.Before(line.time) or spells.Before(line.time, function(spell, since)
+			return spell.plate == plate and since > 0
+		end)
+		return setOff and DEMONIC_BRAND or nil
 	end
 
 	return tracker
