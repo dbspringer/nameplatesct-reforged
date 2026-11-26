@@ -435,7 +435,9 @@ end
 -- school; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
 -- table or from the Spell Facts that count, or nil. class is the player's
 -- class token from UnitClass, which turns on the Poison Procs for a Rogue.
-function Identity.New(saved, class)
+-- startedAt is when the addon started, or nil for the first record's time,
+-- as in a Trace's replay.
+function Identity.New(saved, class, startedAt)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
 	-- hitFrom, hitTo, hitUnits, units, missed, secret, lastTick, stopped,
@@ -451,10 +453,10 @@ function Identity.New(saved, class)
 	-- secret spells, kept while their DoT can run, longer than casts: what
 	-- rivalDue reads.
 	local dotCasts = {}
-	-- The time of the first record: a DoT cast before it, as before a /reload
-	-- or a Trace's start, is in no list, so rivalDue cannot see it until it has
-	-- run out (warlock-drain-life replayed from entry 3919).
-	local startedAt
+	-- When Identity started (startedAt, given), or the time of the first
+	-- record: a DoT cast before it, as before a /reload or a Trace's start, is
+	-- in no list, so rivalDue cannot see it until it has run out
+	-- (warlock-drain-life replayed from entry 3919).
 	-- For each unit and spell that ticks, the Tick Rhythms it can have there:
 	-- one, or after a Tick Tie each one that can be true (see ofTick). A rhythm
 	-- is { source, cast, last, anchor, ticks, ends }: source is the time of the
@@ -1184,7 +1186,8 @@ function Identity.New(saved, class)
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
 			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
-		if cast.spellID and ns.FlamestrikeSpells[cast.spellID] then
+		-- A cast whose spell ID is secret can be Flamestrike's.
+		if record.unit == "player" and (secret or ns.FlamestrikeSpells[cast.spellID]) then
 			while grounds[1] and record.time - grounds[1].time > FLAMESTRIKE_GROUND do
 				table.remove(grounds, 1)
 			end

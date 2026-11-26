@@ -174,7 +174,7 @@ end
 -- spellFacts holds the Spell Facts (see Flow.New).
 function Events.Start(show, noPlate, spellFacts)
 	local _, class = UnitClass("player")
-	flow = ns.Flow.New({ show = show, noPlate = noPlate, spellFacts = spellFacts, class = class })
+	flow = ns.Flow.New({ show = show, noPlate = noPlate, spellFacts = spellFacts, class = class, startedAt = GetTime() })
 	frame:SetScript("OnUpdate", onUpdate)
 
 	keepFilteredEvents()
