@@ -718,6 +718,14 @@ function Identity.New(saved, class)
 		end
 		-- Likewise, an older Flamestrike's ground burns with direct Fire Hits
 		-- with no cast, which a multi-hit spell's cast fits by nearness alone.
+		-- A Consecration or a Flamestrike from before Identity started, as
+		-- before a /reload, is in no list, so until either would have ended a
+		-- reused cast gets no Holy or Fire Hit.
+		local since = hit.time - startedAt
+		if found.used and (school == nil or school == SCHOOL_HOLY) and since <= CONSECRATION_DURATION
+			or found.used and (school == nil or school == SCHOOL_FIRE) and since <= FLAMESTRIKE_GROUND then
+			return nil
+		end
 		if found.used and (school == nil or school == SCHOOL_FIRE) then
 			for _, ground in ipairs(grounds) do
 				if ground ~= found and hit.time - ground.time <= FLAMESTRIKE_GROUND then
