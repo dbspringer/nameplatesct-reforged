@@ -633,9 +633,11 @@ function Pairing.New(options)
 	-- the school of a hint (see castOf). A Hit with a lower rank still takes
 	-- one when the frame's later Hits of a higher rank are fewer than its
 	-- direct lines left: both of a frame's Hits can be the player's (a Seal
-	-- Proc and a Judgement).
+	-- Proc and a Judgement). The player's Hit is the first after its line
+	-- (see hitAfterLine), so a Hit after the line keeps it from a later Hit of
+	-- a higher rank.
 	local function leavesDirectLine(hit, line, lines, later, first)
-		if line.lineKind ~= "direct" then
+		if line.lineKind ~= "direct" or hit.entry > line.entry then
 			return false
 		end
 		local rank, waiting = castRank(hit), 0
@@ -656,8 +658,29 @@ function Pairing.New(options)
 		return waiting >= left
 	end
 
+	-- In a frame, the player's Hit comes after its own direct or shield line:
+	-- 392 of 392 direct and 18 of 18 shield lines over the Traces, where the
+	-- Combat Log File told the Hit. So a Hit before such a line leaves it to a
+	-- later Hit of the frame that suits it (warlock-zf Retribution Aura and
+	-- Brand Procs, warlock-maraudon hits 32528 and 32530). Not for shot
+	-- lines: there the same rule made 13 of 16 changed Hits worse.
+	local function hitAfterLine(line, later, first)
+		for i = first, #later do
+			local other = later[i]
+			if other.entry > line.entry and not OWN_UNITS[other.unit] and not isZeroWound(other)
+				and not isOthersHeal(other) and suits(other, line) then
+				return other
+			end
+		end
+	end
+
+	local function leavesLineToHitAfter(hit, line, later, first)
+		return (line.lineKind == "direct" or line.lineKind == "shield") and hit.entry < line.entry
+			and hitAfterLine(line, later, first) ~= nil
+	end
+
 	local function takesFromFrame(hit, line, lines, later, first)
-		if leavesDirectLine(hit, line, lines, later, first) then
+		if leavesLineToHitAfter(hit, line, later, first) or leavesDirectLine(hit, line, lines, later, first) then
 			return false
 		end
 		if not schoolIs(hit, line, false) then
