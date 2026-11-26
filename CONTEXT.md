@@ -63,7 +63,7 @@ The time by which a melee Log Line comes before its Hit. It depends on the unit 
 _Avoid_: Melee lag, offset, cluster, learned window
 
 **Proc**:
-Your Hit with no cast of its own, set off when another Hit of the player's or the pet's lands. A Seal Proc, a Poison Proc, a Brand Proc, and a Weapon Proc are Procs.
+Your Hit with no cast of its own, set off when another Hit of the player's or the pet's lands. A Seal Proc, a Poison Proc, a Brand Proc, a Weapon Proc, and a Deep Wounds tick are Procs.
 _Avoid_: Castless hit, on-hit effect, trigger
 
 **Weapon Proc**:

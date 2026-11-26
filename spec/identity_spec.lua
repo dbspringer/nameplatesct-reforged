@@ -447,6 +447,161 @@ describe("Spell Identity", function()
 		end)
 	end)
 
+	describe("of Deep Wounds", function()
+		local DEEP_WOUNDS, SWEEPING_STRIKES, REND, BATTLE_SHOUT = 12834, 12292, 772, 6673
+
+		-- The spell of a castless Physical Hit on nameplate1 with a line of
+		-- this Line Kind.
+		local function bleed(identity, time, lineKind)
+			return identity.OfAll({ { hit = { time = time, unit = "nameplate1", school = PHYSICAL },
+				line = { lineKind = lineKind } } })[1]
+		end
+
+		-- A Warrior's Identity that has run longer than any DoT by time 100.
+		local function warrior()
+			local identity = Identity.New({}, "WARRIOR")
+			cast(identity, 0, BATTLE_SHOUT)
+			return identity
+		end
+
+		it("gives a Warrior's castless Physical Hits on a 3 s rhythm Deep Wounds, on tick or direct lines, but not the first", function()
+			local identity = warrior()
+			assert.are.same({ "none", DEEP_WOUNDS, DEEP_WOUNDS, "none", DEEP_WOUNDS }, {
+				bleed(identity, 100, "tick") or "none",
+				bleed(identity, 103, "direct") or "none",
+				bleed(identity, 106.05, "tick") or "none",
+				bleed(identity, 110, "tick") or "none",
+				bleed(identity, 113, "tick") or "none",
+			})
+			local rogue = Identity.New({}, "ROGUE")
+			cast(rogue, 0, BATTLE_SHOUT)
+			bleed(rogue, 100, "direct")
+			assert.is_nil(bleed(rogue, 103, "direct"))
+		end)
+
+		it("keeps Deep Wounds' rhythm on the newer Hit when an older one is decided after it", function()
+			local identity = warrior()
+			bleed(identity, 103.12, "direct")
+			assert.is_nil(bleed(identity, 103, "tick"))
+			assert.is_nil(bleed(identity, 106, "direct"))
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, 109.05, "direct"))
+		end)
+
+		it("gives a direct Hit no Deep Wounds within 10 s of Sweeping Strikes, whose extra Hits can keep its rhythm", function()
+			local identity = warrior()
+			cast(identity, 100, SWEEPING_STRIKES)
+			bleed(identity, 101, "direct")
+			assert.is_nil(bleed(identity, 104, "direct"))
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, 107, "tick"))
+			bleed(identity, 113, "direct")
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, 116, "direct"))
+		end)
+
+		it("gives a direct Hit no Deep Wounds after a secret cast or just after a start, as either can hide Sweeping Strikes", function()
+			local identity = warrior()
+			identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 100, spellID = "<secret>", unit = "player" })
+			bleed(identity, 101, "direct")
+			assert.is_nil(bleed(identity, 104, "direct"))
+			local fresh = Identity.New({}, "WARRIOR")
+			bleed(fresh, 1, "direct")
+			assert.is_nil(bleed(fresh, 4, "direct"))
+			bleed(fresh, 10, "direct")
+			assert.are.equal(DEEP_WOUNDS, bleed(fresh, 13, "direct"))
+		end)
+
+		it("keeps a held Hit's Sweeping Strikes when a later secret cast comes first", function()
+			local identity = warrior()
+			cast(identity, 100, SWEEPING_STRIKES)
+			bleed(identity, 103, "direct")
+			identity.Cast({ kind = "cast", stage = "SUCCEEDED", time = 106.02, spellID = "<secret>", unit = "player" })
+			assert.is_nil(bleed(identity, 106, "direct"))
+		end)
+
+		it("lets a Rend cast after the tick, or one that missed, leave Deep Wounds' ticks alone", function()
+			local identity = warrior()
+			bleed(identity, 100, "tick")
+			cast(identity, 103.02, REND)
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, 103, "tick"))
+			local missed = warrior()
+			cast(missed, 100, REND)
+			assert.are.equal(REND, of(missed, 100, "directMiss"))
+			bleed(missed, 101.5, "tick")
+			assert.are.equal(DEEP_WOUNDS, bleed(missed, 104.5, "tick"))
+		end)
+
+		it("gives a strike whose cast a castless Hit took first no Deep Wounds", function()
+			local MORTAL_STRIKE = 12294
+			local identity = warrior()
+			bleed(identity, 100, "direct")
+			cast(identity, 102.99, MORTAL_STRIKE)
+			of(identity, 103, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(identity, 103.03, "direct"))
+			-- The cast's target, the player's target as it started, is no proof of
+			-- the unit it hit.
+			local aimed = warrior()
+			bleed(aimed, 100, "direct")
+			aimed.Cast({ kind = "cast", stage = "SUCCEEDED", time = 102.99, spellID = MORTAL_STRIKE, unit = "player",
+				startTargetLife = { unitKey = "nameplate2" } })
+			of(aimed, 103, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(aimed, 103.03, "direct"))
+			-- A strike that its own unit's Hit took leaves the rhythm alone.
+			local other = warrior()
+			bleed(other, 100, "direct")
+			cast(other, 102.5, MORTAL_STRIKE)
+			of(other, 102.6, "direct", PHYSICAL)
+			assert.are.equal(DEEP_WOUNDS, bleed(other, 103, "direct"))
+		end)
+
+		it("keeps the rhythm through ticks that its guards leave without an icon", function()
+			local identity = Identity.New({}, "WARRIOR", 0)
+			local start = ns.LONGEST_DOT + 0.1
+			bleed(identity, start - 3, "tick")
+			assert.are.equal(DEEP_WOUNDS, bleed(identity, start + 0.05, "tick"))
+		end)
+
+		it("gives no Deep Wounds to a Hit in the frame of a strike on its unit that took the strike's cast", function()
+			local MORTAL_STRIKE = 12294
+			local identity = warrior()
+			bleed(identity, 100, "direct")
+			cast(identity, 102.9, MORTAL_STRIKE)
+			of(identity, 103, "direct", PHYSICAL)
+			assert.is_nil(bleed(identity, 103, "direct"))
+		end)
+
+		it("lets a cast in the Hit's frame that came after it leave Deep Wounds alone", function()
+			local function hitAt(identity, time, entry, lineKind)
+				return identity.OfAll({ { hit = { time = time, entry = entry, unit = "nameplate1", school = PHYSICAL },
+					line = { lineKind = lineKind } } })[1]
+			end
+			local rend = warrior()
+			hitAt(rend, 100, 1, "tick")
+			rend.Cast({ kind = "cast", stage = "SUCCEEDED", time = 103, entry = 3, spellID = REND, unit = "player" })
+			assert.are.equal(DEEP_WOUNDS, hitAt(rend, 103, 2, "tick"))
+			local sweeping = warrior()
+			hitAt(sweeping, 100, 1, "direct")
+			sweeping.Cast({ kind = "cast", stage = "SUCCEEDED", time = 103, entry = 3, spellID = SWEEPING_STRIKES,
+				unit = "player" })
+			assert.are.equal(DEEP_WOUNDS, hitAt(sweeping, 103, 2, "direct"))
+		end)
+
+		it("gives no Deep Wounds to a strike whose cast also hit another unit, whatever hit this unit first", function()
+			local CLEAVE = 845
+			local identity = warrior()
+			bleed(identity, 100, "direct")
+			cast(identity, 102.9, CLEAVE)
+			of(identity, 102.95, "direct", PHYSICAL)
+			of(identity, 103.03, "direct", PHYSICAL, "nameplate2")
+			assert.is_nil(bleed(identity, 103.03, "direct"))
+		end)
+
+		it("gives no Deep Wounds to a Physical tick while Rend can run, as it can be Rend's off its rhythm", function()
+			local identity = warrior()
+			cast(identity, 100, REND)
+			bleed(identity, 101.5, "tick")
+			assert.is_nil(bleed(identity, 104.5, "tick"))
+		end)
+	end)
+
 	describe("of a multi-hit spell", function()
 		local WHIRLWIND, MULTI_SHOT, MORTAL_STRIKE = 1680, 2643, 12294
 

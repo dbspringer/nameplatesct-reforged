@@ -21,7 +21,8 @@ ns.Identity = Identity
 -- Brand Proc have no cast: a Seal Proc goes by the Active Seal and a landed
 -- swing, a poison by its school and a landed melee hit, a Brand Proc by its
 -- school and the pet's landed swing line (see newSealTracker,
--- newPoisonTracker and newBrandTracker).
+-- newPoisonTracker and newBrandTracker). A Warrior's Deep Wounds has no cast
+-- either, and goes by its rhythm (see newDeepWoundsTracker).
 -- When it is not sure, it gives none. A Hit that gets none can still get its
 -- Possible Spells, when one of two or three known spells surely made it (see
 -- ofTick and possibleOfCasts).
@@ -423,6 +424,83 @@ local function newBrandTracker()
 	return tracker
 end
 
+-- Deep Wounds' talent, whose icon and name its Hits show, and its bleed's
+-- tick interval (Forever's 412609: every 3 s for 12 s). On Forever the bleed
+-- is a dummy aura with a separate damage spell (412613), so its Hits can come
+-- on tick or direct lines (unverified); its tooltip says a crit sets it off.
+local DEEP_WOUNDS, DEEP_WOUNDS_INTERVAL = 12834, 3
+-- Sweeping Strikes' cast, and how long its extra Hits can come after it:
+-- Classic's 10 s (unverified on Forever). Its extra Hits on a second unit have
+-- no cast of their own either, and a weapon of about 3 s speed puts them on
+-- Deep Wounds' rhythm.
+local SWEEPING_STRIKES, SWEEPING_STRIKES_DURATION = 12292, 10
+
+-- Follows a Warrior's Physical Hits with no cast, which are all that tie a
+-- Deep Wounds tick to the player. Deep Wounds has no cast and its first tick
+-- no anchor, since the crit that sets it off can be secret, so the first
+-- such Hit on a unit starts a rhythm and gets none, and one an interval after
+-- the unit's latest such Hit gets Deep Wounds: a Weapon Proc pairs as melee
+-- and never comes here, and another castless Hit almost never lands on that
+-- rhythm. Sweeping Strikes' extra Hits can, so a direct Hit gets none while
+-- they can come.
+local function newDeepWoundsTracker()
+	-- By plate, the time of the latest Physical Hit with no cast.
+	local lastBleed = setmetatable({}, { __mode = "k" })
+	-- The times of the player's recent casts that can be Sweeping Strikes: its
+	-- own, or one whose spell ID is secret. A held Hit is decided up to
+	-- DECIDE_LATE late, so a later cast must not replace an older one.
+	local sweepings = {}
+
+	local tracker = {}
+
+	-- record is the cast record, with its time and entry.
+	function tracker.Cast(spellID, record, secret)
+		if secret or spellID == SWEEPING_STRIKES then
+			while sweepings[1] and record.time - sweepings[1].time > SWEEPING_STRIKES_DURATION + DECIDE_LATE do
+				table.remove(sweepings, 1)
+			end
+			sweepings[#sweepings + 1] = { time = record.time, entry = record.entry }
+		end
+	end
+
+	-- A cast in the Hit's frame that came after it, as Flow can give a cast
+	-- before it decides an earlier Hit, does not count.
+	local function sweepingAt(hit)
+		for _, cast in ipairs(sweepings) do
+			if cameBefore(cast, hit) and hit.time - cast.time <= SWEEPING_STRIKES_DURATION then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Deep Wounds for a Physical Hit with no cast on this plate, or nil.
+	-- direct says it came on a direct line, as Sweeping Strikes' Hits do, and
+	-- startedAt is when Identity started: a Sweeping Strikes cast before it,
+	-- as before a /reload, is unseen. blocked says another source could have
+	-- made it: it keeps the rhythm going, but gets none.
+	function tracker.ProcSpell(hit, plate, direct, startedAt, blocked)
+		-- A held Hit decided after a newer one on its plate keeps the rhythm
+		-- on the newer one, and gets none.
+		local last = lastBleed[plate]
+		if last and hit.time < last then
+			return nil
+		end
+		lastBleed[plate] = hit.time
+		if blocked then
+			return nil
+		end
+		if direct and (hit.time - startedAt <= SWEEPING_STRIKES_DURATION or sweepingAt(hit)) then
+			return nil
+		end
+		if last and math.abs(hit.time - last - DEEP_WOUNDS_INTERVAL) <= TICK_TOLERANCE then
+			return DEEP_WOUNDS
+		end
+	end
+
+	return tracker
+end
+
 -- saved holds the Spell Facts by spell ID, and changes in place, so the
 -- caller can keep it in SavedVariables: { [spellID] = { school, hits } }.
 -- Only a ranged attack learns, so its facts are always for shots.
@@ -435,9 +513,10 @@ end
 -- that unit, this one included, and sure how many of them surely have its
 -- school; nil means 1. SchoolOf(spellID) gives the school of a spell's hits, from a
 -- table or from the Spell Facts that count, or nil. class is the player's
--- class token from UnitClass, which turns on the Poison Procs for a Rogue.
--- startedAt is when the addon started, or nil for the first record's time,
--- as in a Trace's replay.
+-- class token from UnitClass, which turns on the Poison Procs for a Rogue,
+-- the Brand Procs for a Warlock, and Deep Wounds for a Warrior. startedAt is
+-- when the addon started, or nil for the first record's time, as in a
+-- Trace's replay.
 function Identity.New(saved, class, startedAt)
 	clean(saved)
 	-- Recent casts of the player and the pet: { time, spellID, unit, used,
@@ -475,6 +554,7 @@ function Identity.New(saved, class, startedAt)
 	local grounds = {}
 	local poisons = class == "ROGUE" and newPoisonTracker() or nil
 	local brands = class == "WARLOCK" and newBrandTracker() or nil
+	local deepWounds = class == "WARRIOR" and newDeepWoundsTracker() or nil
 
 	-- The school of the spell's hits, from a table or from the Spell Facts
 	-- that count, or nil while it is not known.
@@ -765,6 +845,8 @@ function Identity.New(saved, class, startedAt)
 			found.units = (found.units or 0) + 1
 		end
 		found.hitUnits[plate] = (found.hitUnits[plate] or 0) + 1
+		found.lastHits = found.lastHits or {}
+		found.lastHits[plate] = hit.time
 		-- A cast whose spell ID is secret competes but never wins. The pet's
 		-- casts win as the player's do, since Your Hit is the pet's too.
 		if found.secret then
@@ -1202,8 +1284,12 @@ function Identity.New(saved, class, startedAt)
 		local secret = issecretvalue(record.spellID)
 		if record.unit == "player" then
 			seals.Cast(record, secret)
+			if deepWounds then
+				deepWounds.Cast(not secret and record.spellID or nil, record, secret)
+			end
 		end
-		local cast = { time = record.time, spellID = not secret and record.spellID or nil, unit = record.unit,
+		local cast = { time = record.time, entry = record.entry, spellID = not secret and record.spellID or nil,
+			unit = record.unit,
 			secret = secret or nil, plate = keyOfLife(record.startTargetLife),
 			unitKnown = record.startTargetLife and record.startTargetLife.unitKey ~= nil or nil }
 		casts[#casts + 1] = cast
@@ -1243,6 +1329,55 @@ function Identity.New(saved, class, startedAt)
 		end
 	end
 
+	-- Whether a used cast in its window could still have made this Hit on
+	-- this plate: a Hit on another unit took it, or one on this unit in this
+	-- frame, which could be the castless one. A castless Hit can take a
+	-- strike's cast before the strike lands. A cast's plate is the player's
+	-- target as it started, which need not be the unit it hit, so it does
+	-- not count.
+	local function hitElsewhere(cast, plate)
+		for other in pairs(cast.hitUnits) do
+			if other ~= plate then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function takenCastCould(hit, group, school, plate)
+		for _, cast in ipairs(casts) do
+			local age = hit.time - cast.time
+			local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+			local known = not cast.secret and schoolOf(cast.spellID)
+			if cast.used and (hitElsewhere(cast, plate) or cast.lastHits[plate] == hit.time)
+				and age >= 0 and age <= (direct and direct.window or DIRECT_WINDOW) and canHit(cast, group, false, age)
+				and not (known and known ~= school) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Whether a Physical tick with no Tick Rhythm can still be a DoT's that
+	-- the player cast, such as a Rend tick off its rhythm, so it is no Deep
+	-- Wounds tick: a Physical DoT's cast, or one whose spell ID is secret,
+	-- that can still run, or any from before Identity started, as before a
+	-- /reload.
+	local function physicalDotRuns(hit)
+		if hit.time - startedAt <= LONGEST_DOT + TICK_TOLERANCE then
+			return true
+		end
+		for _, cast in ipairs(dotCasts) do
+			local spell = cast.spellID and ns.TickSpells[cast.spellID]
+			local runs = spell and spell.duration or LONGEST_DOT
+			if (cast.secret or spell and spell.school == SCHOOL_PHYSICAL) and not cast.missed and cameBefore(cast, hit)
+				and hit.time - cast.time <= runs + DIRECT_WINDOW + TICK_TOLERANCE then
+				return true
+			end
+		end
+		return false
+	end
+
 	-- ofDirect, which also tells the Brand tracker of a Hit that is surely the
 	-- pet's spell's, as it can set off a Brand Proc; a miss sets off none.
 	local function petNoted(hit, line, group, school, miss, plate)
@@ -1263,13 +1398,26 @@ function Identity.New(saved, class, startedAt)
 		local school = not miss and not issecretvalue(hit.school) and hit.school or nil
 		local group = ns.LineKind.Group(line.lineKind)
 		if group == "tick" then
-			return ofTick(hit, school, together, sure, plate)
+			local spellID, possible = ofTick(hit, school, together, sure, plate)
+			if spellID or possible or not deepWounds or school ~= SCHOOL_PHYSICAL then
+				return spellID, possible
+			end
+			return deepWounds.ProcSpell(hit, plate, false, startedAt, physicalDotRuns(hit))
 		end
 		if poisons and group == "direct" and school == SCHOOL_PHYSICAL then
 			poisons.Strike(hit)
 		end
 		if not group then
 			return nil
+		end
+		-- A cast that a Hit on another unit already took can still be this
+		-- Hit's, so it gets none.
+		if deepWounds and group == "direct" and not miss and school == SCHOOL_PHYSICAL
+			and #(castsFitting(hit, group, school)) == 0 then
+			if takenCastCould(hit, group, school, plate) then
+				return nil
+			end
+			return deepWounds.ProcSpell(hit, plate, true, startedAt)
 		end
 		if brands and group == "direct" and not miss and (school == nil or school == SCHOOL_SHADOW) then
 			local brand = brands.ProcSpell(line, plate)
