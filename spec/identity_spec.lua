@@ -436,6 +436,49 @@ describe("Spell Identity", function()
 			assert.is_nil(other)
 		end)
 
+		-- warlock-maraudon: an Imp's Brand Proc is spell 1293698, Fire, 0 to 38
+		-- ms after the line of a Firebolt Hit (159 of 159), and never after a
+		-- swing, which an Imp does not make.
+		-- warlock-zf hit 35123: a Searing Pain came just after a Lash of Pain
+		-- line, and took the Imp's Brand while any pet spell opened it.
+		it("gives the Imp's Demonic Brand to a Fire Hit just after the line of the pet's Fire spell Hit, but not after a swing or a Shadow spell", function()
+			local IMP_BRAND = 1293698
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 0, FIREBOLT, "pet")
+			local bolt = hit(identity, 1.3, FIRE)
+			assert.are.same({ FIREBOLT, IMP_BRAND }, { bolt, hit(identity, 1.32, FIRE) })
+			local afterSwing = Identity.New({}, "WARLOCK")
+			swing(afterSwing, 1.3)
+			assert.is_nil(hit(afterSwing, 1.32, FIRE))
+			local afterLash = Identity.New({}, "WARLOCK")
+			cast(afterLash, 1.29, LASH_OF_PAIN, "pet")
+			assert.are.same({ LASH_OF_PAIN }, { hit(afterLash, 1.3, SHADOW), hit(afterLash, 1.32, FIRE) })
+		end)
+
+		-- Codex review: after the Imp's Firebolt, a Shadow Hit is no Brand
+		-- Proc, and one whose school is secret is the Imp's.
+		it("gives no Brand to a Shadow Hit after the pet's Fire spell, and the Imp's to one of secret school", function()
+			local IMP_BRAND = 1293698
+			local shadow = Identity.New({}, "WARLOCK")
+			cast(shadow, 0, FIREBOLT, "pet")
+			hit(shadow, 1.3, FIRE)
+			local secret = Identity.New({}, "WARLOCK")
+			cast(secret, 0, FIREBOLT, "pet")
+			hit(secret, 1.3, FIRE)
+			assert.are.same({ nil, IMP_BRAND }, { hit(shadow, 1.32, SHADOW), hit(secret, 1.32, "<secret>") })
+		end)
+
+		-- Codex review: the player's Searing Pain can land on the Imp's target
+		-- just after its Firebolt.
+		it("gives a stack of the Imp's Demonic Brand and the player's Fire cast when both fit", function()
+			local IMP_BRAND, SEARING_PAIN = 1293698, 5676
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 0, FIREBOLT, "pet")
+			hit(identity, 1.3, FIRE)
+			cast(identity, 1.31, SEARING_PAIN)
+			assert.are.same({ nil, { SEARING_PAIN, IMP_BRAND } }, { hit(identity, 1.32, FIRE) })
+		end)
+
 		-- warlock-zf hit 7893: a Brand Proc while Shadow Bolt flew and the
 		-- pet's Lash of Pain had not landed yet.
 		it("puts Demonic Brand in the stack when an unused cast of the pet fits too", function()
@@ -819,6 +862,19 @@ describe("Spell Identity", function()
 			assert.are.same({}, saved)
 		end)
 
+		-- warlock-maraudon: the Imp's Firebolt flew 0.19 to 1.89 s, and 108 of
+		-- 249 flew longer than the 1.5 s a cast stays open.
+		it("still counts the Imp's Firebolt for its Hit after a long flight, so the player's later cast cannot take it", function()
+			local SEARING_PAIN = 5676
+			local alone = Identity.New({})
+			cast(alone, 0, FIREBOLT, "pet")
+			local withCast = Identity.New({})
+			cast(withCast, 0, FIREBOLT, "pet")
+			cast(withCast, 1, SEARING_PAIN)
+			assert.are.same({ FIREBOLT, { nil, { FIREBOLT, SEARING_PAIN } } }, { of(alone, 1.9, "direct", FIRE),
+				{ withCast.Of({ time = 1.9, unit = "nameplate1", school = FIRE }, { lineKind = "direct" }) } })
+		end)
+
 		it("gives Forever's own Ferocious Bite, a cast ID that Classic lacks, to its Hit", function()
 			local FEROCIOUS_BITE = 1328618
 			local identity = Identity.New({})
@@ -1115,6 +1171,42 @@ describe("Spell Identity", function()
 			cast(identity, 1, IMMOLATE)
 			cast(identity, 1.2, FIREBOLT, "pet")
 			assert.is_nil(of(identity, 2, "direct", FIRE))
+		end)
+
+		-- warlock-maraudon: an open cast of the Imp's Firebolt cost 95 Hellfire
+		-- and 74 Rain of Fire ticks their icon. A tick that another Nameplate
+		-- took in this frame is surely the channel's, as a pet's cast hits one
+		-- unit.
+		it("gives the area spell to a tick that another Nameplate took in its frame, while only the pet's cast also fits", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1, FIREBOLT, "pet")
+			local first = { identity.Of({ time = 2, unit = "nameplate1", school = FIRE }, { lineKind = "direct" }) }
+			local second = of(identity, 2, "direct", FIRE, "nameplate2")
+			assert.are.same({ { nil, { FIREBOLT, RAIN_OF_FIRE } }, RAIN_OF_FIRE }, { first, second })
+			assert.are.equal(FIREBOLT, of(identity, 2.3, "direct", FIRE))
+		end)
+
+		-- Codex review: a pet's cast can land on a mob in the same frame as the
+		-- tick, so a second Hit on that mob is no proof of the tick, and a pet
+		-- spell that hits several units or a secret cast can make both Hits.
+		it("keeps a stack for a second Hit on the same Nameplate in the frame, or while the pet's cast can hit several units", function()
+			local SWIPE = 1264494
+			local samePlate = Identity.New({})
+			cast(samePlate, 0, RAIN_OF_FIRE)
+			cast(samePlate, 1, FIREBOLT, "pet")
+			of(samePlate, 2, "direct", FIRE)
+			local second = { samePlate.Of({ time = 2, unit = "nameplate1", school = FIRE }, { lineKind = "direct" }) }
+			local multi = Identity.New({})
+			cast(multi, 0, VOLLEY)
+			cast(multi, 1, SWIPE, "pet")
+			of(multi, 2, "direct")
+			local secret = Identity.New({})
+			cast(secret, 0, RAIN_OF_FIRE)
+			secret.Cast({ kind = "cast", stage = "SUCCEEDED", time = 1, spellID = "<secret>", unit = "pet" })
+			of(secret, 2, "direct", FIRE)
+			assert.are.same({ { nil, { FIREBOLT, RAIN_OF_FIRE } }, nil, nil }, { second, of(multi, 2, "direct", nil, "nameplate2"),
+				of(secret, 2, "direct", FIRE, "nameplate2") })
 		end)
 
 		it("gives none when two area spells fit, and leaves a cast that hits for its own hit", function()

@@ -108,6 +108,11 @@ end
 -- timestamp; the value starts at Judgement's, and is not tested on Forever.
 local EXECUTE_WINDOW = 0.2
 
+-- How long after its cast the Imp's Firebolt can land. In warlock-maraudon's
+-- Combat Log File it flew 0.19 to 1.89 s (median 1.35 s), and 108 of 249
+-- flights were longer than the 1.5 s that other casts stay open.
+local FIREBOLT_WINDOW = 2.0
+
 -- The Seals, by the spell ID of their cast, from Forever's spell data, each with
 -- whether its Seal Proc gets an icon (see Identity's sealProc). Any Seal's cast
 -- replaces the Active Seal. Seal of Martyrdom also procs Holy damage, but no
@@ -274,7 +279,7 @@ do
 	hits(PHYSICAL, { 1310222 }) -- Spearing Strike, Forever only
 
 	-- Pets
-	hits(FIRE, { 3110, 7799, 7800, 7801, 7802, 9057, 11762, 11763, 15598, 18187 }) -- Firebolt, the Imp's
+	addSpell({ school = FIRE, window = FIREBOLT_WINDOW }, { 3110, 7799, 7800, 7801, 7802, 9057, 11762, 11763, 15598, 18187 }) -- Firebolt, the Imp's
 	hits(SHADOW, { 7814, 7815, 7816, 11778, 11779, 11780 }) -- Lash of Pain, the Succubus's
 	hits(PHYSICAL, { 3009, 3010, 16827, 16828, 16829, 16830, 16831, 16832 }) -- Claw
 	hits(PHYSICAL, { 17253, 17255, 17256, 17257, 17258, 17259, 17260, 17261 }) -- Bite

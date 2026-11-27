@@ -111,7 +111,7 @@ Your Hit made by a Rogue's poison on a weapon, with no cast of its own: Instant 
 _Avoid_: Poison damage, poison tick
 
 **Brand Proc**:
-Your Hit made by the pet's Demonic Brand when the pet's melee swing or spell Hit lands, with no cast of its own.
+Your Hit made by the pet's Demonic Brand when the pet's melee swing or spell Hit lands, with no cast of its own. A Succubus's is Shadow; an Imp's is Fire, another spell, and follows only its Firebolt.
 _Avoid_: Brand damage, Brand hit
 
 **Spell Facts**:
