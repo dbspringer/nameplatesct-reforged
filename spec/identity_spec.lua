@@ -826,6 +826,14 @@ describe("Spell Identity", function()
 			assert.are.equal(FEROCIOUS_BITE, of(identity, 1, "direct", PHYSICAL))
 		end)
 
+		it("gives Slam to its Hit at every rank that Improved Slam replaces", function()
+			for _, slam in ipairs({ 1310197, 1310200 }) do -- in place of ranks 1 and 4
+				local identity = Identity.New({})
+				cast(identity, 1, slam)
+				assert.are.equal(slam, of(identity, 1, "direct", PHYSICAL))
+			end
+		end)
+
 		it("gives Shoot to a shot that lands after a long flight, but no direct spell after that long", function()
 			local identity = Identity.New({ [SHOOT] = { school = FIRE, hits = 2 } })
 			cast(identity, 1, SHOOT)

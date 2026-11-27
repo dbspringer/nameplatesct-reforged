@@ -24,6 +24,11 @@ local _, ns = ...
 -- Build 70888 took some IDs out of the skill lines (Primal Bite 1238073, Frost
 -- Blast, and Forever's Lava Burst ranks). They stay, as a cast that no player
 -- makes costs nothing.
+--
+-- A talent or a learned spell can put another spell in a cast's place (an
+-- aura 332 effect: its MiscValue is the old spell, its base points the new
+-- one), and the player then casts the new ID. Those are in too, from build
+-- 1.60.1.71139: Improved Slam's Slam and Exorcist's Exorcism.
 
 local School = ns.School
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = School.PHYSICAL, School.HOLY, School.FIRE,
@@ -192,6 +197,7 @@ do
 
 	-- Paladin
 	hits(HOLY, { 879, 5614, 5615, 10312, 10313, 10314 }) -- Exorcism
+	hits(HOLY, { 415068, 415069, 415070, 415071, 415072, 415073 }) -- Exorcism, as Exorcist replaces it
 	hits(HOLY, { 2812, 10318 }, many()) -- Holy Wrath
 	hits(HOLY, { 24239, 24274, 24275 }) -- Hammer of Wrath
 	-- Weapon damage plus Holy damage; which school the Hit reports is untested.
@@ -261,6 +267,7 @@ do
 	hits(PHYSICAL, { 23922, 23923, 23924, 23925 }) -- Shield Slam
 	hits(PHYSICAL, { 402927 }) -- Victory Rush
 	hits(PHYSICAL, { 1240193 }) -- Slam, Forever's rank
+	hits(PHYSICAL, { 1310196, 1310197, 1310198, 1310199, 1310200 }) -- Slam, as Improved Slam replaces it
 	hits(PHYSICAL, { 1310222 }) -- Spearing Strike, Forever only
 
 	-- Pets
