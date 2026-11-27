@@ -1,5 +1,10 @@
 # Changelog
 
+## 17
+
+- Slam now shows its icon with the Improved Slam talent.
+- Exorcism now shows its icon with Exorcist.
+
 ## 16
 
 - Your Auto Shot, bow, gun, crossbow, and Throw hits now look like your melee swings, in white with the Auto Attacks animations. "Display Auto Attacks" off now hides their icon too.

@@ -826,6 +826,14 @@ describe("Spell Identity", function()
 			assert.are.equal(FEROCIOUS_BITE, of(identity, 1, "direct", PHYSICAL))
 		end)
 
+		it("gives Slam to its Hit at every rank that Improved Slam replaces", function()
+			for _, slam in ipairs({ 1310197, 1310200 }) do -- in place of ranks 1 and 4
+				local identity = Identity.New({})
+				cast(identity, 1, slam)
+				assert.are.equal(slam, of(identity, 1, "direct", PHYSICAL))
+			end
+		end)
+
 		it("gives Shoot to a shot that lands after a long flight, but no direct spell after that long", function()
 			local identity = Identity.New({ [SHOOT] = { school = FIRE, hits = 2 } })
 			cast(identity, 1, SHOOT)
@@ -2001,6 +2009,14 @@ describe("Spell Identity", function()
 		it("gives a direct hit that two spells' casts fit both spells", function()
 			assert.are.same({ { SHADOW_BOLT, SHADOWBURN } }, shown({ castEntry(100, SHADOW_BOLT), castEntry(100.5, SHADOWBURN),
 				lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW) }))
+		end)
+
+		-- Codex review: a talent's override of a cast sorts as the spell it
+		-- replaces, so a pair shows in the same order with the talent or without.
+		it("orders a talent's override of a cast as the spell it replaces", function()
+			local IMPROVED_SLAM, MORTAL_STRIKE = 1310200, 21553
+			assert.are.same({ { IMPROVED_SLAM, MORTAL_STRIKE } }, shown({ castEntry(100, MORTAL_STRIKE),
+				castEntry(100.5, IMPROVED_SLAM), lineEntry(101, "direct"), hitEntry(101, "nameplate1", PHYSICAL) }))
 		end)
 
 		-- Codex review: a Consecration tick is a Holy direct hit with no cast,
