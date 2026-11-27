@@ -80,8 +80,9 @@ local INSTANT_POISON, DEADLY_POISON = 8680, 2818
 -- Seal Proc's.
 local POISON_PROC_WINDOW = 0.15
 -- A Brand Proc's spell: the damage spell of a Warlock's Demonic Brand
--- (Forever), which the pet's Hits set off.
-local DEMONIC_BRAND = 1293697
+-- (Forever), which the pet's Hits set off. An Imp's is another spell, Fire
+-- (warlock-maraudon: 159 in the Combat Log File, against 98 Shadow ones).
+local DEMONIC_BRAND, IMP_BRAND = 1293697, 1293698
 -- How soon after the pet's landed swing line a Brand Proc's line comes (see
 -- Pairing).
 local BRAND_PROC_WINDOW = ns.Pairing.BRAND_PROC_WINDOW
@@ -206,11 +207,11 @@ local function newTriggers(window)
 	local list = {}
 	local triggers = {}
 
-	function triggers.Add(time, plate)
+	function triggers.Add(time, plate, school)
 		while list[1] and time - list[1].time > window + DECIDE_LATE do
 			table.remove(list, 1)
 		end
-		list[#list + 1] = { time = time, plate = plate }
+		list[#list + 1] = { time = time, plate = plate, school = school }
 	end
 
 	-- Whether one came at most window before time, or at it, and passes
@@ -387,11 +388,11 @@ local function newBrandTracker()
 		end
 	end
 
-	-- The line of a Hit that is surely the pet's spell's, and not a miss, and
-	-- the Hit's plate.
-	function tracker.PetSpell(line, plate)
+	-- The line of a Hit that is surely the pet's spell's, and not a miss, the
+	-- Hit's plate, and the spell's school.
+	function tracker.PetSpell(line, plate, school)
 		if line.time then
-			spells.Add(line.time, plate)
+			spells.Add(line.time, plate, school)
 		end
 	end
 
@@ -400,15 +401,19 @@ local function newBrandTracker()
 	-- or nil. A Brand Proc hits the mob whose Brand the pet's Hit used. A line
 	-- in the spell Hit's own frame does not count: in warlock-zf, 39 Brand
 	-- Procs came 0.008 to 0.040 s after a Lash of Pain line, and the one Shadow
-	-- line of the player's in that window came in its frame (hit 8342).
-	function tracker.ProcSpell(line, plate)
+	-- line of the player's in that window came in its frame (hit 8342). A Fire
+	-- Hit is the Imp's Brand Proc, which comes only after its Fire spell's
+	-- Hit (warlock-maraudon: 159 of 159, 0 to 38 ms after a Firebolt line),
+	-- as an Imp makes no swing.
+	function tracker.ProcSpell(line, plate, school)
 		if not line.time then
 			return nil
 		end
-		local setOff = swings.Before(line.time) or spells.Before(line.time, function(spell, since)
-			return spell.plate == plate and since > 0
+		local fire = school == School.FIRE
+		local setOff = not fire and swings.Before(line.time) or spells.Before(line.time, function(spell, since)
+			return spell.plate == plate and since > 0 and (not fire or spell.school == School.FIRE)
 		end)
-		return setOff and DEMONIC_BRAND or nil
+		return setOff and (fire and IMP_BRAND or DEMONIC_BRAND) or nil
 	end
 
 	return tracker
@@ -1390,7 +1395,7 @@ function Identity.New(saved, class, startedAt)
 	local function petNoted(hit, line, group, school, miss, plate)
 		local spellID, possible, byPet = ofDirect(hit, group, school, miss, plate)
 		if byPet and spellID and not miss and brands then
-			brands.PetSpell(line, plate)
+			brands.PetSpell(line, plate, schoolOf(spellID))
 		end
 		return spellID, possible
 	end
@@ -1426,8 +1431,9 @@ function Identity.New(saved, class, startedAt)
 			end
 			return deepWounds.ProcSpell(hit, plate, true, startedAt)
 		end
-		if brands and group == "direct" and not miss and (school == nil or school == School.SHADOW) then
-			local brand = brands.ProcSpell(line, plate)
+		if brands and group == "direct" and not miss
+			and (school == nil or school == School.SHADOW or school == School.FIRE) then
+			local brand = brands.ProcSpell(line, plate, school)
 			local fittingCasts, petFits
 			if brand then
 				fittingCasts, petFits = castsFitting(hit, group, school)
@@ -1437,8 +1443,10 @@ function Identity.New(saved, class, startedAt)
 			-- made the Hit. No Warlock Trace has a Shadow Hit of the player's
 			-- in the window, so for a Shadow Hit the Brand Proc wins (ADR
 			-- 0004). Fire Hits do come in it, so a Hit of secret school gets
-			-- Possible Spells. The casts stay for their own Hits.
-			if brand and (#fittingCasts == 0 or school == School.SHADOW and not petFits) then
+			-- Possible Spells. A Fire Hit counts only after the pet's Fire
+			-- spell, where none of the player's came in warlock-maraudon, so
+			-- it wins too. The casts stay for their own Hits.
+			if brand and (#fittingCasts == 0 or school ~= nil and not petFits) then
 				return brand
 			elseif brand and not petFits then
 				local spellIDs = spellIDsOf(fittingCasts, brand)

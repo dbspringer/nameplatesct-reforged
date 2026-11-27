@@ -436,6 +436,25 @@ describe("Spell Identity", function()
 			assert.is_nil(other)
 		end)
 
+		-- warlock-maraudon: an Imp's Brand Proc is spell 1293698, Fire, 0 to 38
+		-- ms after the line of a Firebolt Hit (159 of 159), and never after a
+		-- swing, which an Imp does not make.
+		-- warlock-zf hit 35123: a Searing Pain came just after a Lash of Pain
+		-- line, and took the Imp's Brand while any pet spell opened it.
+		it("gives the Imp's Demonic Brand to a Fire Hit just after the line of the pet's Fire spell Hit, but not after a swing or a Shadow spell", function()
+			local IMP_BRAND = 1293698
+			local identity = Identity.New({}, "WARLOCK")
+			cast(identity, 0, FIREBOLT, "pet")
+			local bolt = hit(identity, 1.3, FIRE)
+			assert.are.same({ FIREBOLT, IMP_BRAND }, { bolt, hit(identity, 1.32, FIRE) })
+			local afterSwing = Identity.New({}, "WARLOCK")
+			swing(afterSwing, 1.3)
+			assert.is_nil(hit(afterSwing, 1.32, FIRE))
+			local afterLash = Identity.New({}, "WARLOCK")
+			cast(afterLash, 1.29, LASH_OF_PAIN, "pet")
+			assert.are.same({ LASH_OF_PAIN }, { hit(afterLash, 1.3, SHADOW), hit(afterLash, 1.32, FIRE) })
+		end)
+
 		-- warlock-zf hit 7893: a Brand Proc while Shadow Bolt flew and the
 		-- pet's Lash of Pain had not landed yet.
 		it("puts Demonic Brand in the stack when an unused cast of the pet fits too", function()
