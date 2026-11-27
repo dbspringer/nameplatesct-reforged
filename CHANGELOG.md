@@ -4,6 +4,8 @@
 
 - Slam now shows its icon with the Improved Slam talent.
 - Exorcism now shows its icon with Exorcist.
+- With an Imp out, more of your Hellfire, Rain of Fire, and Firebolt hits now show their icon.
+- The Imp's Demonic Brand hits now show their icon. A few can still show Firebolt's.
 
 ## 16
 

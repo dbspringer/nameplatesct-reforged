@@ -749,6 +749,31 @@ describe("Flow", function()
 		assert.are.same({ false, false, true, true }, shownOf({ 32634, 32635, 32638, 32640 }))
 	end)
 
+	-- warlock-maraudon's Imp (2026-11-27): an open Firebolt cast also fit
+	-- the area ticks, so they showed none; Firebolt flew past the 1.5 s a cast
+	-- stays open, so it showed none or the player's Fire spell; and the Imp's
+	-- Brand Proc, a Fire Hit of spell 1293698, never showed Demonic Brand.
+	-- Before, over the rows that are sure or unsure only for their secret
+	-- amount: Imp Brand 0, Firebolt 53, Hellfire 292, Rain of Fire 159 icons.
+	-- Now 81, 83, 342, and 209. The replay is the same on each run, so each
+	-- floor is the count itself.
+	it("shows the Imp's Brand, Firebolt, and the area ticks' icons with an Imp out", function()
+		local IMP_BRAND, FIREBOLT, HELLFIRE, RAIN_OF_FIRE = 1293698, 11762, 11683, 11677
+		local trace, labels = Trace.LoadLabelled("warlock-maraudon")
+		local spellOf = Trace.SureSpells(labels)
+		local icons = { [IMP_BRAND] = 0, [FIREBOLT] = 0, [HELLFIRE] = 0, [RAIN_OF_FIRE] = 0 }
+		for _, result in ipairs(run(trace.entries, trace.header.class)) do
+			local spell = spellOf[result.hit.entry]
+			if result.spellID and spell == result.spellID and icons[spell] then
+				icons[spell] = icons[spell] + 1
+			end
+		end
+		local floors = { [IMP_BRAND] = 81, [FIREBOLT] = 83, [HELLFIRE] = 342, [RAIN_OF_FIRE] = 209 }
+		for spell, floor in pairs(floors) do
+			assert.is_true(icons[spell] >= floor, ("%d: %d icons"):format(spell, icons[spell]))
+		end
+	end)
+
 	-- Hellfire is a channel whose ticks hit the mobs near you as direct hits of
 	-- another spell ID, and also burn you, with a tick line in their frame.
 	-- Before it was an area spell, its Hits showed no icon; and before the
