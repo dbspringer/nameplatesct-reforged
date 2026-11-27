@@ -28,7 +28,9 @@ local _, ns = ...
 -- A talent or a learned spell can put another spell in a cast's place (an
 -- aura 332 effect: its MiscValue is the old spell, its base points the new
 -- one), and the player then casts the new ID. Those are in too, from build
--- 1.60.1.71139: Improved Slam's Slam and Exorcist's Exorcism.
+-- 1.60.1.71139, in the row of the spell they replace, so that they share its
+-- first rank: Improved Slam's Slam (seen in a player's recording) and
+-- Exorcist's Exorcism (untested in game).
 
 local School = ns.School
 local PHYSICAL, HOLY, FIRE, NATURE, FROST, SHADOW, ARCANE = School.PHYSICAL, School.HOLY, School.FIRE,
@@ -196,8 +198,8 @@ do
 	hits(ARCANE, { 1326079, 1326080, 1326081, 1326082 }) -- Arcane Wrath, Forever only
 
 	-- Paladin
-	hits(HOLY, { 879, 5614, 5615, 10312, 10313, 10314 }) -- Exorcism
-	hits(HOLY, { 415068, 415069, 415070, 415071, 415072, 415073 }) -- Exorcism, as Exorcist replaces it
+	-- The ranks, then the IDs that Exorcist puts in their place.
+	hits(HOLY, { 879, 5614, 5615, 10312, 10313, 10314, 415068, 415069, 415070, 415071, 415072, 415073 }) -- Exorcism
 	hits(HOLY, { 2812, 10318 }, many()) -- Holy Wrath
 	hits(HOLY, { 24239, 24274, 24275 }) -- Hammer of Wrath
 	-- Weapon damage plus Holy damage; which school the Hit reports is untested.
@@ -254,7 +256,9 @@ do
 	replacesSwing({ 78, 284, 285, 1608, 11564, 11565, 11566, 11567, 25286, 25712 }) -- Heroic Strike
 	hits(PHYSICAL, { 694, 7400, 7402, 20559, 20560 }) -- Mocking Blow
 	replacesSwing({ 845, 7369, 11608, 11609, 20569 }, many(2)) -- Cleave
-	hits(PHYSICAL, { 1464, 8820, 11604, 11605 }) -- Slam
+	-- The ranks, then the IDs that Improved Slam puts in their place and in
+	-- the place of Forever's rank (1240193).
+	hits(PHYSICAL, { 1464, 8820, 11604, 11605, 1310196, 1310197, 1310198, 1310199, 1310200 }) -- Slam
 	hits(PHYSICAL, { 1680 }, many(4, BOTH_WEAPONS)) -- Whirlwind
 	addSpell({ school = PHYSICAL, window = EXECUTE_WINDOW }, { 5308, 20658, 20660, 20661, 20662 }) -- Execute
 	hits(PHYSICAL, { 1715, 7372, 7373, 27584 }) -- Hamstring
@@ -267,7 +271,6 @@ do
 	hits(PHYSICAL, { 23922, 23923, 23924, 23925 }) -- Shield Slam
 	hits(PHYSICAL, { 402927 }) -- Victory Rush
 	hits(PHYSICAL, { 1240193 }) -- Slam, Forever's rank
-	hits(PHYSICAL, { 1310196, 1310197, 1310198, 1310199, 1310200 }) -- Slam, as Improved Slam replaces it
 	hits(PHYSICAL, { 1310222 }) -- Spearing Strike, Forever only
 
 	-- Pets

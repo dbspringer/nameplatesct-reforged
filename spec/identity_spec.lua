@@ -2011,6 +2011,14 @@ describe("Spell Identity", function()
 				lineEntry(101, "direct"), hitEntry(101, "nameplate1", SHADOW) }))
 		end)
 
+		-- Codex review: a talent's override of a cast sorts as the spell it
+		-- replaces, so a pair shows in the same order with the talent or without.
+		it("orders a talent's override of a cast as the spell it replaces", function()
+			local IMPROVED_SLAM, MORTAL_STRIKE = 1310200, 21553
+			assert.are.same({ { IMPROVED_SLAM, MORTAL_STRIKE } }, shown({ castEntry(100, MORTAL_STRIKE),
+				castEntry(100.5, IMPROVED_SLAM), lineEntry(101, "direct"), hitEntry(101, "nameplate1", PHYSICAL) }))
+		end)
+
 		-- Codex review: a Consecration tick is a Holy direct hit with no cast,
 		-- so the casts that fit are not all the spells that could have made it.
 		it("gives none to a Holy direct hit during Consecration", function()
