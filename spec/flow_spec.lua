@@ -755,19 +755,24 @@ describe("Flow", function()
 	-- Brand Proc, a Fire Hit of spell 1293698, never showed Demonic Brand.
 	-- Before, over the rows that are sure or unsure only for their secret
 	-- amount: Imp Brand 0, Firebolt 53, Hellfire 292, Rain of Fire 159 icons.
-	-- Now 81, 83, 342, and 209. The replay is the same on each run, so each
-	-- floor is the count itself.
+	-- Now 81, 83, 342, and 209. Over those rows, 13 icons were wrong, and now
+	-- 10 are: some Hits now show Firebolt, as its longer window keeps its cast
+	-- open, but more wrong icons become stacks. The replay is the same on each
+	-- run, so each floor and ceiling is the count itself.
 	it("shows the Imp's Brand, Firebolt, and the area ticks' icons with an Imp out", function()
 		local IMP_BRAND, FIREBOLT, HELLFIRE, RAIN_OF_FIRE = 1293698, 11762, 11683, 11677
 		local trace, labels = Trace.LoadLabelled("warlock-maraudon")
 		local spellOf = Trace.SureSpells(labels)
-		local icons = { [IMP_BRAND] = 0, [FIREBOLT] = 0, [HELLFIRE] = 0, [RAIN_OF_FIRE] = 0 }
+		local icons, wrong = { [IMP_BRAND] = 0, [FIREBOLT] = 0, [HELLFIRE] = 0, [RAIN_OF_FIRE] = 0 }, 0
 		for _, result in ipairs(run(trace.entries, trace.header.class)) do
 			local spell = spellOf[result.hit.entry]
 			if result.spellID and spell == result.spellID and icons[spell] then
 				icons[spell] = icons[spell] + 1
+			elseif result.spellID and spell ~= nil and spell ~= result.spellID then
+				wrong = wrong + 1
 			end
 		end
+		assert.is_true(wrong <= 10, ("%d wrong icons"):format(wrong))
 		local floors = { [IMP_BRAND] = 81, [FIREBOLT] = 83, [HELLFIRE] = 342, [RAIN_OF_FIRE] = 209 }
 		for spell, floor in pairs(floors) do
 			assert.is_true(icons[spell] >= floor, ("%d: %d icons"):format(spell, icons[spell]))

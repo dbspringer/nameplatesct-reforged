@@ -409,11 +409,17 @@ local function newBrandTracker()
 		if not line.time then
 			return nil
 		end
-		local fire = school == School.FIRE
-		local setOff = not fire and swings.Before(line.time) or spells.Before(line.time, function(spell, since)
-			return spell.plate == plate and since > 0 and (not fire or spell.school == School.FIRE)
-		end)
-		return setOff and (fire and IMP_BRAND or DEMONIC_BRAND) or nil
+		-- Whether the line of the pet's spell Hit of a Fire spell, or of
+		-- another, came just before on this plate.
+		local function afterSpell(fire)
+			return spells.Before(line.time, function(spell, since)
+				return spell.plate == plate and since > 0 and (spell.school == School.FIRE) == fire
+			end)
+		end
+		if school ~= School.FIRE and (swings.Before(line.time) or afterSpell(false)) then
+			return DEMONIC_BRAND
+		end
+		return school ~= School.SHADOW and afterSpell(true) and IMP_BRAND or nil
 	end
 
 	return tracker
@@ -791,10 +797,15 @@ function Identity.New(saved, class, startedAt)
 			return nil
 		elseif areaCasts then
 			-- A Hit of this tick on another unit in this frame makes the tick
-			-- sure.
+			-- sure. A second Hit on the same unit in the frame is not this
+			-- tick's.
 			local tickTaken = false
 			for _, cast in ipairs(areaCasts) do
-				tickTaken = tickTaken or cast.lastTick == hit.time
+				if cast.lastTick ~= hit.time then
+					cast.tickPlates = {}
+				end
+				tickTaken = tickTaken or cast.lastTick == hit.time and not cast.tickPlates[plate]
+				cast.tickPlates[plate] = true
 				cast.lastTick = hit.time
 			end
 			-- Another cast that fits, such as one that hits or a DoT whose
@@ -804,13 +815,15 @@ function Identity.New(saved, class, startedAt)
 			if fitting == 0 then
 				return areaCasts[1].spellID
 			end
-			-- Unless only the pet's casts fit: a pet's cast hits one unit, so
+			-- Unless only the pet's casts of spells that hit one unit fit:
 			-- once the tick is sure, this Hit is the tick's too. The tick's
 			-- first Hit gets both (warlock-maraudon: an open cast of the Imp's
-			-- Firebolt met about half of the area ticks).
+			-- Firebolt met about half of the area ticks). A cast whose spell
+			-- ID is secret can be a spell that hits several.
 			local petOnly = fitting == #fittingCasts
 			for _, cast in ipairs(fittingCasts) do
-				petOnly = petOnly and cast.unit == "pet"
+				local direct = not cast.secret and ns.DirectSpells[cast.spellID]
+				petOnly = petOnly and cast.unit == "pet" and direct and not direct.multi
 			end
 			if not petOnly then
 				return nil
@@ -1443,10 +1456,11 @@ function Identity.New(saved, class, startedAt)
 			-- made the Hit. No Warlock Trace has a Shadow Hit of the player's
 			-- in the window, so for a Shadow Hit the Brand Proc wins (ADR
 			-- 0004). Fire Hits do come in it, so a Hit of secret school gets
-			-- Possible Spells. A Fire Hit counts only after the pet's Fire
-			-- spell, where none of the player's came in warlock-maraudon, so
-			-- it wins too. The casts stay for their own Hits.
-			if brand and (#fittingCasts == 0 or school ~= nil and not petFits) then
+			-- Possible Spells, and so does a Fire Hit, which a cast of the
+			-- player's that fits could have made as well (none did in
+			-- warlock-maraudon, so it costs no icon there). The casts stay for
+			-- their own Hits.
+			if brand and (#fittingCasts == 0 or school == School.SHADOW and not petFits) then
 				return brand
 			elseif brand and not petFits then
 				local spellIDs = spellIDsOf(fittingCasts, brand)
