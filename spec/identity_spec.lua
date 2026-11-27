@@ -1117,6 +1117,20 @@ describe("Spell Identity", function()
 			assert.is_nil(of(identity, 2, "direct", FIRE))
 		end)
 
+		-- warlock-maraudon: an open cast of the Imp's Firebolt cost 95 Hellfire
+		-- and 74 Rain of Fire ticks their icon. A tick that another Nameplate
+		-- took in this frame is surely the channel's, as a pet's cast hits one
+		-- unit.
+		it("gives the area spell to a tick that another Nameplate took in its frame, while only the pet's cast also fits", function()
+			local identity = Identity.New({})
+			cast(identity, 0, RAIN_OF_FIRE)
+			cast(identity, 1, FIREBOLT, "pet")
+			local first = { identity.Of({ time = 2, unit = "nameplate1", school = FIRE }, { lineKind = "direct" }) }
+			local second = of(identity, 2, "direct", FIRE, "nameplate2")
+			assert.are.same({ { nil, { FIREBOLT, RAIN_OF_FIRE } }, RAIN_OF_FIRE }, { first, second })
+			assert.are.equal(FIREBOLT, of(identity, 2.3, "direct", FIRE))
+		end)
+
 		it("gives none when two area spells fit, and leaves a cast that hits for its own hit", function()
 			local identity = Identity.New({})
 			cast(identity, 0, RAIN_OF_FIRE)

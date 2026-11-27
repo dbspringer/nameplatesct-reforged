@@ -785,14 +785,35 @@ function Identity.New(saved, class, startedAt)
 		if areaCasts == false then
 			return nil
 		elseif areaCasts then
+			-- A Hit of this tick on another unit in this frame makes the tick
+			-- sure.
+			local tickTaken = false
 			for _, cast in ipairs(areaCasts) do
+				tickTaken = tickTaken or cast.lastTick == hit.time
 				cast.lastTick = hit.time
 			end
 			-- Another cast that fits, such as one that hits or a DoT whose
 			-- application can miss, could have made the Hit too, so it gets
 			-- none, and that cast stays for its own Hit.
-			local _, fitting = castOf(hit, group, school, miss)
-			return fitting == 0 and areaCasts[1].spellID or nil
+			local _, fitting, fittingCasts = castOf(hit, group, school, miss)
+			if fitting == 0 then
+				return areaCasts[1].spellID
+			end
+			-- Unless only the pet's casts fit: a pet's cast hits one unit, so
+			-- once the tick is sure, this Hit is the tick's too. The tick's
+			-- first Hit gets both (warlock-maraudon: an open cast of the Imp's
+			-- Firebolt met about half of the area ticks).
+			local petOnly = fitting == #fittingCasts
+			for _, cast in ipairs(fittingCasts) do
+				petOnly = petOnly and cast.unit == "pet"
+			end
+			if not petOnly then
+				return nil
+			elseif tickTaken then
+				return areaCasts[1].spellID
+			end
+			local spellIDs = spellIDsOf(fittingCasts, areaCasts[1].spellID)
+			return nil, spellIDs and possibleOf(spellIDs)
 		end
 		local found, fitting, fittingCasts = castOf(hit, group, school, miss)
 		-- A cast that fits could have made the Hit too, so it goes on as any
