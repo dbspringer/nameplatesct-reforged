@@ -819,6 +819,19 @@ describe("Spell Identity", function()
 			assert.are.same({}, saved)
 		end)
 
+		-- warlock-maraudon: the Imp's Firebolt flew 0.19 to 1.89 s, and 108 of
+		-- 249 flew longer than the 1.5 s a cast stays open.
+		it("still counts the Imp's Firebolt for its Hit after a long flight, so the player's later cast cannot take it", function()
+			local SEARING_PAIN = 5676
+			local alone = Identity.New({})
+			cast(alone, 0, FIREBOLT, "pet")
+			local withCast = Identity.New({})
+			cast(withCast, 0, FIREBOLT, "pet")
+			cast(withCast, 1, SEARING_PAIN)
+			assert.are.same({ FIREBOLT, { nil, { FIREBOLT, SEARING_PAIN } } }, { of(alone, 1.9, "direct", FIRE),
+				{ withCast.Of({ time = 1.9, unit = "nameplate1", school = FIRE }, { lineKind = "direct" }) } })
+		end)
+
 		it("gives Forever's own Ferocious Bite, a cast ID that Classic lacks, to its Hit", function()
 			local FEROCIOUS_BITE = 1328618
 			local identity = Identity.New({})
